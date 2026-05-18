@@ -1,0 +1,15 @@
+numpy
+pandas
+scipy
+matplotlib
+seaborn
+scikit-learn
+xgboost
+lightgbm
+catboost
+imbalanced-learn
+hyperopt
+scikit-optimize
+jupyter
+ipykernel
+setuptools<81
