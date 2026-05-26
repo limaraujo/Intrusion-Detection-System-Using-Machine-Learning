@@ -52,7 +52,7 @@ def main() -> None:
     warnings.filterwarnings("ignore")
     ensure_repo_on_path()
     try:
-        from FCBF_module import FCBFK
+        from mth_ids_pipeline.FCBF_module import FCBFK
     except ImportError as e:
         raise ImportError(
             "Coloque FCBF_module.py na raiz do repositório (clone de "
