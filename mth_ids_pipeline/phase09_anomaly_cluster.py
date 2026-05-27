@@ -19,7 +19,10 @@ from sklearn import metrics
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import classification_report, confusion_matrix
 
-from .config import ANOMALY_DIR, A04_AFTER_KPCA, A05_TRAIN_SMOTE, A06_TEST_SLICE_INFO, ensure_intermediate_dirs
+try:
+    from .config import ANOMALY_DIR, A04_AFTER_KPCA, A05_TRAIN_SMOTE, A06_TEST_SLICE_INFO, ensure_intermediate_dirs
+except ImportError:
+    from config import ANOMALY_DIR, A04_AFTER_KPCA, A05_TRAIN_SMOTE, A06_TEST_SLICE_INFO, ensure_intermediate_dirs
 
 
 def cl_kmeans(

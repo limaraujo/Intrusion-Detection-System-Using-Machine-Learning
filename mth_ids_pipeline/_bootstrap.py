@@ -3,7 +3,10 @@
 import sys
 from pathlib import Path
 
-from .config import REPO_ROOT
+try:
+    from .config import REPO_ROOT
+except ImportError:
+    from config import REPO_ROOT
 
 
 def ensure_repo_on_path() -> Path:

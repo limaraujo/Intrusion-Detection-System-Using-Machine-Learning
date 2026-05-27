@@ -14,12 +14,20 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import (
-    DEFAULT_RAW_CSV,
-    INTERMEDIATE_DIR,
-    P01_PREPROCESSED,
-    ensure_intermediate_dirs,
-)
+try:
+    from .config import (
+        DEFAULT_RAW_CSV,
+        INTERMEDIATE_DIR,
+        P01_PREPROCESSED,
+        ensure_intermediate_dirs,
+    )
+except ImportError:
+    from config import (
+        DEFAULT_RAW_CSV,
+        INTERMEDIATE_DIR,
+        P01_PREPROCESSED,
+        ensure_intermediate_dirs,
+    )
 
 
 def load_and_preprocess(raw_csv: Path) -> pd.DataFrame:

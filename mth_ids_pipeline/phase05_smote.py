@@ -14,7 +14,10 @@ from pathlib import Path
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 
-from .config import INTERMEDIATE_DIR, P04_TEST_FSS, P04_TRAIN_FSS, P05_TEST, P05_TRAIN_SMOTE, ensure_intermediate_dirs
+try:
+    from .config import INTERMEDIATE_DIR, P04_TEST_FSS, P04_TRAIN_FSS, P05_TEST, P05_TRAIN_SMOTE, ensure_intermediate_dirs
+except ImportError:
+    from config import INTERMEDIATE_DIR, P04_TEST_FSS, P04_TRAIN_FSS, P05_TEST, P05_TRAIN_SMOTE, ensure_intermediate_dirs
 
 
 def main() -> None:

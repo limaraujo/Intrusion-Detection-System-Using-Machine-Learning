@@ -17,15 +17,29 @@ import pandas as pd
 from sklearn.feature_selection import mutual_info_classif
 from sklearn.model_selection import train_test_split
 
-from ._bootstrap import ensure_repo_on_path
-from .config import (
+try:
+    from ._bootstrap import ensure_repo_on_path
+except ImportError:
+    from _bootstrap import ensure_repo_on_path
+
+try:
+    from .config import (
+        INTERMEDIATE_DIR,
+        P02_SAMPLED_KMEANS,
+        P04_SELECTED_FEATURES,
+        P04_TEST_FSS,
+        P04_TRAIN_FSS,
+        ensure_intermediate_dirs,
+    )
+except ImportError:
+    from config import (
     INTERMEDIATE_DIR,
     P02_SAMPLED_KMEANS,
     P04_SELECTED_FEATURES,
     P04_TEST_FSS,
     P04_TRAIN_FSS,
     ensure_intermediate_dirs,
-)
+    )
 
 
 def _numeric_feature_names(df: pd.DataFrame, label_col: str) -> list[str]:
@@ -60,15 +74,15 @@ def main() -> None:
         ) from e
 
     parser = argparse.ArgumentParser(description="Fase 4 — IG + FCBF + split")
-    parser.add_argument("--input", type=Path, default=None, help="CSV amostrado (default fase 2)")
+    parser.add_argument("--input", type=Path, default=None, help="Parquet amostrado (default fase 2)")
     parser.add_argument("--output-dir", type=Path, default=INTERMEDIATE_DIR)
     parser.add_argument("--fcbf-k", type=int, default=20)
     parser.add_argument("--random-state", type=int, default=0)
     args = parser.parse_args()
     ensure_intermediate_dirs()
 
-    path_df = args.input or (args.output_dir / P02_SAMPLED_KMEANS)
-    df = pd.read_csv(path_df)
+    path_df = args.input or (args.output_dir / P02_SAMPLED_KMEANS.replace(".csv", ".parquet"))
+    df = pd.read_parquet(path_df)
     label_col = "Label" if "Label" in df.columns else df.columns[-1]
     feature_names = _numeric_feature_names(df, label_col)
     X = df[feature_names].values

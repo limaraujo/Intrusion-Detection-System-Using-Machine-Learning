@@ -16,16 +16,31 @@ import pandas as pd
 from sklearn.decomposition import KernelPCA
 from sklearn.feature_selection import mutual_info_classif
 
-from ._bootstrap import ensure_repo_on_path
-from .config import (
-    ANOMALY_DIR,
-    A01_WITHOUT_PORTSCAN,
-    A02_PORTSCAN_ONLY,
-    A03_COMBINED_NORMALIZED,
-    A04_AFTER_KPCA,
-    A06_TEST_SLICE_INFO,
-    ensure_intermediate_dirs,
-)
+try:
+    from ._bootstrap import ensure_repo_on_path
+except ImportError:
+    from _bootstrap import ensure_repo_on_path
+
+try:
+    from .config import (
+        ANOMALY_DIR,
+        A01_WITHOUT_PORTSCAN,
+        A02_PORTSCAN_ONLY,
+        A03_COMBINED_NORMALIZED,
+        A04_AFTER_KPCA,
+        A06_TEST_SLICE_INFO,
+        ensure_intermediate_dirs,
+    )
+except ImportError:
+    from config import (
+        ANOMALY_DIR,
+        A01_WITHOUT_PORTSCAN,
+        A02_PORTSCAN_ONLY,
+        A03_COMBINED_NORMALIZED,
+        A04_AFTER_KPCA,
+        A06_TEST_SLICE_INFO,
+        ensure_intermediate_dirs,
+    )
 
 
 def _ig_subset(importances: np.ndarray, names: list[str], *, cumulative: float = 0.9) -> list[str]:

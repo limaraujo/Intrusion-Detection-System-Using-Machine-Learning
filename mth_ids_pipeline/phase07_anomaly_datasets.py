@@ -12,7 +12,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import ANOMALY_DIR, INTERMEDIATE_DIR, P02_SAMPLED_KMEANS, A01_WITHOUT_PORTSCAN, A02_PORTSCAN_ONLY, ensure_intermediate_dirs
+try:
+    from .config import ANOMALY_DIR, INTERMEDIATE_DIR, P02_SAMPLED_KMEANS, A01_WITHOUT_PORTSCAN, A02_PORTSCAN_ONLY, ensure_intermediate_dirs
+except ImportError:
+    from config import ANOMALY_DIR, INTERMEDIATE_DIR, P02_SAMPLED_KMEANS, A01_WITHOUT_PORTSCAN, A02_PORTSCAN_ONLY, ensure_intermediate_dirs
 
 
 def main() -> None:
@@ -24,8 +27,8 @@ def main() -> None:
     ensure_intermediate_dirs()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    path_in = args.input or (INTERMEDIATE_DIR / P02_SAMPLED_KMEANS)
-    df = pd.read_csv(path_in)
+    path_in = args.input or (INTERMEDIATE_DIR / P02_SAMPLED_KMEANS.replace(".csv", ".parquet"))
+    df = pd.read_parquet(path_in)
     label_col = "Label"
 
     df1 = df[df[label_col] != 5].copy()

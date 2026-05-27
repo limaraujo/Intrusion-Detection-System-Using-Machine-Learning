@@ -21,13 +21,20 @@ import pandas as pd
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import LabelEncoder
 
-
-from config import (
-    INTERMEDIATE_DIR,
-    P01_PREPROCESSED,
-    P02_SAMPLED_KMEANS,
-    ensure_intermediate_dirs,
-)
+try:
+    from .config import (
+        INTERMEDIATE_DIR,
+        P01_PREPROCESSED,
+        P02_SAMPLED_KMEANS,
+        ensure_intermediate_dirs,
+    )
+except ImportError:
+    from config import (
+        INTERMEDIATE_DIR,
+        P01_PREPROCESSED,
+        P02_SAMPLED_KMEANS,
+        ensure_intermediate_dirs,
+    )
 
 
 def sample_kmeans(

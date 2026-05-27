@@ -27,7 +27,10 @@ from sklearn.metrics import (
 )
 from sklearn.tree import DecisionTreeClassifier
 
-from .config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, ensure_intermediate_dirs
+try:
+    from .config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, ensure_intermediate_dirs
+except ImportError:
+    from config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, ensure_intermediate_dirs
 
 
 def _evaluate(name: str, clf, X_test, y_test) -> dict:
@@ -37,6 +40,12 @@ def _evaluate(name: str, clf, X_test, y_test) -> dict:
     print(f"\n=== {name} ===\nAccuracy: {acc}\nPrecision: {p}\nRecall: {r}\nF1: {f}")
     print(classification_report(y_test, y_pred))
     return {"model": name, "accuracy": acc, "precision": float(p), "recall": float(r), "f1_weighted": float(f)}
+
+
+def _criterion_value(value) -> str:
+    if isinstance(value, str):
+        return value
+    return ["gini", "entropy"][int(value)]
 
 
 def main() -> None:
@@ -106,7 +115,7 @@ def main() -> None:
         xg = xgb.XGBClassifier(
             n_estimators=int(best["n_estimators"]),
             max_depth=int(best["max_depth"]),
-            learning_rate=float(best["learning_rate"]),
+            learning_rate=abs(float(best["learning_rate"])),
             random_state=0,
         )
 
@@ -137,7 +146,7 @@ def main() -> None:
                 "max_features": int(params["max_features"]),
                 "min_samples_split": int(params["min_samples_split"]),
                 "min_samples_leaf": int(params["min_samples_leaf"]),
-                "criterion": ["gini", "entropy"][int(params["criterion"])],
+                "criterion": _criterion_value(params["criterion"]),
             }
             clf = RandomForestClassifier(**p2, random_state=0)
             clf.fit(X_train, y_train)
@@ -154,7 +163,7 @@ def main() -> None:
         Trials()
         best = fmin(fn=rf_objective, space=space, algo=tpe.suggest, max_evals=20)
         print("RF HPO best:", best)
-        crit = ["gini", "entropy"][int(best["criterion"])]
+        crit = _criterion_value(best["criterion"])
         rf_hpo = RandomForestClassifier(
             n_estimators=int(best["n_estimators"]),
             max_depth=int(best["max_depth"]),
@@ -185,7 +194,7 @@ def main() -> None:
                 "max_features": int(params["max_features"]),
                 "min_samples_split": int(params["min_samples_split"]),
                 "min_samples_leaf": int(params["min_samples_leaf"]),
-                "criterion": ["gini", "entropy"][int(params["criterion"])],
+                "criterion": _criterion_value(params["criterion"]),
             }
             clf = DecisionTreeClassifier(**p2, random_state=0)
             clf.fit(X_train, y_train)
@@ -201,7 +210,7 @@ def main() -> None:
         Trials()
         best = fmin(fn=dt_objective, space=space, algo=tpe.suggest, max_evals=50)
         print("DT HPO best:", best)
-        crit = ["gini", "entropy"][int(best["criterion"])]
+        crit = _criterion_value(best["criterion"])
         dt_hpo = DecisionTreeClassifier(
             max_depth=int(best["max_depth"]),
             max_features=int(best["max_features"]),
@@ -238,7 +247,7 @@ def main() -> None:
                 "max_features": int(params["max_features"]),
                 "min_samples_split": int(params["min_samples_split"]),
                 "min_samples_leaf": int(params["min_samples_leaf"]),
-                "criterion": ["gini", "entropy"][int(params["criterion"])],
+                "criterion": _criterion_value(params["criterion"]),
             }
             clf = ExtraTreesClassifier(**p2, random_state=0)
             clf.fit(X_train, y_train)
@@ -255,7 +264,7 @@ def main() -> None:
         Trials()
         best = fmin(fn=et_objective, space=space, algo=tpe.suggest, max_evals=20)
         print("ET HPO best:", best)
-        crit = ["gini", "entropy"][int(best["criterion"])]
+        crit = _criterion_value(best["criterion"])
         et_hpo = ExtraTreesClassifier(
             n_estimators=int(best["n_estimators"]),
             max_depth=int(best["max_depth"]),
@@ -307,7 +316,7 @@ def main() -> None:
         meta = xgb.XGBClassifier(
             n_estimators=int(best["n_estimators"]),
             max_depth=int(best["max_depth"]),
-            learning_rate=float(best["learning_rate"]),
+            learning_rate=abs(float(best["learning_rate"])),
             random_state=0,
         )
 
