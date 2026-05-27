@@ -2,7 +2,7 @@
 
 Comparacao entre o notebook original [MTH_IDS_IoTJ_original.ipynb](/Users/fabrielyluana/Projects/CIn/Intrusion-Detection-System-Using-Machine-Learning/MTH_IDS_IoTJ_original.ipynb) e o pipeline atual do projeto para o ramo supervisionado do MTH-IDS.
 
-## Observacao Importante
+## Observação Importante
 
 - No notebook original, o conjunto de teste mostrado nas saidas tem `5360` amostras.
 - No pipeline atual, o conjunto de teste usado nesta execucao tem `5358` amostras.
@@ -27,6 +27,69 @@ Comparacao entre o notebook original [MTH_IDS_IoTJ_original.ipynb](/Users/fabrie
 - A maior diferenca observada foi no XGBoost, ainda assim pequena: cerca de `+0.11` ponto percentual em accuracy.
 - O DecisionTree ficou praticamente identico.
 - Os valores exibidos como `1.00` no `classification_report` sao efeito de arredondamento para duas casas decimais, nao significam acerto perfeito real.
+
+## Comparativo Dos Conjuntos Intermediarios
+
+### Ramo supervisionado
+
+| Etapa | Notebook original | Pipeline atual | Observacao |
+|---|---|---|---|
+| Dataset apos sampling k-means | `26800` linhas | `26788` linhas | Diferenca pequena, compativel com `group.sample(frac=0.008)` sem `random_state`. |
+| Treino apos split | `21435 x 20` | `21430 x 21` | O notebook mostra shape apos FCBF; no pipeline a fase 4 tambem termina com 20 features + `Label`. |
+| Teste apos split | `5360` linhas | `5358` linhas | Diferenca residual do sampling. |
+| Treino apos SMOTE | classes `2` e `4` elevadas para `1000` | classes `2` e `4` elevadas para `1000` | Comportamento alinhado. |
+
+### Distribuicao por classe no sampling k-means
+
+| Classe | Notebook original | Pipeline atual | Diferenca |
+|---|---:|---:|---:|
+| 0 | 18185 | 18185 | 0 |
+| 1 | 1966 | 1966 | 0 |
+| 2 | 118 | 111 | -7 |
+| 3 | 3029 | 3051 | +22 |
+| 4 | 36 | 36 | 0 |
+| 5 | 1280 | 1259 | -21 |
+| 6 | 2180 | 2180 | 0 |
+| Total | 26794* | 26788 | -6 |
+
+\* A soma das contagens mostradas nas saidas do notebook e `26794`, embora o arquivo `data/CICIDS2017_sample_km.csv` presente no repositorio tenha `26800` linhas. Isso reforca que houve mais de uma execucao com sampling nao deterministico.
+
+### Distribuicao por classe no treino antes do SMOTE
+
+| Classe | Notebook original | Pipeline atual | Diferenca |
+|---|---:|---:|---:|
+| 0 | 14548 | 14547 | -1 |
+| 1 | 1573 | 1573 | 0 |
+| 2 | 94 | 89 | -5 |
+| 3 | 2423 | 2441 | +18 |
+| 4 | 29 | 29 | 0 |
+| 5 | 1024 | 1007 | -17 |
+| 6 | 1744 | 1744 | 0 |
+
+### Distribuicao por classe no treino apos SMOTE
+
+| Classe | Notebook original | Pipeline atual | Diferenca |
+|---|---:|---:|---:|
+| 0 | 14548 | 14547 | -1 |
+| 1 | 1573 | 1573 | 0 |
+| 2 | 1000 | 1000 | 0 |
+| 3 | 2423 | 2441 | +18 |
+| 4 | 1000 | 1000 | 0 |
+| 5 | 1024 | 1007 | -17 |
+| 6 | 1744 | 1744 | 0 |
+
+### Ramo anomaly
+
+| Etapa | Notebook original | Pipeline atual | Observacao |
+|---|---|---|---|
+| Dataset sem PortScan | classe `0: 18225`, classe `1: 7320` | classe `0: 18185`, classe `1: 7344` | Muito proximo; diferenca herdada do sampling supervisionado. |
+| Dataset so PortScan | classe `1: 1255` | classe `1: 1259` | Diferenca pequena do sampling. |
+| Dataset combinado apos mistura | total `28055` linhas | total `28040` linhas | Diferenca residual por conta dos totais anteriores. |
+| Apos IG | `(28055, 50)` | nao registramos separadamente no arquivo final | O pipeline atual registra o resultado depois do KPCA. |
+| Apos FCBF | `(28055, 20)` | nao registramos separadamente no arquivo final | O pipeline segue direto para KPCA. |
+| Apos KPCA | nao mostrado na saida capturada | `(28040, 11)` | `10` componentes + `Label`. |
+| Treino anomaly antes do SMOTE | classe `0: 18225`, classe `1: 7320` | classe `0: 18185`, classe `1: 7344` | Muito proximo. |
+| Treino anomaly apos SMOTE | classe `0: 18225`, classe `1: 18225` | classe `0: 18185`, classe `1: 18225` | O alvo de oversampling foi preservado. |
 
 ## Suporte Do Conjunto De Teste
 
@@ -56,6 +119,6 @@ Comparacao entre o notebook original [MTH_IDS_IoTJ_original.ipynb](/Users/fabrie
 | 6 | 436 |
 | Total | 5358 |
 
-## Texto Sugerido Para O Relatorio
+## Texto Sugerido Para O Relatório
 
 Os resultados obtidos pelo pipeline supervisionado da equipe foram altamente consistentes com os resultados reportados no notebook original do artigo MTH-IDS. As metricas de accuracy e F1-weighted apresentaram diferencas muito pequenas entre as duas implementacoes, tipicamente abaixo de 0.12 ponto percentual. Essa pequena variacao e esperada, pois a etapa de amostragem por clusters no notebook original nao fixa `random_state` durante o `group.sample(frac=0.008)`, o que pode produzir subconjuntos ligeiramente diferentes entre execucoes. Ainda assim, a proximidade entre os resultados indica que o comportamento geral da solucao supervisionada foi replicado com sucesso.
