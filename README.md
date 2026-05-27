@@ -49,6 +49,28 @@ This repository proposed three **intrusion detection systems** by implementing m
 
 
 ## Implementation 
+### Quick start (modular pipeline)
+Create a virtual environment and install dependencies:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+On macOS, `xgboost` also needs OpenMP:
+
+```bash
+brew install libomp
+```
+
+Run the modular MTH-IDS pipeline with the sampled dataset already included in the repository:
+
+```bash
+.venv/bin/python -m mth_ids_pipeline.run_all --to 6 --raw-csv data/CICIDS2017_sample.csv
+```
+
+Intermediate files and metrics are written to `data/pipeline_mth_ids/`.
+
 ### Dataset 
 CICIDS2017 dataset, a popular network traffic dataset for intrusion detection problems
 * Publicly available at: https://www.unb.ca/cic/datasets/ids-2017.html  

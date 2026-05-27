@@ -26,9 +26,11 @@ def main() -> None:
     parser.add_argument("--to", type=int, default=6, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9], help="Última fase a executar")
     parser.add_argument("--skip-phase6", action="store_true", help="Não treinar modelos (fase 6)")
     parser.add_argument("--phase6-args", type=str, default="--no-hpo --no-plots", help="Argumentos extras para fase 6")
+    parser.add_argument("--raw-csv", type=str, default="", help="CSV bruto para a fase 1")
     args = parser.parse_args()
 
-    run("mth_ids_pipeline.phase01_load_preprocess")
+    phase1_args = ["--input", args.raw_csv] if args.raw_csv else None
+    run("mth_ids_pipeline.phase01_load_preprocess", phase1_args)
     if args.to < 2:
         return
     run("mth_ids_pipeline.phase02_sample_kmeans")

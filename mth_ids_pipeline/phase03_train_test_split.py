@@ -1,7 +1,7 @@
 """
 Fase 3: primeiro train_test_split estratificado (80/20) sobre o conjunto amostrado.
 
-Saída: 03_train.parquet, 03_test.parquet
+Saída: 03_train.csv, 03_test.csv
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import numpy as np
 
-from config import (
+from .config import (
     INTERMEDIATE_DIR,
     P02_SAMPLED_KMEANS,
     P03_TEST,
@@ -48,17 +48,17 @@ def main() -> None:
 
     ensure_intermediate_dirs()
 
-    inp = INTERMEDIATE_DIR / P02_SAMPLED_KMEANS.replace(".csv", ".parquet")
+    inp = INTERMEDIATE_DIR / P02_SAMPLED_KMEANS
 
-    df = pd.read_parquet(inp)
+    df = pd.read_csv(inp)
 
     tr, te = split_train_test(df)
 
-    tr_path = INTERMEDIATE_DIR / P03_TRAIN.replace(".csv", ".parquet")
-    te_path = INTERMEDIATE_DIR / P03_TEST.replace(".csv", ".parquet")
+    tr_path = INTERMEDIATE_DIR / P03_TRAIN
+    te_path = INTERMEDIATE_DIR / P03_TEST
 
-    tr.to_parquet(tr_path, index=False)
-    te.to_parquet(te_path, index=False)
+    tr.to_csv(tr_path, index=False)
+    te.to_csv(te_path, index=False)
 
     print(f"Salvo: {tr_path} ({tr.shape}), {te_path} ({te.shape})")
 

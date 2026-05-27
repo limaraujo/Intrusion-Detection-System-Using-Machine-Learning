@@ -3,18 +3,19 @@ Fase 1: carrega CICIDS2017, normalização Z-score nas colunas numéricas,
 preenche NaN com 0. Mantém a coluna Label como no CSV original.
 
 Saída:
-data/pipeline_mth_ids/01_preprocessed.parquet
+data/pipeline_mth_ids/01_preprocessed.csv
 """
 
 from __future__ import annotations
 
+import argparse
 import time
 import warnings
 from pathlib import Path
 
 import pandas as pd
 
-from config import (
+from .config import (
     DEFAULT_RAW_CSV,
     INTERMEDIATE_DIR,
     P01_PREPROCESSED,
@@ -74,22 +75,23 @@ def load_and_preprocess(raw_csv: Path) -> pd.DataFrame:
 
 def main() -> None:
     total_start = time.time()
+    parser = argparse.ArgumentParser(description="Fase 1 — carregamento e pré-processamento")
+    parser.add_argument("--input", type=Path, default=DEFAULT_RAW_CSV, help="CSV bruto de entrada")
+    args = parser.parse_args()
 
     # Cria diretórios
     ensure_intermediate_dirs()
 
-    # Nome do arquivo parquet
-    out = INTERMEDIATE_DIR / P01_PREPROCESSED.replace(".csv", ".parquet")
+    out = INTERMEDIATE_DIR / P01_PREPROCESSED
 
     # Executa pipeline
-    df = load_and_preprocess(DEFAULT_RAW_CSV)
+    df = load_and_preprocess(args.input)
 
-    # Salva parquet
-    print("Salvando arquivo parquet...")
+    print("Salvando arquivo CSV...")
 
     save_start = time.time()
 
-    df.to_parquet(out, index=False)
+    df.to_csv(out, index=False)
 
     print(f"Arquivo salvo em: {out}")
     print(f"Tempo de salvamento: {time.time() - save_start:.2f}s")

@@ -7,7 +7,7 @@ Fase 2:
 - Concatena novamente com as minoritárias
 
 Saída:
-data/pipeline_mth_ids/02_sampled_kmeans.parquet
+data/pipeline_mth_ids/02_sampled_kmeans.csv
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import LabelEncoder
 
 
-from config import (
+from .config import (
     INTERMEDIATE_DIR,
     P01_PREPROCESSED,
     P02_SAMPLED_KMEANS,
@@ -137,17 +137,16 @@ def main() -> None:
     ensure_intermediate_dirs()
 
     # Arquivo de entrada da Fase 1
-    inp = INTERMEDIATE_DIR / P01_PREPROCESSED.replace(".csv", ".parquet")
+    inp = INTERMEDIATE_DIR / P01_PREPROCESSED
 
     # Arquivo de saída da Fase 2
-    out = INTERMEDIATE_DIR / P02_SAMPLED_KMEANS.replace(".csv", ".parquet")
+    out = INTERMEDIATE_DIR / P02_SAMPLED_KMEANS
 
     print(f"Lendo arquivo: {inp}")
 
     load_start = time.time()
 
-    # Lê parquet
-    df = pd.read_parquet(inp)
+    df = pd.read_csv(inp)
 
     print(f"Arquivo carregado em {time.time() - load_start:.2f}s")
     print(f"Shape original: {df.shape}")
@@ -160,12 +159,11 @@ def main() -> None:
         frac=0.008,
     )
 
-    # Salva parquet
-    print("Salvando parquet...")
+    print("Salvando CSV...")
 
     save_start = time.time()
 
-    sampled.to_parquet(out, index=False)
+    sampled.to_csv(out, index=False)
 
     print(f"Arquivo salvo: {out}")
     print(f"Tempo salvando: {time.time() - save_start:.2f}s")

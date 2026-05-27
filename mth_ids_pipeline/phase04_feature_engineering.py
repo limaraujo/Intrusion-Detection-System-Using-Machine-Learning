@@ -20,7 +20,8 @@ from sklearn.model_selection import train_test_split
 from ._bootstrap import ensure_repo_on_path
 from .config import (
     INTERMEDIATE_DIR,
-    P02_SAMPLED_KMEANS,
+    P03_TEST,
+    P03_TRAIN,
     P04_SELECTED_FEATURES,
     P04_TEST_FSS,
     P04_TRAIN_FSS,
@@ -59,41 +60,40 @@ def main() -> None:
             "https://github.com/SantiagoEG/FCBF_module)."
         ) from e
 
-    parser = argparse.ArgumentParser(description="Fase 4 — IG + FCBF + split")
-    parser.add_argument("--input", type=Path, default=None, help="CSV amostrado (default fase 2)")
+    parser = argparse.ArgumentParser(description="Fase 4 — IG + FCBF")
+    parser.add_argument("--train", type=Path, default=None, help="CSV de treino (default fase 3)")
+    parser.add_argument("--test", type=Path, default=None, help="CSV de teste (default fase 3)")
     parser.add_argument("--output-dir", type=Path, default=INTERMEDIATE_DIR)
     parser.add_argument("--fcbf-k", type=int, default=20)
     parser.add_argument("--random-state", type=int, default=0)
     args = parser.parse_args()
     ensure_intermediate_dirs()
 
-    path_df = args.input or (args.output_dir / P02_SAMPLED_KMEANS)
-    df = pd.read_csv(path_df)
-    label_col = "Label" if "Label" in df.columns else df.columns[-1]
-    feature_names = _numeric_feature_names(df, label_col)
-    X = df[feature_names].values
-    y = np.ravel(df[label_col].values)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, train_size=0.8, test_size=0.2, random_state=args.random_state, stratify=y
-    )
+    train_df = pd.read_csv(args.train or (args.output_dir / P03_TRAIN))
+    test_df = pd.read_csv(args.test or (args.output_dir / P03_TEST))
+    label_col = "Label" if "Label" in train_df.columns else train_df.columns[-1]
+    feature_names = _numeric_feature_names(train_df, label_col)
+    X_train = train_df[feature_names].values
+    y_train = np.ravel(train_df[label_col].values)
+    X_test = test_df[feature_names].values
+    y_test = np.ravel(test_df[label_col].values)
 
     ig_features = information_gain_feature_subset(X_train, feature_names, y_train, cumulative=0.9)
     (args.output_dir / P04_SELECTED_FEATURES).write_text("\n".join(ig_features), encoding="utf-8")
 
-    X_fs = df[ig_features].values
     fcbf = FCBFK(k=args.fcbf_k)
-    X_fss = fcbf.fit_transform(X_fs, y)
+    X_train_fss = fcbf.fit_transform(train_df[ig_features].values, y_train)
+    selected_idx = getattr(fcbf, "idx_sel", None)
+    if selected_idx is None:
+        raise RuntimeError("FCBFK não expôs os índices selecionados em `idx_sel`.")
+    selected_features = [ig_features[int(i)] for i in np.asarray(selected_idx).tolist()]
+    X_test_fss = test_df[selected_features].values
 
-    X_train2, X_test2, y_train2, y_test2 = train_test_split(
-        X_fss, y, train_size=0.8, test_size=0.2, random_state=args.random_state, stratify=y
-    )
-
-    cols = [f"f{i}" for i in range(X_train2.shape[1])]
-    train_out = pd.DataFrame(X_train2, columns=cols)
-    train_out[label_col] = y_train2
-    test_out = pd.DataFrame(X_test2, columns=cols)
-    test_out[label_col] = y_test2
+    cols = [f"f{i}" for i in range(X_train_fss.shape[1])]
+    train_out = pd.DataFrame(X_train_fss, columns=cols)
+    train_out[label_col] = y_train
+    test_out = pd.DataFrame(X_test_fss, columns=cols)
+    test_out[label_col] = y_test
 
     train_out.to_csv(args.output_dir / P04_TRAIN_FSS, index=False)
     test_out.to_csv(args.output_dir / P04_TEST_FSS, index=False)
