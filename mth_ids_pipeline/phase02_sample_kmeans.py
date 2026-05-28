@@ -12,6 +12,7 @@ data/pipeline_mth_ids/02_sampled_kmeans.parquet
 
 from __future__ import annotations
 
+import argparse
 import time
 import warnings
 from pathlib import Path
@@ -26,6 +27,7 @@ try:
         INTERMEDIATE_DIR,
         P01_PREPROCESSED,
         P02_SAMPLED_KMEANS,
+        REPORTS_DIR,
         ensure_intermediate_dirs,
     )
 except ImportError:
@@ -33,8 +35,14 @@ except ImportError:
         INTERMEDIATE_DIR,
         P01_PREPROCESSED,
         P02_SAMPLED_KMEANS,
+        REPORTS_DIR,
         ensure_intermediate_dirs,
     )
+
+try:
+    from .reporting import dataset_report, write_report
+except ImportError:
+    from reporting import dataset_report, write_report
 
 
 def sample_kmeans(
@@ -95,7 +103,8 @@ def sample_kmeans(
     print(df_major['klabel'].value_counts())
 
     cols = list(df_major)
-    cols.insert(78, cols.pop(cols.index(label_col)))
+    insert_at = min(78, len(cols))
+    cols.insert(insert_at, cols.pop(cols.index(label_col)))
     df_major = df_major.loc[:, cols]
 
     print(df_major)
@@ -106,8 +115,7 @@ def sample_kmeans(
     # Sampling proporcional por cluster
     def typicalSampling(group):
         name = group.name # Não faz nada
-        frac = 0.008
-        return group.sample(frac=frac)
+        return group.sample(frac=frac, random_state=random_state)
 
     result = df_major.groupby(
         'klabel', group_keys=False
@@ -140,14 +148,23 @@ def main() -> None:
 
     total_start = time.time()
 
+    parser = argparse.ArgumentParser(description="Fase 2 — sampling k-means")
+    parser.add_argument("--input", type=Path, default=None, help="Parquet da fase 1")
+    parser.add_argument("--output", type=Path, default=None, help="Parquet de saida (default: fase 2)")
+    parser.add_argument("--n-clusters", type=int, default=1000, help="Numero de clusters")
+    parser.add_argument("--frac", type=float, default=0.008, help="Fracao amostrada por cluster")
+    parser.add_argument("--random-state", type=int, default=0, help="Seed para amostragem")
+    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
+    args = parser.parse_args()
+
     # Cria diretórios
     ensure_intermediate_dirs()
 
     # Arquivo de entrada da Fase 1
-    inp = INTERMEDIATE_DIR / P01_PREPROCESSED.replace(".csv", ".parquet")
+    inp = args.input or (INTERMEDIATE_DIR / P01_PREPROCESSED.replace(".csv", ".parquet"))
 
     # Arquivo de saída da Fase 2
-    out = INTERMEDIATE_DIR / P02_SAMPLED_KMEANS.replace(".csv", ".parquet")
+    out = args.output or (INTERMEDIATE_DIR / P02_SAMPLED_KMEANS.replace(".csv", ".parquet"))
 
     print(f"Lendo arquivo: {inp}")
 
@@ -162,9 +179,9 @@ def main() -> None:
     # Executa sampling
     sampled = sample_kmeans(
         df,
-        n_clusters=1000,
-        random_state=0,
-        frac=0.008,
+        n_clusters=args.n_clusters,
+        random_state=args.random_state,
+        frac=args.frac,
     )
 
     # Salva parquet
@@ -177,6 +194,21 @@ def main() -> None:
     print(f"Arquivo salvo: {out}")
     print(f"Tempo salvando: {time.time() - save_start:.2f}s")
     print(f"Tempo total: {time.time() - total_start:.2f}s")
+
+    label_col = "Label" if "Label" in sampled.columns else sampled.columns[-1]
+    report = dataset_report(sampled, label_col)
+    report.update(
+        {
+            "input": str(inp),
+            "output": str(out),
+            "n_clusters": args.n_clusters,
+            "frac": args.frac,
+            "random_state": args.random_state,
+            "duration_s": round(time.time() - total_start, 4),
+        }
+    )
+    report_path = write_report(args.report_dir, "phase02_sample_kmeans", report)
+    print(f"Relatorio salvo em: {report_path}")
 
 
 if __name__ == "__main__":

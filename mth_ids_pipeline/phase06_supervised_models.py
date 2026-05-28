@@ -2,7 +2,7 @@
 Fase 6: modelos supervisionados (XGBoost, RF, DT, ET), HPO opcional (hyperopt),
 stacking com meta XGBoost.
 
-Entradas: CSVs da fase 5.
+Entradas: Parquet da fase 5.
 
 Uso rápido (sem HPO, usa hiperparâmetros fixos do notebook):
   python -m mth_ids_pipeline.phase06_supervised_models --no-hpo --no-plots
@@ -28,9 +28,14 @@ from sklearn.metrics import (
 from sklearn.tree import DecisionTreeClassifier
 
 try:
-    from .config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, ensure_intermediate_dirs
+    from .config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, REPORTS_DIR, ensure_intermediate_dirs
 except ImportError:
-    from config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, ensure_intermediate_dirs
+    from config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, REPORTS_DIR, ensure_intermediate_dirs
+
+try:
+    from .reporting import write_report
+except ImportError:
+    from reporting import write_report
 
 
 def _evaluate(name: str, clf, X_test, y_test) -> dict:
@@ -51,17 +56,18 @@ def _criterion_value(value) -> str:
 def main() -> None:
     warnings.filterwarnings("ignore")
     parser = argparse.ArgumentParser(description="Fase 6 — treino supervisionado + stacking")
-    parser.add_argument("--train", type=Path, default=None)
-    parser.add_argument("--test", type=Path, default=None)
-    parser.add_argument("--output-dir", type=Path, default=INTERMEDIATE_DIR)
+    parser.add_argument("--train", "--train-input", dest="train", type=Path, default=None, help="Parquet treino (fase 5)")
+    parser.add_argument("--test", "--test-input", dest="test", type=Path, default=None, help="Parquet teste (fase 5)")
+    parser.add_argument("--output-dir", type=Path, default=INTERMEDIATE_DIR, help="Diretorio de saida")
     parser.add_argument("--no-hpo", action="store_true", help="Usa hiperparâmetros fixos do notebook")
     parser.add_argument("--no-plots", action="store_true", help="Não exibe heatmaps")
-    parser.add_argument("--metrics-json", type=Path, default=None, help="Opcional: salvar métricas em JSON")
+    parser.add_argument("--metrics-json", type=Path, default=None, help="Opcional: salvar metricas em JSON")
+    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
     args = parser.parse_args()
     ensure_intermediate_dirs()
 
-    tr = pd.read_csv(args.train or (args.output_dir / P05_TRAIN_SMOTE))
-    te = pd.read_csv(args.test or (args.output_dir / P05_TEST))
+    tr = pd.read_parquet(args.train or (args.output_dir / P05_TRAIN_SMOTE))
+    te = pd.read_parquet(args.test or (args.output_dir / P05_TEST))
     label_col = "Label"
     X_train = tr.drop(columns=[label_col]).values
     y_train = tr[label_col].values
@@ -327,6 +333,20 @@ def main() -> None:
     out_metrics = args.metrics_json or (args.output_dir / "06_supervised_metrics.json")
     out_metrics.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(f"\nMétricas salvas em: {out_metrics}")
+
+    report = {
+        "train_input": str(args.train or (args.output_dir / P05_TRAIN_SMOTE)),
+        "test_input": str(args.test or (args.output_dir / P05_TEST)),
+        "metrics_output": str(out_metrics),
+        "train_shape": {"rows": int(tr.shape[0]), "cols": int(tr.shape[1])},
+        "test_shape": {"rows": int(te.shape[0]), "cols": int(te.shape[1])},
+        "train_label_counts": {str(k): int(v) for k, v in pd.Series(y_train).value_counts().items()},
+        "test_label_counts": {str(k): int(v) for k, v in pd.Series(y_test).value_counts().items()},
+        "no_hpo": bool(args.no_hpo),
+        "no_plots": bool(args.no_plots),
+    }
+    report_path = write_report(args.report_dir, "phase06_supervised_models", report)
+    print(f"Relatorio salvo em: {report_path}")
 
 
 if __name__ == "__main__":

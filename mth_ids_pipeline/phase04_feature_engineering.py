@@ -3,7 +3,7 @@ Fase 4: seleção por Information Gain (90% acumulado) + FCBF (k=20), segundo sp
 
 Requer `FCBF_module.py` na raiz do repositório (ver README).
 
-Saída: 04_train_after_fcbf.csv, 04_test_after_fcbf.csv, 04_selected_features.txt
+Saída: 04_train_after_fcbf.parquet, 04_test_after_fcbf.parquet, 04_selected_features.txt
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ try:
         P04_SELECTED_FEATURES,
         P04_TEST_FSS,
         P04_TRAIN_FSS,
+        REPORTS_DIR,
         ensure_intermediate_dirs,
     )
 except ImportError:
@@ -38,8 +39,14 @@ except ImportError:
     P04_SELECTED_FEATURES,
     P04_TEST_FSS,
     P04_TRAIN_FSS,
+    REPORTS_DIR,
     ensure_intermediate_dirs,
     )
+
+try:
+    from .reporting import write_report
+except ImportError:
+    from reporting import write_report
 
 
 def _numeric_feature_names(df: pd.DataFrame, label_col: str) -> list[str]:
@@ -74,10 +81,11 @@ def main() -> None:
         ) from e
 
     parser = argparse.ArgumentParser(description="Fase 4 — IG + FCBF + split")
-    parser.add_argument("--input", type=Path, default=None, help="Parquet amostrado (default fase 2)")
-    parser.add_argument("--output-dir", type=Path, default=INTERMEDIATE_DIR)
-    parser.add_argument("--fcbf-k", type=int, default=20)
-    parser.add_argument("--random-state", type=int, default=0)
+    parser.add_argument("--input", type=Path, default=None, help="Parquet amostrado (default: fase 2)")
+    parser.add_argument("--output-dir", type=Path, default=INTERMEDIATE_DIR, help="Diretorio de saida")
+    parser.add_argument("--fcbf-k", type=int, default=20, help="Numero de features FCBF")
+    parser.add_argument("--random-state", type=int, default=0, help="Seed para split")
+    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
     args = parser.parse_args()
     ensure_intermediate_dirs()
 
@@ -109,11 +117,28 @@ def main() -> None:
     test_out = pd.DataFrame(X_test2, columns=cols)
     test_out[label_col] = y_test2
 
-    train_out.to_csv(args.output_dir / P04_TRAIN_FSS, index=False)
-    test_out.to_csv(args.output_dir / P04_TEST_FSS, index=False)
-    print(f"Salvo: {args.output_dir / P04_TRAIN_FSS} {train_out.shape}")
-    print(f"Salvo: {args.output_dir / P04_TEST_FSS} {test_out.shape}")
+    train_path = args.output_dir / P04_TRAIN_FSS
+    test_path = args.output_dir / P04_TEST_FSS
+    train_out.to_parquet(train_path, index=False)
+    test_out.to_parquet(test_path, index=False)
+    print(f"Salvo: {train_path} {train_out.shape}")
+    print(f"Salvo: {test_path} {test_out.shape}")
     print(f"Features IG (pré-FCBF): {len(ig_features)}, colunas pós-FCBF: {len(cols)}")
+
+    report = {
+        "input": str(path_df),
+        "selected_features_file": str(args.output_dir / P04_SELECTED_FEATURES),
+        "train_output": str(train_path),
+        "test_output": str(test_path),
+        "ig_feature_count": len(ig_features),
+        "fcbf_k": args.fcbf_k,
+        "post_fcbf_feature_count": len(cols),
+        "train_shape": {"rows": int(train_out.shape[0]), "cols": int(train_out.shape[1])},
+        "test_shape": {"rows": int(test_out.shape[0]), "cols": int(test_out.shape[1])},
+        "random_state": args.random_state,
+    }
+    report_path = write_report(args.report_dir, "phase04_feature_engineering", report)
+    print(f"Relatorio salvo em: {report_path}")
 
 
 if __name__ == "__main__":

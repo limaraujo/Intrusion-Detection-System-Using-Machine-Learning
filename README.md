@@ -63,6 +63,56 @@ CAN-intrusion dataset, a benchmark network security dataset for intra-vehicle in
 * [MTH_IDS_IoTJ.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/MTH_IDS_IoTJ.ipynb): code for the paper "MTH-IDS: A Multi-Tiered Hybrid Intrusion Detection System for Internet of Vehicles"  
 * [LCCDE_IDS_GlobeCom22.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/LCCDE_IDS_GlobeCom22.ipynb): code for the paper "LCCDE: A Decision-Based Ensemble Framework for Intrusion Detection in The Internet of Vehicles"  
 
+#### MTH-IDS modular pipeline (Parquet + reports)
+The folder [mth_ids_pipeline](mth_ids_pipeline) contains a phase-based pipeline aligned with the MTH-IDS notebook. All phases write Parquet outputs and optional JSON reports under data/pipeline_mth_ids/phase_reports.
+
+Run the full pipeline:
+```bash
+python -m mth_ids_pipeline.run_all --to 9
+```
+
+Run only supervised phases (1-6):
+```bash
+python -m mth_ids_pipeline.run_all --to 6
+```
+
+Resume from a phase:
+```bash
+python -m mth_ids_pipeline.run_all --from 4 --to 9
+```
+
+Override input dataset for phase 1:
+```bash
+python -m mth_ids_pipeline.run_all --raw-csv data/CICIDS2017_sample_km.csv --to 6
+```
+
+Pass phase-specific arguments:
+```bash
+python -m mth_ids_pipeline.run_all --to 9 \
+  --phase8-args "--benign-target 1255" \
+  --phase9-args "--smote-target 18225"
+```
+
+Common CLI conventions across phases:
+- Single-file phases use `--input` and `--output`.
+- Train/test phases use `--train-input` and `--test-input` (aliases: `--train`, `--test`).
+- Anomaly phases use `--input-dir` and `--output-dir` (alias: `--dir`).
+- All phases accept `--report-dir` to set the JSON report location.
+
+CLI quick reference:
+
+| Phase | Key inputs | Key outputs | Typical extras |
+| --- | --- | --- | --- |
+| phase01_load_preprocess | `--input` | `--output` | `--report-dir` |
+| phase02_sample_kmeans | `--input` | `--output` | `--n-clusters`, `--frac`, `--random-state` |
+| phase03_train_test_split | `--input` | `--train-output`, `--test-output` | `--test-size`, `--random-state` |
+| phase04_feature_engineering | `--input` | `--output-dir` | `--fcbf-k`, `--random-state` |
+| phase05_smote | `--train-input`, `--test-input` | `--output-dir` | `--report-dir` |
+| phase06_supervised_models | `--train-input`, `--test-input` | `--metrics-json` | `--no-hpo`, `--no-plots` |
+| phase07_anomaly_datasets | `--input` | `--output-dir` | `--report-dir` |
+| phase08_anomaly_features | `--input-dir` | `--output-dir` | `--fcbf-k`, `--kpca-components`, `--benign-target` |
+| phase09_anomaly_cluster | `--input-dir` | `--output-dir` | `--n-clusters`, `--smote-target` |
+
 ### Machine Learning Algorithms  
 * Decision tree (DT)
 * Random forest (RF)
