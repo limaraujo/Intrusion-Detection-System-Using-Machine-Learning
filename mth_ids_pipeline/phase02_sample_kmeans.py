@@ -17,10 +17,7 @@ import time
 import warnings
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-from sklearn.cluster import MiniBatchKMeans
-from sklearn.preprocessing import LabelEncoder
 
 try:
     from .config import (
@@ -45,6 +42,12 @@ except ImportError:
     from reporting import dataset_report, write_report
 
 
+try:
+    from .clustering import sample_kmeans as _sample_kmeans
+except ImportError:
+    from clustering import sample_kmeans as _sample_kmeans
+
+
 def sample_kmeans(
     df: pd.DataFrame,
     *,
@@ -52,94 +55,15 @@ def sample_kmeans(
     random_state: int = 0,
     frac: float = 0.008,
 ) -> pd.DataFrame:
-
     print("Iniciando Fase 2 — Sampling com MiniBatchKMeans")
-
     start = time.time()
-
-
-    # Detecta coluna Label
-    label_col = "Label" if "Label" in df.columns else df.columns[-1]
-    labelencoder = LabelEncoder()
-
-    # Substitui a coluna inteira para evitar setitem em dtype string do PyArrow
-    df[label_col] = labelencoder.fit_transform(df[label_col].astype(str)).astype("int64")
-    print(f"Contagem de valores na coluna Label: {label_col}")
-
-    print("Classes encontradas:")
-    print(df[label_col].value_counts())
-
-    # Classes minoritárias (6, 1, 4)
-    df_minor = df[df[label_col].isin([6, 1, 4])]
-    
-    # Classes majoritárias
-    df_major = df.drop(df_minor.index)
-
-    print(f"Majoritárias shape: {df_major.shape}")
-    print(f"Minoritárias shape: {df_minor.shape}")
-
-    # Remove Label para clustering
-    X = df_major.drop(columns=[label_col]).to_numpy(
-        dtype=np.float32
+    combined = _sample_kmeans(
+        df, n_clusters=n_clusters, random_state=random_state, frac=frac
     )
-    
-    print("Treinando MiniBatchKMeans...")
-
-    cluster_start = time.time()
-
-    kmeans = MiniBatchKMeans(
-        n_clusters=n_clusters,
-        random_state=random_state, 
-    )
-
-    kmeans.fit(X)
-
-    print(f"KMeans concluído em {time.time() - cluster_start:.2f}s")
-
-    # Adiciona labels dos clusters
-    df_major["klabel"] = kmeans.labels_
-    
-    print("Contagem de valores na coluna klabel:")
-    print(df_major['klabel'].value_counts())
-
-    cols = list(df_major)
-    insert_at = min(78, len(cols))
-    cols.insert(insert_at, cols.pop(cols.index(label_col)))
-    df_major = df_major.loc[:, cols]
-
-    print(df_major)
-
-
-    sample_start = time.time()
-    
-    # Sampling proporcional por cluster
-    def typicalSampling(group):
-        name = group.name # Não faz nada
-        return group.sample(frac=frac, random_state=random_state)
-
-    result = df_major.groupby(
-        'klabel', group_keys=False
-    ).apply(typicalSampling)
-    
-    print(result['Label'].value_counts())
-
-    print(f"Sampling concluído em {time.time() - sample_start:.2f}s")
-
-    # Remove coluna auxiliar
-    result = result.drop(columns=["klabel"], errors="ignore")
-
-    # Junta novamente com minoritárias
-    print("Concatenando classes minoritárias...")
-
-    combined = pd.concat(
-        [result, df_minor],
-        ignore_index=True,
-    )
-
+    label_col = "Label" if "Label" in combined.columns else combined.columns[-1]
+    print(combined[label_col].value_counts())
     print(f"Shape final após sampling: {combined.shape}")
-
     print(f"Fase 2 concluída em {time.time() - start:.2f}s")
-
     return combined
 
 

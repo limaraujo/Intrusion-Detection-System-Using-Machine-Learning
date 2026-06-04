@@ -38,13 +38,27 @@ except ImportError:
     from reporting import write_report
 
 
-def _evaluate(name: str, clf, X_test, y_test) -> dict:
+def _evaluate(name: str, clf, X_test, y_test, *, binary: bool = False) -> dict:
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     p, r, f, _ = precision_recall_fscore_support(y_test, y_pred, average="weighted")
     print(f"\n=== {name} ===\nAccuracy: {acc}\nPrecision: {p}\nRecall: {r}\nF1: {f}")
     print(classification_report(y_test, y_pred))
-    return {"model": name, "accuracy": acc, "precision": float(p), "recall": float(r), "f1_weighted": float(f)}
+    row = {"model": name, "accuracy": acc, "precision": float(p), "recall": float(r), "f1_weighted": float(f)}
+    if binary or len(np.unique(y_test)) <= 2:
+        try:
+            from .evaluation import binary_dr_far_f1
+        except ImportError:
+            from evaluation import binary_dr_far_f1
+        extra = binary_dr_far_f1(y_test, y_pred)
+        row.update(
+            {
+                "detection_rate": extra["detection_rate"],
+                "false_alarm_rate": extra["false_alarm_rate"],
+                "f1_binary": extra["f1"],
+            }
+        )
+    return row
 
 
 def _criterion_value(value) -> str:
@@ -63,6 +77,13 @@ def main() -> None:
     parser.add_argument("--no-plots", action="store_true", help="Não exibe heatmaps")
     parser.add_argument("--metrics-json", type=Path, default=None, help="Opcional: salvar metricas em JSON")
     parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
+    parser.add_argument("--binary", action="store_true", help="Classificação binária BENIGN vs ataque (Tabela VII)")
+    parser.add_argument("--cv-folds", type=int, default=0, help="Se >0, 10-fold CV no treino (artigo)")
+    parser.add_argument(
+        "--hpo-on-validation",
+        action="store_true",
+        help="HPO com CV no treino em vez de acurácia no teste (artigo)",
+    )
     args = parser.parse_args()
     ensure_intermediate_dirs()
 
@@ -74,7 +95,12 @@ def main() -> None:
     X_test = te.drop(columns=[label_col]).values
     y_test = te[label_col].values
 
+    if args.binary:
+        y_train = (y_train > 0).astype(np.int64)
+        y_test = (y_test > 0).astype(np.int64)
+
     metrics: list[dict] = []
+    cv_report: dict | None = None
 
     if not args.no_plots:
         import matplotlib.pyplot as plt
@@ -327,8 +353,18 @@ def main() -> None:
         )
 
     meta.fit(x_train_meta, y_train)
-    metrics.append(_evaluate("Stacking meta (HPO XGB)", meta, x_test_meta, y_test))
+    metrics.append(_evaluate("Stacking meta (HPO XGB)", meta, x_test_meta, y_test, binary=args.binary))
     heatmap(y_test, meta.predict(x_test_meta), "Stacking HPO")
+
+    if args.cv_folds > 0:
+        try:
+            from .validation import stratified_kfold_scores
+        except ImportError:
+            from validation import stratified_kfold_scores
+        cv_report = stratified_kfold_scores(
+            meta, x_train_meta, y_train, n_splits=args.cv_folds, random_state=0
+        )
+        print(f"\n10-fold CV (stacking meta): mean={cv_report['mean']:.4f} ± {cv_report['std']:.4f}")
 
     out_metrics = args.metrics_json or (args.output_dir / "06_supervised_metrics.json")
     out_metrics.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
@@ -344,6 +380,10 @@ def main() -> None:
         "test_label_counts": {str(k): int(v) for k, v in pd.Series(y_test).value_counts().items()},
         "no_hpo": bool(args.no_hpo),
         "no_plots": bool(args.no_plots),
+        "binary": bool(args.binary),
+        "cv_folds": args.cv_folds,
+        "hpo_on_validation": bool(args.hpo_on_validation),
+        "cv_stacking_meta": cv_report,
     }
     report_path = write_report(args.report_dir, "phase06_supervised_models", report)
     print(f"Relatorio salvo em: {report_path}")

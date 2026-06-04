@@ -29,9 +29,9 @@ def run(module: str, extra: list[str] | None = None) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Orquestra o pipeline MTH-IDS modular")
-    parser.add_argument("--to", type=int, default=6, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9], help="Última fase a executar")
-    parser.add_argument("--from", dest="from_phase", type=int, default=1, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9], help="Primeira fase a executar")
-    parser.add_argument("--only", type=int, default=None, choices=[1, 2, 3, 4, 5, 6, 7, 8, 9], help="Executar apenas uma fase")
+    parser.add_argument("--to", type=int, default=6, choices=list(range(1, 13)), help="Última fase a executar")
+    parser.add_argument("--from", dest="from_phase", type=int, default=1, choices=list(range(1, 13)), help="Primeira fase a executar")
+    parser.add_argument("--only", type=int, default=None, choices=list(range(1, 13)), help="Executar apenas uma fase")
     parser.add_argument("--raw-csv", type=Path, default=None, help="CSV bruto para fase 1 (override)")
     parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
     parser.add_argument("--skip-phase6", action="store_true", help="Não treinar modelos (fase 6)")
@@ -44,6 +44,9 @@ def main() -> None:
     parser.add_argument("--phase7-args", type=str, default="")
     parser.add_argument("--phase8-args", type=str, default="")
     parser.add_argument("--phase9-args", type=str, default="")
+    parser.add_argument("--phase10-args", type=str, default="")
+    parser.add_argument("--phase11-args", type=str, default="")
+    parser.add_argument("--phase12-args", type=str, default="")
     args = parser.parse_args()
 
     phases = {
@@ -56,6 +59,9 @@ def main() -> None:
         7: "mth_ids_pipeline.phase07_anomaly_datasets",
         8: "mth_ids_pipeline.phase08_anomaly_features",
         9: "mth_ids_pipeline.phase09_anomaly_cluster",
+        10: "mth_ids_pipeline.phase10_anomaly_cluster_hpo",
+        11: "mth_ids_pipeline.phase11_anomaly_biased",
+        12: "mth_ids_pipeline.phase12_anomaly_loao",
     }
 
     start_phase = args.only or args.from_phase

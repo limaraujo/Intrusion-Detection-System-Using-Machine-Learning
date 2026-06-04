@@ -37,6 +37,13 @@ def main() -> None:
     parser.add_argument("--test", "--test-input", dest="test", type=Path, default=None, help="Parquet teste (fase 4)")
     parser.add_argument("--output-dir", type=Path, default=INTERMEDIATE_DIR, help="Diretorio de saida")
     parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
+    parser.add_argument("--smote-class-2", type=int, default=1000, help="Target SMOTE classe 2 (BruteForce)")
+    parser.add_argument("--smote-class-4", type=int, default=1000, help="Target SMOTE classe 4 (Infiltration)")
+    parser.add_argument(
+        "--paper-smote",
+        action="store_true",
+        help="Artigo CICIDS2017: minoritarias 2 e 4 -> 100000 amostras",
+    )
     args = parser.parse_args()
     ensure_intermediate_dirs()
 
@@ -54,7 +61,10 @@ def main() -> None:
     print("Contagem de rótulos no conjunto de treino original:")
     print(orig_counts)
     
-    kw: dict = {"sampling_strategy": {2: 1000, 4: 1000}}
+    t2 = 100_000 if args.paper_smote else args.smote_class_2
+    t4 = 100_000 if args.paper_smote else args.smote_class_4
+    strategy = {2: t2, 4: t4}
+    kw: dict = {"sampling_strategy": strategy}
     if "n_jobs" in inspect.signature(SMOTE.__init__).parameters:
         kw["n_jobs"] = -1
     smote = SMOTE(**kw)
@@ -79,7 +89,8 @@ def main() -> None:
         "test_input": str(te_path),
         "train_output": str(train_out),
         "test_output": str(test_out),
-        "smote_sampling_strategy": {"2": 1000, "4": 1000},
+        "smote_sampling_strategy": {str(k): v for k, v in strategy.items()},
+        "paper_smote": args.paper_smote,
         "train_counts_before": {str(k): int(v) for k, v in orig_counts.items()},
         "train_counts_after": {str(k): int(v) for k, v in smote_counts.items()},
     }

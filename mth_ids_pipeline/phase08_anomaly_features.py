@@ -14,8 +14,12 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.decomposition import KernelPCA
 from sklearn.feature_selection import mutual_info_classif
+
+try:
+    from .dimensionality_reduction import apply_kpca
+except ImportError:
+    from dimensionality_reduction import apply_kpca
 
 try:
     from ._bootstrap import ensure_repo_on_path
@@ -145,9 +149,12 @@ def main() -> None:
     X_fss = fcbf.fit_transform(X_fs, y)
     tick("IG + FCBF concluidos")
 
-    kpca = KernelPCA(n_components=args.kpca_components, kernel="rbf")
-    kpca.fit(X_fss, y)
-    X_kpca = kpca.transform(X_fss)
+    X_kpca, _kpca = apply_kpca(
+        X_fss,
+        n_components=args.kpca_components,
+        kernel="rbf",
+        y=y,
+    )
     tick("KPCA concluida")
 
     cols = [f"kpca_{i}" for i in range(X_kpca.shape[1])]
