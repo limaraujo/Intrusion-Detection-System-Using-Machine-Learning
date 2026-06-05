@@ -9,14 +9,16 @@ from __future__ import annotations
 import warnings
 from pathlib import Path
 
+import pandas as pd
+
 try:
-    from .anomaly_io import load_anomaly_splits
+    from .anomaly_io import label_value_counts_dict, load_anomaly_splits
     from .cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
     from .clustering import cl_kmeans
     from .hyperparameter_optimization import optimize_cl_kmeans_clusters
     from .reporting import write_report
 except ImportError:
-    from anomaly_io import load_anomaly_splits
+    from anomaly_io import label_value_counts_dict, load_anomaly_splits
     from cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
     from clustering import cl_kmeans
     from hyperparameter_optimization import optimize_cl_kmeans_clusters
@@ -79,8 +81,19 @@ def main() -> None:
     )
     print(f"Avaliação final n={best_n}: accuracy={final_acc:.4f}")
 
+    train_label_counts = label_value_counts_dict(pd.Series(y_train))
+    test_label_counts = label_value_counts_dict(pd.Series(y_test))
+    print(
+        f"Partição LOAO (fase 10): treino={X_train.shape} labels={train_label_counts} | "
+        f"teste={X_test.shape} labels={test_label_counts}"
+    )
+
     report = {
         "work_dir": str(work),
+        "train_rows": int(len(y_train)),
+        "test_rows": int(len(y_test)),
+        "train_label_counts": train_label_counts,
+        "test_label_counts": test_label_counts,
         "baseline_clusters": 8,
         "baseline_accuracy": float(baseline_acc),
         "best_n_clusters": int(best_n),

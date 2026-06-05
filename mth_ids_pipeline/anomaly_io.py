@@ -152,8 +152,28 @@ def validate_loao_partition(
         raise ValueError("Teste deve conter exatamente todas as amostras zero-day como classe 1")
     if int(test_counts.get(0, 0)) != sample_n:
         raise ValueError("Teste deve conter exatamente sample_n benignos como classe 0")
-    if meta.get("benign_pairing_rule") == "paper_table_ix_1_to_1" and sample_n != n_zero_day:
-        if sample_n < n_zero_day:
+
+    if meta.get("zero_day_fully_excluded_from_train") is False:
+        raise ValueError(
+            f"Zero-day label={meta.get('zero_day_label')} não foi excluído do treino"
+        )
+    zero_day_label = meta.get("zero_day_label")
+    train_orig = meta.get("train_original_label_counts") or {}
+    if zero_day_label is not None and str(zero_day_label) in train_orig:
+        raise ValueError(
+            f"Treino contém {train_orig[str(zero_day_label)]} amostras do zero-day "
+            f"(label={zero_day_label})"
+        )
+
+    available_benign = meta.get("benign_available_in_train")
+    if meta.get("benign_pairing_rule") == "paper_table_ix_1_to_1":
+        if available_benign is not None and int(available_benign) >= n_zero_day:
+            if sample_n != n_zero_day:
+                raise ValueError(
+                    f"Emparelhamento 1:1 (Tabela IX): esperado {n_zero_day} benignos no teste, "
+                    f"obteve {sample_n} (disponíveis={available_benign})"
+                )
+        elif sample_n < n_zero_day:
             print(
                 f"Aviso LOAO: emparelhamento 1:1 limitado por benignos disponíveis "
                 f"({sample_n} < {n_zero_day})"

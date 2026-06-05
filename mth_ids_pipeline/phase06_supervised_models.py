@@ -541,8 +541,8 @@ def main() -> None:
     print(f"\nMétricas salvas em: {out_metrics}")
 
     report = {
-        "train_input": str(args.train or (output_dir / P05_TRAIN_SMOTE)),
-        "test_input": str(args.test or (output_dir / P05_TEST)),
+        "train_input": str(output_dir / P05_TRAIN_SMOTE),
+        "test_input": str(output_dir / P05_TEST),
         "metrics_output": str(out_metrics),
         "train_shape": {"rows": int(tr.shape[0]), "cols": int(tr.shape[1])},
         "test_shape": {"rows": int(te.shape[0]), "cols": int(te.shape[1])},

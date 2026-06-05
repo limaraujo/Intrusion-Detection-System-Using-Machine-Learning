@@ -133,6 +133,14 @@ def main() -> None:
                     "n_clusters": rep.get("n_clusters") or best_k,
                     "zero_day_samples": slice_meta.get("zero_day_samples"),
                     "benign_sampled": slice_meta.get("benign_sampled"),
+                    "train_rows": slice_meta.get("n_train_rows"),
+                    "test_rows": slice_meta.get("n_test_rows"),
+                    "train_binary_label_counts": slice_meta.get("train_binary_label_counts"),
+                    "test_binary_label_counts": slice_meta.get("test_binary_label_counts"),
+                    "train_original_label_counts": slice_meta.get("train_original_label_counts"),
+                    "zero_day_fully_excluded_from_train": slice_meta.get(
+                        "zero_day_fully_excluded_from_train"
+                    ),
                     "accuracy": m.get("accuracy"),
                     "detection_rate": m.get("detection_rate"),
                     "false_alarm_rate": m.get("false_alarm_rate"),

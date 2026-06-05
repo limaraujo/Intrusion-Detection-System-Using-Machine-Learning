@@ -16,6 +16,8 @@ try:
     from .anomaly_io import (
         _json_safe,
         build_anomaly_binary_split,
+        label_value_counts_dict,
+        log_loao_partition,
         loao_original_label_report,
         require_path,
     )
@@ -25,6 +27,8 @@ except ImportError:
     from anomaly_io import (
         _json_safe,
         build_anomaly_binary_split,
+        label_value_counts_dict,
+        log_loao_partition,
         loao_original_label_report,
         require_path,
     )
@@ -75,13 +79,21 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"Salvo: {p1} {df1.shape}, {p2} {df2.shape}")
-    print(
-        f"LOAO fase 7 — zero-day label={args.attack_label}: "
-        f"treino={df1.shape[0]} (sem zero-day), teste parcial={df2.shape[0]} (só zero-day)"
+    phase7_meta = {
+        **orig_report,
+        "zero_day_samples": int(len(df2)),
+        "benign_sampled": 0,
+        "benign_pairing_rule": "fase7_zero_day_only",
+        "train_binary_label_counts": label_value_counts_dict(df1[label_col]),
+        "test_binary_label_counts": label_value_counts_dict(df2[label_col]),
+    }
+    log_loao_partition(
+        stage="fase 7 (split binário)",
+        train_df=df1,
+        test_df=df2,
+        meta=phase7_meta,
+        label_col=label_col,
     )
-    print(f"  rótulos originais no treino: {orig_report['train_original_label_counts']}")
-    print(f"  ataques conhecidos no treino: {orig_report['train_attack_labels_present']}")
-    print(f"  zero-day excluído do treino: {orig_report['zero_day_fully_excluded_from_train']}")
 
     report = {
         "input": str(path_in),

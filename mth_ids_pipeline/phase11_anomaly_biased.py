@@ -12,10 +12,11 @@ import warnings
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from sklearn.metrics import classification_report, confusion_matrix
 
 try:
-    from .anomaly_io import load_anomaly_splits
+    from .anomaly_io import label_value_counts_dict, load_anomaly_splits
     from .biased_classifiers import (
         apply_biased_refinement,
         estimator_factory_for_supervised,
@@ -30,7 +31,7 @@ try:
     from .evaluation import binary_dr_far_f1
     from .reporting import write_report
 except ImportError:
-    from anomaly_io import load_anomaly_splits
+    from anomaly_io import label_value_counts_dict, load_anomaly_splits
     from biased_classifiers import (
         apply_biased_refinement,
         estimator_factory_for_supervised,
@@ -88,6 +89,12 @@ def main() -> None:
         work,
         smote_target=args.smote_target,
         random_state=args.random_state,
+    )
+    train_label_counts = label_value_counts_dict(pd.Series(y_train))
+    test_label_counts = label_value_counts_dict(pd.Series(y_test))
+    print(
+        f"Partição LOAO (fase 11): treino={X_train.shape} labels={train_label_counts} | "
+        f"teste={X_test.shape} labels={test_label_counts}"
     )
 
     cl_res = cl_kmeans_fit_predict(
@@ -166,6 +173,10 @@ def main() -> None:
 
     report = {
         "work_dir": str(work),
+        "train_rows": int(len(y_train)),
+        "test_rows": int(len(y_test)),
+        "train_label_counts": train_label_counts,
+        "test_label_counts": test_label_counts,
         "n_clusters": n_clusters,
         "n_clusters_source": "cli" if args.n_clusters is not None else "phase10",
         "p_star": args.p_star,

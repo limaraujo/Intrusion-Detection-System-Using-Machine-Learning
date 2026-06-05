@@ -25,6 +25,7 @@ try:
         numeric_feature_columns,
         require_path,
         save_anomaly_fitted_artifacts,
+        validate_loao_partition,
     )
     from .dimensionality_reduction import fit_kpca, transform_kpca
     from .feature_selection import AnomalyFeaturePipeline
@@ -35,6 +36,7 @@ except ImportError:
         numeric_feature_columns,
         require_path,
         save_anomaly_fitted_artifacts,
+        validate_loao_partition,
     )
     from dimensionality_reduction import fit_kpca, transform_kpca
     from feature_selection import AnomalyFeaturePipeline
@@ -154,6 +156,7 @@ def main() -> None:
                 if k in orig_meta
             }
         )
+    validate_loao_partition(train_df, test_df, partition_meta, label_col=label_col)
     log_loao_partition(
         stage="fase 8 (pré-normalização)",
         train_df=train_df,
