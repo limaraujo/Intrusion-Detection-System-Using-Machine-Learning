@@ -12,7 +12,6 @@ data/pipeline_mth_ids/02_sampled_kmeans.parquet
 
 from __future__ import annotations
 
-import argparse
 import time
 import warnings
 from pathlib import Path
@@ -20,20 +19,20 @@ from pathlib import Path
 import pandas as pd
 
 try:
+    from .cli import init_paths, phase_parser, supervised_path
     from .config import (
-        INTERMEDIATE_DIR,
+        DEFAULT_MINORITY_LABELS,
         P01_PREPROCESSED,
         P02_SAMPLED_KMEANS,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
+        parse_minority_labels,
     )
 except ImportError:
+    from cli import init_paths, phase_parser, supervised_path
     from config import (
-        INTERMEDIATE_DIR,
+        DEFAULT_MINORITY_LABELS,
         P01_PREPROCESSED,
         P02_SAMPLED_KMEANS,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
+        parse_minority_labels,
     )
 
 try:
@@ -44,8 +43,10 @@ except ImportError:
 
 try:
     from .clustering import sample_kmeans as _sample_kmeans
+    from .label_profiles import minority_labels_all_attacks
 except ImportError:
     from clustering import sample_kmeans as _sample_kmeans
+    from label_profiles import minority_labels_all_attacks
 
 
 def sample_kmeans(
@@ -54,11 +55,16 @@ def sample_kmeans(
     n_clusters: int = 1000,
     random_state: int = 0,
     frac: float = 0.008,
+    minority_labels: tuple[int, ...] = DEFAULT_MINORITY_LABELS,
 ) -> pd.DataFrame:
     print("Iniciando Fase 2 — Sampling com MiniBatchKMeans")
     start = time.time()
     combined = _sample_kmeans(
-        df, n_clusters=n_clusters, random_state=random_state, frac=frac
+        df,
+        n_clusters=n_clusters,
+        random_state=random_state,
+        frac=frac,
+        minority_labels=minority_labels,
     )
     label_col = "Label" if "Label" in combined.columns else combined.columns[-1]
     print(combined[label_col].value_counts())
@@ -72,23 +78,22 @@ def main() -> None:
 
     total_start = time.time()
 
-    parser = argparse.ArgumentParser(description="Fase 2 — sampling k-means")
-    parser.add_argument("--input", type=Path, default=None, help="Parquet da fase 1")
-    parser.add_argument("--output", type=Path, default=None, help="Parquet de saida (default: fase 2)")
-    parser.add_argument("--n-clusters", type=int, default=1000, help="Numero de clusters")
-    parser.add_argument("--frac", type=float, default=0.008, help="Fracao amostrada por cluster")
-    parser.add_argument("--random-state", type=int, default=0, help="Seed para amostragem")
-    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
+    parser = phase_parser("Fase 2 — sampling k-means")
+    parser.add_argument("--n-clusters", type=int, default=1000)
+    parser.add_argument("--frac", type=float, default=0.008)
+    parser.add_argument("--random-state", type=int, default=0)
+    parser.add_argument(
+        "--minority-labels",
+        type=str,
+        default=",".join(str(x) for x in DEFAULT_MINORITY_LABELS),
+        help="Classes preservadas (ex.: 6,1,4); perfil merged",
+    )
+    parser.add_argument("--auto-minority", action="store_true", help="Preservar todos os ataques (perfil fine)")
     args = parser.parse_args()
 
-    # Cria diretórios
-    ensure_intermediate_dirs()
-
-    # Arquivo de entrada da Fase 1
-    inp = args.input or (INTERMEDIATE_DIR / P01_PREPROCESSED.replace(".csv", ".parquet"))
-
-    # Arquivo de saída da Fase 2
-    out = args.output or (INTERMEDIATE_DIR / P02_SAMPLED_KMEANS.replace(".csv", ".parquet"))
+    paths = init_paths(args)
+    inp = supervised_path(paths, P01_PREPROCESSED)
+    out = supervised_path(paths, P02_SAMPLED_KMEANS)
 
     print(f"Lendo arquivo: {inp}")
 
@@ -96,6 +101,12 @@ def main() -> None:
 
     # Lê parquet
     df = pd.read_parquet(inp)
+
+    if args.auto_minority:
+        minority_labels = minority_labels_all_attacks(df)
+        print(f"auto-minority: preservando {len(minority_labels)} classes de ataque")
+    else:
+        minority_labels = parse_minority_labels(args.minority_labels)
 
     print(f"Arquivo carregado em {time.time() - load_start:.2f}s")
     print(f"Shape original: {df.shape}")
@@ -106,6 +117,7 @@ def main() -> None:
         n_clusters=args.n_clusters,
         random_state=args.random_state,
         frac=args.frac,
+        minority_labels=minority_labels,
     )
 
     # Salva parquet
@@ -128,10 +140,12 @@ def main() -> None:
             "n_clusters": args.n_clusters,
             "frac": args.frac,
             "random_state": args.random_state,
+            "minority_labels": list(minority_labels),
+            "auto_minority": args.auto_minority,
             "duration_s": round(time.time() - total_start, 4),
         }
     )
-    report_path = write_report(args.report_dir, "phase02_sample_kmeans", report)
+    report_path = write_report(paths.reports, "phase02_sample_kmeans", report)
     print(f"Relatorio salvo em: {report_path}")
 
 

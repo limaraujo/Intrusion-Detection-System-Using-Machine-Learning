@@ -1,25 +1,43 @@
 """
-Fase 8 (anomaly): normalização, mistura benigna+PortScan, IG + FCBF + Kernel PCA.
+Fase 8 (anomaly): partição LOAO treino/teste, depois Z-score → IG → FCBF → KPCA.
 
-Saídas: a03_combined_normalized.parquet, a04_after_kpca.parquet, a06_test_slice.json
+Ajuste de cada etapa somente no treino; transform no teste com os mesmos parâmetros.
+Sem IG/FCBF/KPCA no conjunto combinado treino+teste.
+
+Saídas: a03_combined_normalized.parquet, a04_after_kpca.parquet, a06_test_slice.json,
+        fitted_*.joblib / fitted_ig_features.txt
 """
 
 from __future__ import annotations
 
-import argparse
-import json
 import time
 import warnings
 from pathlib import Path
 
+import json
 import numpy as np
 import pandas as pd
-from sklearn.feature_selection import mutual_info_classif
 
 try:
-    from .dimensionality_reduction import apply_kpca
+    from .anomaly_io import (
+        build_loao_train_test_split,
+        log_loao_partition,
+        numeric_feature_columns,
+        require_path,
+        save_anomaly_fitted_artifacts,
+    )
+    from .dimensionality_reduction import fit_kpca, transform_kpca
+    from .feature_selection import AnomalyFeaturePipeline
 except ImportError:
-    from dimensionality_reduction import apply_kpca
+    from anomaly_io import (
+        build_loao_train_test_split,
+        log_loao_partition,
+        numeric_feature_columns,
+        require_path,
+        save_anomaly_fitted_artifacts,
+    )
+    from dimensionality_reduction import fit_kpca, transform_kpca
+    from feature_selection import AnomalyFeaturePipeline
 
 try:
     from ._bootstrap import ensure_repo_on_path
@@ -27,26 +45,22 @@ except ImportError:
     from _bootstrap import ensure_repo_on_path
 
 try:
+    from .cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
     from .config import (
-        ANOMALY_DIR,
+        A00_LOAO_ROUND,
         A01_WITHOUT_PORTSCAN,
         A02_PORTSCAN_ONLY,
         A03_COMBINED_NORMALIZED,
         A04_AFTER_KPCA,
-        A06_TEST_SLICE_INFO,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
     )
 except ImportError:
+    from cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
     from config import (
-        ANOMALY_DIR,
+        A00_LOAO_ROUND,
         A01_WITHOUT_PORTSCAN,
         A02_PORTSCAN_ONLY,
         A03_COMBINED_NORMALIZED,
         A04_AFTER_KPCA,
-        A06_TEST_SLICE_INFO,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
     )
 
 try:
@@ -55,42 +69,43 @@ except ImportError:
     from reporting import write_report
 
 
-def _ig_subset(importances: np.ndarray, names: list[str], *, cumulative: float = 0.9) -> list[str]:
-    s = float(np.sum(importances)) or 1.0
-    ranked = sorted(zip(importances / s, names), reverse=True)
-    acc = 0.0
-    out: list[str] = []
-    for score, n in ranked:
-        acc += float(score)
-        out.append(n)
-        if acc >= cumulative:
-            break
+def _df_from_scaled(
+    X: np.ndarray,
+    feature_names: list[str],
+    y: np.ndarray,
+    *,
+    label_col: str = "Label",
+) -> pd.DataFrame:
+    out = pd.DataFrame(X, columns=feature_names)
+    out[label_col] = y
+    return out
+
+
+def _df_from_kpca(X_kpca: np.ndarray, y: np.ndarray, *, label_col: str = "Label") -> pd.DataFrame:
+    cols = [f"kpca_{i}" for i in range(X_kpca.shape[1])]
+    out = pd.DataFrame(X_kpca, columns=cols)
+    out[label_col] = y
     return out
 
 
 def main() -> None:
     warnings.filterwarnings("ignore")
     ensure_repo_on_path()
-    try:
-        from mth_ids_pipeline.utils.FCBF_module import FCBFK
-    except ImportError as e:
-        raise ImportError("FCBF_module.py deve estar na raiz do repositório.") from e
 
-    parser = argparse.ArgumentParser(description="Fase 8 — features anomaly (IG+FCBF+KPCA)")
-    parser.add_argument("--input-dir", type=Path, default=None, help="Diretorio de entrada (fase 7)")
-    parser.add_argument("--output-dir", type=Path, default=None, help="Diretorio de saida")
-    parser.add_argument("--dir", type=Path, default=None, help="Alias para --input-dir e --output-dir")
-    parser.add_argument("--fcbf-k", type=int, default=20, help="Numero de features FCBF")
-    parser.add_argument("--kpca-components", type=int, default=10, help="Componentes KPCA")
-    parser.add_argument("--benign-frac", type=float, default=None, help="Fracao de benignos a amostrar")
-    parser.add_argument("--benign-target", type=int, default=None, help="Numero de benignos a amostrar")
-    parser.add_argument("--random-state", type=int, default=None, help="Seed para amostragem")
-    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
+    parser = phase_parser("Fase 8 — features anomaly (IG+FCBF+KPCA, sem vazamento)")
+    add_work_dir(parser)
+    parser.add_argument("--fcbf-k", type=int, default=20)
+    parser.add_argument("--kpca-components", type=int, default=10)
+    parser.add_argument("--benign-target", type=int, default=None, help="Benignos no teste (LOAO usa 1:1)")
+    parser.add_argument("--random-state", type=int, default=None)
     args = parser.parse_args()
-    ensure_intermediate_dirs()
+
+    paths = init_paths(args)
+    work = resolve_work_dir(args, paths)
     start = time.time()
-    total_steps = 6
+    total_steps = 7
     step = 0
+    label_col = "Label"
 
     def tick(message: str) -> None:
         nonlocal step
@@ -100,90 +115,151 @@ def main() -> None:
         bar = "#" * filled + "-" * (bar_len - filled)
         elapsed = time.time() - start
         print(f"[{step}/{total_steps}] [{bar}] {message} (+{elapsed:.1f}s)")
-    input_dir = args.input_dir or args.dir or ANOMALY_DIR
-    output_dir = args.output_dir or args.dir or ANOMALY_DIR
-    output_dir.mkdir(parents=True, exist_ok=True)
 
-    df1 = pd.read_parquet(input_dir / A01_WITHOUT_PORTSCAN)
-    df2 = pd.read_parquet(input_dir / A02_PORTSCAN_ONLY)
-    tick("Dados carregados")
-    label_col = "Label"
-
-    features = df1.drop(columns=[label_col]).select_dtypes(include="number").columns.tolist()
-    df1 = df1.copy()
-    df2 = df2.copy()
-    df1[features] = df1[features].apply(lambda x: (x - x.mean()) / (x.std()))
-    df2[features] = df2[features].apply(lambda x: (x - x.mean()) / (x.std()))
-    df1 = df1.fillna(0)
-    df2 = df2.fillna(0)
-    tick("Normalizacao concluida")
-
-    # Mistura conforme notebook: amostra benigna de df1 adicionada a df2
-    df2p = df1[df1[label_col] == 0]
-    n_benign = len(df2p)
-    sample_n = 0
-    if args.benign_frac is not None:
-        sample_n = int(round(n_benign * float(args.benign_frac)))
-    elif args.benign_target is not None:
-        sample_n = int(args.benign_target)
-    else:
-        sample_n = min(len(df2), n_benign)
-    sample_n = max(0, min(sample_n, n_benign))
-    if sample_n > 0:
-        df2pp = df2p.sample(n=sample_n, replace=False, random_state=args.random_state)
-        df2 = pd.concat([df2, df2pp], ignore_index=True)
-    tick("Amostragem benignos concluida")
-
-    df = pd.concat([df1, df2], ignore_index=True)
-    combined_path = output_dir / A03_COMBINED_NORMALIZED
-    df.to_parquet(combined_path, index=False)
-
-    X = df[features].values
-    y = np.ravel(df[label_col].values)
-
-    importances = mutual_info_classif(X, y, random_state=0)
-    ig_names = _ig_subset(importances, features, cumulative=0.9)
-    X_fs = df[ig_names].values
-
-    fcbf = FCBFK(k=args.fcbf_k)
-    X_fss = fcbf.fit_transform(X_fs, y)
-    tick("IG + FCBF concluidos")
-
-    X_kpca, _kpca = apply_kpca(
-        X_fss,
-        n_components=args.kpca_components,
-        kernel="rbf",
-        y=y,
+    p1 = work / A01_WITHOUT_PORTSCAN
+    p2 = work / A02_PORTSCAN_ONLY
+    phase7_hint = (
+        f"Execute a fase 7 antes:\n"
+        f"  python -m mth_ids_pipeline.phase07_anomaly_datasets "
+        f"--intermediate-dir {paths.intermediate} --work-dir {work} --attack-label <N>"
     )
-    tick("KPCA concluida")
+    require_path(p1, hint=phase7_hint)
+    require_path(p2, hint=phase7_hint)
+    df1 = pd.read_parquet(p1)
+    df2 = pd.read_parquet(p2)
+    tick("Dados carregados (fase 7)")
 
-    cols = [f"kpca_{i}" for i in range(X_kpca.shape[1])]
-    out = pd.DataFrame(X_kpca, columns=cols)
-    out[label_col] = y
-    kpca_path = output_dir / A04_AFTER_KPCA
-    out.to_parquet(kpca_path, index=False)
+    orig_meta: dict = {}
+    round_meta_path = work / A00_LOAO_ROUND
+    if round_meta_path.is_file():
+        orig_meta = json.loads(round_meta_path.read_text(encoding="utf-8"))
 
-    meta = {"n_df1_rows": int(len(df1)), "n_total": int(len(df))}
-    meta_path = output_dir / A06_TEST_SLICE_INFO
-    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
-    print(f"Salvo: {kpca_path} shape={out.shape}, meta={meta}")
+    train_df, test_df, partition_meta = build_loao_train_test_split(
+        df1,
+        df2,
+        label_col=label_col,
+        benign_target=args.benign_target,
+        random_state=args.random_state,
+    )
+    if orig_meta:
+        partition_meta.update(
+            {
+                k: orig_meta[k]
+                for k in (
+                    "zero_day_label",
+                    "train_original_label_counts",
+                    "train_attack_labels_present",
+                    "zero_day_fully_excluded_from_train",
+                )
+                if k in orig_meta
+            }
+        )
+    log_loao_partition(
+        stage="fase 8 (pré-normalização)",
+        train_df=train_df,
+        test_df=test_df,
+        meta=partition_meta,
+        label_col=label_col,
+    )
+    feature_names = numeric_feature_columns(train_df, label_col=label_col)
+    print(
+        f"Partição LOAO: treino={train_df.shape}, teste={test_df.shape}, "
+        f"features={len(feature_names)}"
+    )
+    tick("Partição treino/teste (antes de normalização)")
+
+    X_train = train_df[feature_names].values
+    y_train = np.ravel(train_df[label_col].values)
+    X_test = test_df[feature_names].values
+    y_test = np.ravel(test_df[label_col].values)
+    print(f"  [bruto treino] shape={X_train.shape}")
+    print(f"  [bruto teste] shape={X_test.shape}")
+
+    pipeline = AnomalyFeaturePipeline(
+        fcbf_k=args.fcbf_k,
+        ig_cumulative=0.9,
+        random_state=args.random_state if args.random_state is not None else 0,
+    )
+    X_train_fcbf = pipeline.fit(X_train, y_train, feature_names)
+    X_test_fcbf = pipeline.transform(X_test, split="teste")
+    tick("Z-score + IG + FCBF (fit treino, transform teste)")
+
+    kpca = fit_kpca(X_train_fcbf, n_components=args.kpca_components, kernel="rbf")
+    X_train_kpca = transform_kpca(X_train_fcbf, kpca, split="treino")
+    X_test_kpca = transform_kpca(X_test_fcbf, kpca, split="teste")
+    tick("KPCA (fit treino, transform teste)")
+
+    train_z = pipeline.scaler.transform(X_train)
+    test_z = pipeline.scaler.transform(X_test)
+    df_norm = pd.concat(
+        [
+            _df_from_scaled(train_z, feature_names, y_train, label_col=label_col),
+            _df_from_scaled(test_z, feature_names, y_test, label_col=label_col),
+        ],
+        ignore_index=True,
+    )
+    combined_path = work / A03_COMBINED_NORMALIZED
+    df_norm.to_parquet(combined_path, index=False)
+
+    df_kpca = pd.concat(
+        [
+            _df_from_kpca(X_train_kpca, y_train, label_col=label_col),
+            _df_from_kpca(X_test_kpca, y_test, label_col=label_col),
+        ],
+        ignore_index=True,
+    )
+    kpca_path = work / A04_AFTER_KPCA
+    df_kpca.to_parquet(kpca_path, index=False)
+
+    artifact_paths = save_anomaly_fitted_artifacts(
+        work,
+        scaler=pipeline.scaler,
+        ig_features=pipeline.ig_features,
+        fcbf=pipeline.fcbf,
+        kpca=kpca,
+        partition_meta={
+            **partition_meta,
+            "fcbf_k": args.fcbf_k,
+            "fcbf_selected_indices": pipeline.fcbf_selected_indices(),
+            "kpca_components": args.kpca_components,
+            "kpca_kernel": "rbf",
+            "ig_cumulative": 0.9,
+            "feature_count_raw": len(feature_names),
+            "feature_count_ig": len(pipeline.ig_features),
+            "feature_count_fcbf": int(X_train_fcbf.shape[1]),
+        },
+    )
+    tick("Artefatos e parquets salvos")
+
+    meta = partition_meta
+    print(f"Salvo: {combined_path} shape={df_norm.shape}")
+    print(f"Salvo: {kpca_path} shape={df_kpca.shape}")
+    print(f"Meta/partição: {artifact_paths['partition']}")
 
     report = {
-        "input_without_portscan": str(input_dir / A01_WITHOUT_PORTSCAN),
-        "input_portscan": str(input_dir / A02_PORTSCAN_ONLY),
+        "input_without_portscan": str(p1),
+        "input_portscan": str(p2),
         "combined_output": str(combined_path),
         "kpca_output": str(kpca_path),
-        "test_slice_meta": str(meta_path),
+        "test_slice_meta": artifact_paths["partition"],
+        "artifact_paths": artifact_paths,
+        "protocol": "fit_train_transform_test",
         "fcbf_k": args.fcbf_k,
         "kpca_components": args.kpca_components,
-        "benign_sample_n": sample_n,
-        "benign_total": int(n_benign),
+        "zero_day_samples": meta["zero_day_samples"],
+        "benign_sample_n": meta["benign_sampled"],
+        "benign_available": meta["benign_available_in_train"],
+        "benign_pairing_rule": meta["benign_pairing_rule"],
         "random_state": args.random_state,
-        "kpca_shape": {"rows": int(out.shape[0]), "cols": int(out.shape[1])},
+        "train_shape": {"rows": int(train_df.shape[0]), "cols": int(len(feature_names))},
+        "test_shape": {"rows": int(test_df.shape[0]), "cols": int(len(feature_names))},
+        "kpca_shape": {"rows": int(df_kpca.shape[0]), "cols": int(df_kpca.shape[1] - 1)},
+        "ig_feature_count": len(pipeline.ig_features),
+        "fcbf_feature_count": int(X_train_fcbf.shape[1]),
     }
-    report_path = write_report(args.report_dir, "phase08_anomaly_features", report)
+    report_path = write_report(paths.reports, "phase08_anomaly_features", report)
     print(f"Relatorio salvo em: {report_path}")
-    tick("Saidas e relatorio salvos")
+    tick("Relatorio JSON")
 
 
 if __name__ == "__main__":

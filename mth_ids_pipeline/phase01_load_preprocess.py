@@ -8,7 +8,6 @@ data/pipeline_mth_ids/01_preprocessed.parquet
 
 from __future__ import annotations
 
-import argparse
 import time
 import warnings
 from pathlib import Path
@@ -16,21 +15,11 @@ from pathlib import Path
 import pandas as pd
 
 try:
-    from .config import (
-        DEFAULT_RAW_CSV,
-        INTERMEDIATE_DIR,
-        P01_PREPROCESSED,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
-    )
+    from .cli import init_paths, phase_parser, supervised_path
+    from .config import DEFAULT_RAW_CSV, P01_PREPROCESSED
 except ImportError:
-    from config import (
-        DEFAULT_RAW_CSV,
-        INTERMEDIATE_DIR,
-        P01_PREPROCESSED,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
-    )
+    from cli import init_paths, phase_parser, supervised_path
+    from config import DEFAULT_RAW_CSV, P01_PREPROCESSED
 
 try:
     from .reporting import dataset_report, write_report
@@ -51,17 +40,12 @@ def load_and_preprocess(raw_csv: Path) -> pd.DataFrame:
 def main() -> None:
     total_start = time.time()
 
-    parser = argparse.ArgumentParser(description="Fase 1 — load + preprocess")
-    parser.add_argument("--input", type=Path, default=DEFAULT_RAW_CSV, help="CSV bruto de entrada")
-    parser.add_argument("--output", type=Path, default=None, help="Parquet de saida (default: fase 1)")
-    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
+    parser = phase_parser("Fase 1 — load + preprocess")
+    parser.add_argument("--input", type=Path, default=DEFAULT_RAW_CSV, help="CSV bruto")
     args = parser.parse_args()
 
-    # Cria diretórios
-    ensure_intermediate_dirs()
-
-    # Nome do arquivo parquet
-    out = args.output or (INTERMEDIATE_DIR / P01_PREPROCESSED.replace(".csv", ".parquet"))
+    paths = init_paths(args)
+    out = supervised_path(paths, P01_PREPROCESSED)
 
     # Executa pipeline
     df = load_and_preprocess(args.input)
@@ -89,7 +73,7 @@ def main() -> None:
             "duration_s": round(time.time() - total_start, 4),
         }
     )
-    report_path = write_report(args.report_dir, "phase01_load_preprocess", report)
+    report_path = write_report(paths.reports, "phase01_load_preprocess", report)
     print(f"Relatorio salvo em: {report_path}")
 
 

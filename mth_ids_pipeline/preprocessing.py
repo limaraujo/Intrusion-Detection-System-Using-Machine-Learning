@@ -11,10 +11,16 @@ from sklearn.preprocessing import LabelEncoder
 
 
 def zscore_normalize(df: pd.DataFrame, *, label_col: str = "Label") -> pd.DataFrame:
-    """Normalização Z-score por coluna numérica; NaN → 0."""
+    """
+    Z-score nas features numéricas (notebook: ``dtypes != 'object'`` com Label em texto).
+    Em pandas moderno, restringe a ``is_numeric_dtype`` para evitar colunas ``string``.
+    """
     out = df.copy()
-    numeric = out.select_dtypes(include="number").columns
-    feature_cols = [c for c in numeric if c != label_col]
+    feature_cols = [
+        c
+        for c in out.columns
+        if c != label_col and pd.api.types.is_numeric_dtype(out[c])
+    ]
     out[feature_cols] = out[feature_cols].apply(lambda x: (x - x.mean()) / (x.std()))
     return out.fillna(0)
 

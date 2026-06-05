@@ -4,8 +4,7 @@ stacking com meta XGBoost.
 
 Entradas: Parquet da fase 5.
 
-Uso rápido (sem HPO, usa hiperparâmetros fixos do notebook):
-  python -m mth_ids_pipeline.phase06_supervised_models --no-hpo --no-plots
+Padrão: protocolo do notebook (SMOTE {2,4}→1000, HPO no hold-out, stacking meta XGBoost).
 """
 
 from __future__ import annotations
@@ -13,11 +12,14 @@ from __future__ import annotations
 import argparse
 import json
 import warnings
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from sklearn.base import clone
 from sklearn.ensemble import ExtraTreesClassifier, RandomForestClassifier
 from sklearn.metrics import (
     accuracy_score,
@@ -28,9 +30,23 @@ from sklearn.metrics import (
 from sklearn.tree import DecisionTreeClassifier
 
 try:
-    from .config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, REPORTS_DIR, ensure_intermediate_dirs
+    from .cli import init_paths, phase_parser
+    from .config import (
+        DEFAULT_CV_FOLDS,
+        DEFAULT_HPO_ON_VALIDATION,
+        DEFAULT_META_LEARNER,
+        P05_TEST,
+        P05_TRAIN_SMOTE,
+    )
 except ImportError:
-    from config import INTERMEDIATE_DIR, P05_TEST, P05_TRAIN_SMOTE, REPORTS_DIR, ensure_intermediate_dirs
+    from cli import init_paths, phase_parser
+    from config import (
+        DEFAULT_CV_FOLDS,
+        DEFAULT_HPO_ON_VALIDATION,
+        DEFAULT_META_LEARNER,
+        P05_TEST,
+        P05_TRAIN_SMOTE,
+    )
 
 try:
     from .reporting import write_report
@@ -67,28 +83,106 @@ def _criterion_value(value) -> str:
     return ["gini", "entropy"][int(value)]
 
 
+def _resolve_cv_folds(cv_folds: int, hpo_on_validation: bool) -> int:
+    if hpo_on_validation and cv_folds <= 0:
+        return 10
+    return max(0, cv_folds)
+
+
+def _hyperopt_objective(
+    build_estimator: Callable[[dict[str, Any]], Any],
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    *,
+    hpo_on_validation: bool,
+    cv_folds: int,
+    random_state: int = 0,
+):
+    from hyperopt import STATUS_OK
+
+    try:
+        from .validation import holdout_accuracy, hpo_objective_on_validation
+    except ImportError:
+        from validation import holdout_accuracy, hpo_objective_on_validation
+
+    def objective(params: dict[str, Any]) -> dict[str, Any]:
+        if hpo_on_validation:
+            score = hpo_objective_on_validation(
+                build_estimator,
+                params,
+                X_train,
+                y_train,
+                n_splits=cv_folds,
+                random_state=random_state,
+            )
+        else:
+            score = holdout_accuracy(
+                build_estimator, params, X_train, y_train, X_test, y_test
+            )
+        return {"loss": -score, "status": STATUS_OK}
+
+    return objective
+
+
+def _fmin_best(objective, space: dict, *, max_evals: int, label: str) -> dict:
+    from hyperopt import fmin, tpe
+
+    best = fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=max_evals, verbose=False)
+    print(f"{label} HPO best:", best)
+    return best
+
+
+def _run_cv_reports(
+    models: list[tuple[str, Any, np.ndarray, np.ndarray]],
+    *,
+    n_splits: int,
+    random_state: int = 0,
+) -> dict[str, dict]:
+    try:
+        from .validation import stratified_kfold_scores
+    except ImportError:
+        from validation import stratified_kfold_scores
+
+    reports: dict[str, dict] = {}
+    for name, estimator, X, y in models:
+        rep = stratified_kfold_scores(
+            estimator, X, y, n_splits=n_splits, random_state=random_state
+        )
+        reports[name] = rep
+        print(f"\n{n_splits}-fold CV ({name}): mean={rep['mean']:.4f} ± {rep['std']:.4f}")
+    return reports
+
+
+def _pick_best_base_name(metrics: list[dict], base_names: set[str]) -> str:
+    candidates = [m for m in metrics if m["model"] in base_names]
+    if not candidates:
+        raise ValueError("Nenhum modelo base encontrado para stacking meta-learner")
+    best = max(candidates, key=lambda r: float(r.get("f1_weighted", 0)))
+    return str(best["model"])
+
+
 def main() -> None:
     warnings.filterwarnings("ignore")
-    parser = argparse.ArgumentParser(description="Fase 6 — treino supervisionado + stacking")
-    parser.add_argument("--train", "--train-input", dest="train", type=Path, default=None, help="Parquet treino (fase 5)")
-    parser.add_argument("--test", "--test-input", dest="test", type=Path, default=None, help="Parquet teste (fase 5)")
-    parser.add_argument("--output-dir", type=Path, default=INTERMEDIATE_DIR, help="Diretorio de saida")
-    parser.add_argument("--no-hpo", action="store_true", help="Usa hiperparâmetros fixos do notebook")
-    parser.add_argument("--no-plots", action="store_true", help="Não exibe heatmaps")
-    parser.add_argument("--metrics-json", type=Path, default=None, help="Opcional: salvar metricas em JSON")
-    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
-    parser.add_argument("--binary", action="store_true", help="Classificação binária BENIGN vs ataque (Tabela VII)")
-    parser.add_argument("--cv-folds", type=int, default=0, help="Se >0, 10-fold CV no treino (artigo)")
+    parser = phase_parser("Fase 6 — treino supervisionado + stacking")
+    parser.add_argument("--no-hpo", action="store_true", help="Hiperparâmetros fixos (sem BO-TPE)")
+    parser.add_argument("--no-plots", action="store_true")
+    parser.add_argument("--binary", action="store_true", help="BENIGN vs ataque (Tabela VII)")
+    parser.add_argument("--cv-folds", type=int, default=DEFAULT_CV_FOLDS, help="Opcional: relatório k-fold CV no treino")
     parser.add_argument(
         "--hpo-on-validation",
-        action="store_true",
-        help="HPO com CV no treino em vez de acurácia no teste (artigo)",
+        action=argparse.BooleanOptionalAction,
+        default=DEFAULT_HPO_ON_VALIDATION,
+        help="Notebook: HPO no hold-out (padrão). Use --hpo-on-validation para CV no treino (artigo)",
     )
+    parser.add_argument("--meta-learner", choices=("best-base", "xgb"), default=DEFAULT_META_LEARNER)
     args = parser.parse_args()
-    ensure_intermediate_dirs()
 
-    tr = pd.read_parquet(args.train or (args.output_dir / P05_TRAIN_SMOTE))
-    te = pd.read_parquet(args.test or (args.output_dir / P05_TEST))
+    paths = init_paths(args)
+    output_dir = paths.intermediate
+    tr = pd.read_parquet(output_dir / P05_TRAIN_SMOTE)
+    te = pd.read_parquet(output_dir / P05_TEST)
     label_col = "Label"
     X_train = tr.drop(columns=[label_col]).values
     y_train = tr[label_col].values
@@ -99,8 +193,14 @@ def main() -> None:
         y_train = (y_train > 0).astype(np.int64)
         y_test = (y_test > 0).astype(np.int64)
 
+    cv_folds = _resolve_cv_folds(args.cv_folds, args.hpo_on_validation)
+    if args.hpo_on_validation:
+        print(f"HPO objetivo: acurácia média em {cv_folds}-fold CV (treino)")
+    elif not args.no_hpo:
+        print("HPO objetivo: acurácia no conjunto de teste (hold-out)")
+
     metrics: list[dict] = []
-    cv_report: dict | None = None
+    cv_reports: dict[str, dict] | None = None
 
     if not args.no_plots:
         import matplotlib.pyplot as plt
@@ -123,27 +223,35 @@ def main() -> None:
     if args.no_hpo:
         xg = xgb.XGBClassifier(learning_rate=0.7340229699980686, n_estimators=70, max_depth=14, random_state=0)
     else:
-        from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
+        from hyperopt import hp
 
-        def xg_objective(params):
-            params = {
-                "n_estimators": int(params["n_estimators"]),
-                "max_depth": int(params["max_depth"]),
-                "learning_rate": abs(float(params["learning_rate"])),
-            }
-            clf = xgb.XGBClassifier(**params, random_state=0)
-            clf.fit(X_train, y_train)
-            score = accuracy_score(y_test, clf.predict(X_test))
-            return {"loss": -score, "status": STATUS_OK}
+        def build_xg(params: dict[str, Any]) -> xgb.XGBClassifier:
+            return xgb.XGBClassifier(
+                n_estimators=int(params["n_estimators"]),
+                max_depth=int(params["max_depth"]),
+                learning_rate=abs(float(params["learning_rate"])),
+                random_state=0,
+            )
 
-        space = {
+        xg_space = {
             "n_estimators": hp.quniform("n_estimators", 10, 100, 5),
             "max_depth": hp.quniform("max_depth", 4, 100, 1),
             "learning_rate": hp.normal("learning_rate", 0.01, 0.9),
         }
-        Trials()
-        best = fmin(fn=xg_objective, space=space, algo=tpe.suggest, max_evals=20)
-        print("XGBoost HPO best:", best)
+        best = _fmin_best(
+            _hyperopt_objective(
+                build_xg,
+                X_train,
+                y_train,
+                X_test,
+                y_test,
+                hpo_on_validation=args.hpo_on_validation,
+                cv_folds=cv_folds,
+            ),
+            xg_space,
+            max_evals=20,
+            label="XGBoost",
+        )
         xg = xgb.XGBClassifier(
             n_estimators=int(best["n_estimators"]),
             max_depth=int(best["max_depth"]),
@@ -169,22 +277,20 @@ def main() -> None:
             random_state=0,
         )
     else:
-        from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
+        from hyperopt import hp
 
-        def rf_objective(params):
-            p2 = {
-                "n_estimators": int(params["n_estimators"]),
-                "max_depth": int(params["max_depth"]),
-                "max_features": int(params["max_features"]),
-                "min_samples_split": int(params["min_samples_split"]),
-                "min_samples_leaf": int(params["min_samples_leaf"]),
-                "criterion": _criterion_value(params["criterion"]),
-            }
-            clf = RandomForestClassifier(**p2, random_state=0)
-            clf.fit(X_train, y_train)
-            return {"loss": -clf.score(X_test, y_test), "status": STATUS_OK}
+        def build_rf(params: dict[str, Any]) -> RandomForestClassifier:
+            return RandomForestClassifier(
+                n_estimators=int(params["n_estimators"]),
+                max_depth=int(params["max_depth"]),
+                max_features=int(params["max_features"]),
+                min_samples_split=int(params["min_samples_split"]),
+                min_samples_leaf=int(params["min_samples_leaf"]),
+                criterion=_criterion_value(params["criterion"]),
+                random_state=0,
+            )
 
-        space = {
+        rf_space = {
             "n_estimators": hp.quniform("n_estimators", 10, 200, 1),
             "max_depth": hp.quniform("max_depth", 5, 50, 1),
             "max_features": hp.quniform("max_features", 1, 20, 1),
@@ -192,9 +298,20 @@ def main() -> None:
             "min_samples_leaf": hp.quniform("min_samples_leaf", 1, 11, 1),
             "criterion": hp.choice("criterion", ["gini", "entropy"]),
         }
-        Trials()
-        best = fmin(fn=rf_objective, space=space, algo=tpe.suggest, max_evals=20)
-        print("RF HPO best:", best)
+        best = _fmin_best(
+            _hyperopt_objective(
+                build_rf,
+                X_train,
+                y_train,
+                X_test,
+                y_test,
+                hpo_on_validation=args.hpo_on_validation,
+                cv_folds=cv_folds,
+            ),
+            rf_space,
+            max_evals=20,
+            label="RandomForest",
+        )
         crit = _criterion_value(best["criterion"])
         rf_hpo = RandomForestClassifier(
             n_estimators=int(best["n_estimators"]),
@@ -218,30 +335,39 @@ def main() -> None:
             min_samples_leaf=2, max_depth=47, min_samples_split=3, max_features=19, criterion="gini", random_state=0
         )
     else:
-        from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
+        from hyperopt import hp
 
-        def dt_objective(params):
-            p2 = {
-                "max_depth": int(params["max_depth"]),
-                "max_features": int(params["max_features"]),
-                "min_samples_split": int(params["min_samples_split"]),
-                "min_samples_leaf": int(params["min_samples_leaf"]),
-                "criterion": _criterion_value(params["criterion"]),
-            }
-            clf = DecisionTreeClassifier(**p2, random_state=0)
-            clf.fit(X_train, y_train)
-            return {"loss": -clf.score(X_test, y_test), "status": STATUS_OK}
+        def build_dt(params: dict[str, Any]) -> DecisionTreeClassifier:
+            return DecisionTreeClassifier(
+                max_depth=int(params["max_depth"]),
+                max_features=int(params["max_features"]),
+                min_samples_split=int(params["min_samples_split"]),
+                min_samples_leaf=int(params["min_samples_leaf"]),
+                criterion=_criterion_value(params["criterion"]),
+                random_state=0,
+            )
 
-        space = {
+        dt_space = {
             "max_depth": hp.quniform("max_depth", 5, 50, 1),
             "max_features": hp.quniform("max_features", 1, 20, 1),
             "min_samples_split": hp.quniform("min_samples_split", 2, 11, 1),
             "min_samples_leaf": hp.quniform("min_samples_leaf", 1, 11, 1),
             "criterion": hp.choice("criterion", ["gini", "entropy"]),
         }
-        Trials()
-        best = fmin(fn=dt_objective, space=space, algo=tpe.suggest, max_evals=50)
-        print("DT HPO best:", best)
+        best = _fmin_best(
+            _hyperopt_objective(
+                build_dt,
+                X_train,
+                y_train,
+                X_test,
+                y_test,
+                hpo_on_validation=args.hpo_on_validation,
+                cv_folds=cv_folds,
+            ),
+            dt_space,
+            max_evals=50,
+            label="DecisionTree",
+        )
         crit = _criterion_value(best["criterion"])
         dt_hpo = DecisionTreeClassifier(
             max_depth=int(best["max_depth"]),
@@ -270,22 +396,20 @@ def main() -> None:
             random_state=0,
         )
     else:
-        from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
+        from hyperopt import hp
 
-        def et_objective(params):
-            p2 = {
-                "n_estimators": int(params["n_estimators"]),
-                "max_depth": int(params["max_depth"]),
-                "max_features": int(params["max_features"]),
-                "min_samples_split": int(params["min_samples_split"]),
-                "min_samples_leaf": int(params["min_samples_leaf"]),
-                "criterion": _criterion_value(params["criterion"]),
-            }
-            clf = ExtraTreesClassifier(**p2, random_state=0)
-            clf.fit(X_train, y_train)
-            return {"loss": -clf.score(X_test, y_test), "status": STATUS_OK}
+        def build_et(params: dict[str, Any]) -> ExtraTreesClassifier:
+            return ExtraTreesClassifier(
+                n_estimators=int(params["n_estimators"]),
+                max_depth=int(params["max_depth"]),
+                max_features=int(params["max_features"]),
+                min_samples_split=int(params["min_samples_split"]),
+                min_samples_leaf=int(params["min_samples_leaf"]),
+                criterion=_criterion_value(params["criterion"]),
+                random_state=0,
+            )
 
-        space = {
+        et_space = {
             "n_estimators": hp.quniform("n_estimators", 10, 200, 1),
             "max_depth": hp.quniform("max_depth", 5, 50, 1),
             "max_features": hp.quniform("max_features", 1, 20, 1),
@@ -293,9 +417,20 @@ def main() -> None:
             "min_samples_leaf": hp.quniform("min_samples_leaf", 1, 11, 1),
             "criterion": hp.choice("criterion", ["gini", "entropy"]),
         }
-        Trials()
-        best = fmin(fn=et_objective, space=space, algo=tpe.suggest, max_evals=20)
-        print("ET HPO best:", best)
+        best = _fmin_best(
+            _hyperopt_objective(
+                build_et,
+                X_train,
+                y_train,
+                X_test,
+                y_test,
+                hpo_on_validation=args.hpo_on_validation,
+                cv_folds=cv_folds,
+            ),
+            et_space,
+            max_evals=20,
+            label="ExtraTrees",
+        )
         crit = _criterion_value(best["criterion"])
         et_hpo = ExtraTreesClassifier(
             n_estimators=int(best["n_estimators"]),
@@ -317,62 +452,97 @@ def main() -> None:
     x_train_meta = np.concatenate((dt_train_p, et_train_p, rf_train_p, xg_train_p), axis=1)
     x_test_meta = np.concatenate((dt_test_p, et_test_p, rf_test_p, xg_test_p), axis=1)
 
-    stk = xgb.XGBClassifier(random_state=0)
-    stk.fit(x_train_meta, y_train)
-    metrics.append(_evaluate("Stacking (XGB meta)", stk, x_test_meta, y_test))
-    heatmap(y_test, stk.predict(x_test_meta), "Stacking")
+    base_entries: list[tuple[str, Any]] = [
+        ("XGBoost (base)", xg),
+        ("RandomForest (HPO)", rf_hpo),
+        ("DecisionTree (HPO)", dt_hpo),
+        ("ExtraTrees (HPO)", et_hpo),
+    ]
+    base_names = {name for name, _ in base_entries}
+    meta_label: str
+    stk_for_cv: Any | None = None
 
-    if args.no_hpo:
-        meta = xgb.XGBClassifier(learning_rate=0.19229249758051492, n_estimators=30, max_depth=36, random_state=0)
+    if args.meta_learner == "best-base":
+        best_base_name = _pick_best_base_name(metrics, base_names)
+        best_est = next(est for name, est in base_entries if name == best_base_name)
+        print(f"\nStacking meta-learner (best-base): reutilizando '{best_base_name}'")
+        meta = clone(best_est)
+        meta.fit(x_train_meta, y_train)
+        meta_label = f"Stacking meta ({best_base_name})"
+        metrics.append(_evaluate(meta_label, meta, x_test_meta, y_test, binary=args.binary))
+        heatmap(y_test, meta.predict(x_test_meta), "Stacking meta (best base)")
     else:
-        from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
+        stk = xgb.XGBClassifier(random_state=0)
+        stk.fit(x_train_meta, y_train)
+        stk_for_cv = stk
+        metrics.append(_evaluate("Stacking (XGB meta)", stk, x_test_meta, y_test))
+        heatmap(y_test, stk.predict(x_test_meta), "Stacking")
 
-        def stk_objective(params):
-            p2 = {
-                "n_estimators": int(params["n_estimators"]),
-                "max_depth": int(params["max_depth"]),
-                "learning_rate": abs(float(params["learning_rate"])),
+        if args.no_hpo:
+            meta = xgb.XGBClassifier(
+                learning_rate=0.19229249758051492, n_estimators=30, max_depth=36, random_state=0
+            )
+        else:
+            from hyperopt import hp
+
+            def build_meta(params: dict[str, Any]) -> xgb.XGBClassifier:
+                return xgb.XGBClassifier(
+                    n_estimators=int(params["n_estimators"]),
+                    max_depth=int(params["max_depth"]),
+                    learning_rate=abs(float(params["learning_rate"])),
+                    random_state=0,
+                )
+
+            meta_space = {
+                "n_estimators": hp.quniform("n_estimators", 10, 100, 5),
+                "max_depth": hp.quniform("max_depth", 4, 100, 1),
+                "learning_rate": hp.normal("learning_rate", 0.01, 0.9),
             }
-            clf = xgb.XGBClassifier(**p2, random_state=0)
-            clf.fit(x_train_meta, y_train)
-            return {"loss": -accuracy_score(y_test, clf.predict(x_test_meta)), "status": STATUS_OK}
+            best = _fmin_best(
+                _hyperopt_objective(
+                    build_meta,
+                    x_train_meta,
+                    y_train,
+                    x_test_meta,
+                    y_test,
+                    hpo_on_validation=args.hpo_on_validation,
+                    cv_folds=cv_folds,
+                ),
+                meta_space,
+                max_evals=20,
+                label="Stacking meta",
+            )
+            meta = xgb.XGBClassifier(
+                n_estimators=int(best["n_estimators"]),
+                max_depth=int(best["max_depth"]),
+                learning_rate=abs(float(best["learning_rate"])),
+                random_state=0,
+            )
 
-        space = {
-            "n_estimators": hp.quniform("n_estimators", 10, 100, 5),
-            "max_depth": hp.quniform("max_depth", 4, 100, 1),
-            "learning_rate": hp.normal("learning_rate", 0.01, 0.9),
-        }
-        Trials()
-        best = fmin(fn=stk_objective, space=space, algo=tpe.suggest, max_evals=20)
-        print("Stacking meta HPO best:", best)
-        meta = xgb.XGBClassifier(
-            n_estimators=int(best["n_estimators"]),
-            max_depth=int(best["max_depth"]),
-            learning_rate=abs(float(best["learning_rate"])),
-            random_state=0,
-        )
+        meta.fit(x_train_meta, y_train)
+        meta_label = "Stacking meta (HPO XGB)"
+        metrics.append(_evaluate(meta_label, meta, x_test_meta, y_test, binary=args.binary))
+        heatmap(y_test, meta.predict(x_test_meta), "Stacking HPO")
 
-    meta.fit(x_train_meta, y_train)
-    metrics.append(_evaluate("Stacking meta (HPO XGB)", meta, x_test_meta, y_test, binary=args.binary))
-    heatmap(y_test, meta.predict(x_test_meta), "Stacking HPO")
+    if cv_folds > 0:
+        cv_models: list[tuple[str, Any, np.ndarray, np.ndarray]] = [
+            ("XGBoost (base)", xg, X_train, y_train),
+            ("RandomForest (HPO)", rf_hpo, X_train, y_train),
+            ("DecisionTree (HPO)", dt_hpo, X_train, y_train),
+            ("ExtraTrees (HPO)", et_hpo, X_train, y_train),
+        ]
+        if stk_for_cv is not None:
+            cv_models.append(("Stacking (XGB meta)", stk_for_cv, x_train_meta, y_train))
+        cv_models.append((meta_label, meta, x_train_meta, y_train))
+        cv_reports = _run_cv_reports(cv_models, n_splits=cv_folds, random_state=0)
 
-    if args.cv_folds > 0:
-        try:
-            from .validation import stratified_kfold_scores
-        except ImportError:
-            from validation import stratified_kfold_scores
-        cv_report = stratified_kfold_scores(
-            meta, x_train_meta, y_train, n_splits=args.cv_folds, random_state=0
-        )
-        print(f"\n10-fold CV (stacking meta): mean={cv_report['mean']:.4f} ± {cv_report['std']:.4f}")
-
-    out_metrics = args.metrics_json or (args.output_dir / "06_supervised_metrics.json")
+    out_metrics = output_dir / "06_supervised_metrics.json"
     out_metrics.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(f"\nMétricas salvas em: {out_metrics}")
 
     report = {
-        "train_input": str(args.train or (args.output_dir / P05_TRAIN_SMOTE)),
-        "test_input": str(args.test or (args.output_dir / P05_TEST)),
+        "train_input": str(args.train or (output_dir / P05_TRAIN_SMOTE)),
+        "test_input": str(args.test or (output_dir / P05_TEST)),
         "metrics_output": str(out_metrics),
         "train_shape": {"rows": int(tr.shape[0]), "cols": int(tr.shape[1])},
         "test_shape": {"rows": int(te.shape[0]), "cols": int(te.shape[1])},
@@ -381,11 +551,15 @@ def main() -> None:
         "no_hpo": bool(args.no_hpo),
         "no_plots": bool(args.no_plots),
         "binary": bool(args.binary),
-        "cv_folds": args.cv_folds,
+        "cv_folds": cv_folds,
+        "cv_folds_requested": args.cv_folds,
         "hpo_on_validation": bool(args.hpo_on_validation),
-        "cv_stacking_meta": cv_report,
+        "hpo_objective": "cv_train" if args.hpo_on_validation else "holdout_test",
+        "meta_learner": args.meta_learner,
+        "stacking_meta_model": meta_label,
+        "cv_reports": cv_reports,
     }
-    report_path = write_report(args.report_dir, "phase06_supervised_models", report)
+    report_path = write_report(paths.reports, "phase06_supervised_models", report)
     print(f"Relatorio salvo em: {report_path}")
 
 

@@ -1,15 +1,13 @@
 """
 Fase 12: leave-one-attack-out no ramo anomaly (Tabela IX do artigo).
 
-Para cada rótulo de ataque no dataset amostrado, executa fases 7→8→9→11 em subdiretório
+Para cada rótulo de ataque no dataset amostrado, executa fases 7→8→9→10→11 em subdiretório
 e agrega DR/FAR/F1.
 """
 
 from __future__ import annotations
 
-import argparse
 import json
-import shlex
 import subprocess
 import sys
 import warnings
@@ -19,17 +17,15 @@ import pandas as pd
 
 try:
     from .anomaly_io import discover_attack_labels
-    from .config import (
-        ANOMALY_DIR,
-        INTERMEDIATE_DIR,
-        P02_SAMPLED_KMEANS,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
-    )
+    from .biased_classifiers import load_best_n_clusters
+    from .cli import init_paths, phase_parser, supervised_path
+    from .config import A06_TEST_SLICE_INFO, P02_SAMPLED_KMEANS
     from .reporting import write_report
 except ImportError:
     from anomaly_io import discover_attack_labels
-    from config import ANOMALY_DIR, INTERMEDIATE_DIR, P02_SAMPLED_KMEANS, REPORTS_DIR, ensure_intermediate_dirs
+    from biased_classifiers import load_best_n_clusters
+    from cli import init_paths, phase_parser, supervised_path
+    from config import A06_TEST_SLICE_INFO, P02_SAMPLED_KMEANS
     from reporting import write_report
 
 
@@ -41,22 +37,21 @@ def _run_phase(module: str, extra: list[str], repo_root: Path) -> None:
 
 def main() -> None:
     warnings.filterwarnings("ignore")
-    parser = argparse.ArgumentParser(description="Fase 12 — LOAO anomaly (14 ataques / amostra)")
-    parser.add_argument("--input", type=Path, default=None, help="Parquet amostrado (fase 2)")
-    parser.add_argument("--output-root", type=Path, default=ANOMALY_DIR / "loao")
-    parser.add_argument("--attack-labels", type=str, default=None, help="Lista '1,2,5' ou todos")
-    parser.add_argument("--benign-target", type=int, default=1255)
-    parser.add_argument("--n-clusters", type=int, default=16)
+    parser = phase_parser("Fase 12 — LOAO anomaly (Tabela IX)")
+    parser.add_argument("--output-root", type=Path, default=None, help="Raiz LOAO (default: anomaly/loao)")
+    parser.add_argument("--attack-labels", type=str, default=None, help="Ex.: 1,2,5 ou todos")
+    parser.add_argument("--benign-target", type=int, default=None)
     parser.add_argument("--random-state", type=int, default=0)
-    parser.add_argument("--skip-phase9", action="store_true", help="Pular SMOTE explícito na fase 9")
-    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR)
-    parser.add_argument("--phase8-extra", type=str, default="")
-    parser.add_argument("--phase11-extra", type=str, default="")
+    parser.add_argument("--smote-target", type=int, default=18225)
+    parser.add_argument("--hpo-n-calls", type=int, default=20)
+    parser.add_argument("--skip-phase9", action="store_true")
+    parser.add_argument("--skip-phase10", action="store_true")
     args = parser.parse_args()
-    ensure_intermediate_dirs()
-    repo_root = Path(__file__).resolve().parents[1]
 
-    path_in = args.input or (INTERMEDIATE_DIR / P02_SAMPLED_KMEANS.replace(".csv", ".parquet"))
+    paths = init_paths(args)
+    output_root = args.output_root or (paths.anomaly / "loao")
+    repo_root = Path(__file__).resolve().parents[1]
+    path_in = supervised_path(paths, P02_SAMPLED_KMEANS)
     df = pd.read_parquet(path_in)
 
     if args.attack_labels:
@@ -64,61 +59,80 @@ def main() -> None:
     else:
         attacks = discover_attack_labels(df)
 
-    args.output_root.mkdir(parents=True, exist_ok=True)
+    output_root.mkdir(parents=True, exist_ok=True)
     rows: list[dict] = []
 
     for attack in attacks:
-        subdir = args.output_root / f"attack_{attack}"
+        subdir = output_root / f"attack_{attack}"
         subdir.mkdir(parents=True, exist_ok=True)
         print(f"\n{'=' * 60}\nLOAO — ataque zero-day label={attack}\n{'=' * 60}")
 
         attack_report_dir = subdir / "reports"
-        p7 = [
-            "--input", str(path_in),
-            "--output-dir", str(subdir),
-            "--attack-label", str(attack),
-            "--report-dir", str(attack_report_dir),
-        ]
-        _run_phase("mth_ids_pipeline.phase07_anomaly_datasets", p7, repo_root)
+        common = ["--intermediate-dir", str(paths.intermediate), "--report-dir", str(attack_report_dir)]
+        _run_phase(
+            "mth_ids_pipeline.phase07_anomaly_datasets",
+            [*common, "--work-dir", str(subdir), "--attack-label", str(attack)],
+            repo_root,
+        )
 
-        p8 = [
-            "--input-dir", str(subdir),
-            "--output-dir", str(subdir),
-            "--benign-target", str(args.benign_target),
-            "--random-state", str(args.random_state),
-            "--report-dir", str(attack_report_dir),
-        ]
-        if args.phase8_extra.strip():
-            p8 += shlex.split(args.phase8_extra)
+        p8 = [*common, "--work-dir", str(subdir), "--random-state", str(args.random_state)]
+        if args.benign_target is not None:
+            p8 += ["--benign-target", str(args.benign_target)]
         _run_phase("mth_ids_pipeline.phase08_anomaly_features", p8, repo_root)
 
         if not args.skip_phase9:
             p9 = [
-                "--input-dir", str(subdir),
-                "--output-dir", str(subdir),
-                "--n-clusters", str(args.n_clusters),
-                "--random-state", str(args.random_state),
-                "--report-dir", str(attack_report_dir),
+                *common,
+                "--work-dir",
+                str(subdir),
+                "--random-state",
+                str(args.random_state),
+                "--smote-target",
+                str(args.smote_target),
             ]
             _run_phase("mth_ids_pipeline.phase09_anomaly_cluster", p9, repo_root)
 
+        best_k: int | None = None
+        if not args.skip_phase10:
+            p10 = [
+                *common,
+                "--work-dir",
+                str(subdir),
+                "--random-state",
+                str(args.random_state),
+                "--smote-target",
+                str(args.smote_target),
+                "--n-calls",
+                str(args.hpo_n_calls),
+            ]
+            _run_phase("mth_ids_pipeline.phase10_anomaly_cluster_hpo", p10, repo_root)
+            best_k = load_best_n_clusters(attack_report_dir)
+
         p11 = [
-            "--input-dir", str(subdir),
-            "--n-clusters", str(args.n_clusters),
-            "--random-state", str(args.random_state),
-            "--report-dir", str(attack_report_dir),
+            *common,
+            "--work-dir",
+            str(subdir),
+            "--random-state",
+            str(args.random_state),
+            "--smote-target",
+            str(args.smote_target),
         ]
-        if args.phase11_extra.strip():
-            p11 += shlex.split(args.phase11_extra)
         _run_phase("mth_ids_pipeline.phase11_anomaly_biased", p11, repo_root)
 
         report_file = attack_report_dir / "phase11_anomaly_biased.json"
         if report_file.exists():
             rep = json.loads(report_file.read_text(encoding="utf-8"))
             m = rep.get("mth_ids_anomaly") or rep.get("cl_kmeans") or {}
+            slice_meta: dict = {}
+            slice_path = subdir / A06_TEST_SLICE_INFO
+            if slice_path.exists():
+                slice_meta = json.loads(slice_path.read_text(encoding="utf-8"))
             rows.append(
                 {
                     "attack_label": attack,
+                    "n_clusters": rep.get("n_clusters") or best_k,
+                    "zero_day_samples": slice_meta.get("zero_day_samples"),
+                    "benign_sampled": slice_meta.get("benign_sampled"),
                     "accuracy": m.get("accuracy"),
                     "detection_rate": m.get("detection_rate"),
                     "false_alarm_rate": m.get("false_alarm_rate"),
@@ -133,6 +147,8 @@ def main() -> None:
         f1_mean = sum(r["f1"] or 0 for r in rows) / len(rows)
         summary = {
             "n_attacks": len(rows),
+            "loao_phases": "7,8,9,10,11",
+            "benign_pairing": "paper_table_ix_1_to_1 (unless --benign-target)",
             "mean_detection_rate": dr_mean,
             "mean_false_alarm_rate": far_mean,
             "mean_f1": f1_mean,
@@ -143,11 +159,11 @@ def main() -> None:
                 "mean_far_pct": 13.882,
             },
         }
-        out_path = args.output_root / "loao_summary.json"
+        out_path = output_root / "loao_summary.json"
         out_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         print(f"\nLOAO concluído: {len(rows)} ataques. Média F1={f1_mean:.4f}")
         print(f"Resumo: {out_path}")
-        write_report(args.report_dir, "phase12_anomaly_loao", summary)
+        write_report(paths.reports, "phase12_anomaly_loao", summary)
 
 
 if __name__ == "__main__":

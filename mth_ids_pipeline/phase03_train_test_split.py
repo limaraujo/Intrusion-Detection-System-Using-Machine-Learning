@@ -1,12 +1,11 @@
 """
-Fase 3: primeiro train_test_split estratificado (80/20) sobre o conjunto amostrado.
+Fase 3: train_test_split estratificado sobre o conjunto amostrado (artigo: 70/30).
 
 Saida: 03_train.parquet, 03_test.parquet
 """
 
 from __future__ import annotations
 
-import argparse
 import warnings
 from pathlib import Path
 
@@ -15,23 +14,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 try:
-    from .config import (
-        INTERMEDIATE_DIR,
-        P02_SAMPLED_KMEANS,
-        P03_TEST,
-        P03_TRAIN,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
-    )
+    from .cli import init_paths, phase_parser, supervised_path
+    from .config import DEFAULT_TEST_SIZE, P02_SAMPLED_KMEANS, P03_TEST, P03_TRAIN
 except ImportError:
-    from config import (
-        INTERMEDIATE_DIR,
-        P02_SAMPLED_KMEANS,
-        P03_TEST,
-        P03_TRAIN,
-        REPORTS_DIR,
-        ensure_intermediate_dirs,
-    )
+    from cli import init_paths, phase_parser, supervised_path
+    from config import DEFAULT_TEST_SIZE, P02_SAMPLED_KMEANS, P03_TEST, P03_TRAIN
 
 try:
     from .reporting import dataset_report, write_report
@@ -62,39 +49,16 @@ def split_train_test(
 def main() -> None:
     warnings.filterwarnings("ignore")
 
-    parser = argparse.ArgumentParser(description="Fase 3 — train/test split")
-    parser.add_argument("--input", type=Path, default=None, help="Parquet da fase 2")
-    parser.add_argument(
-        "--train-out",
-        "--train-output",
-        dest="train_out",
-        type=Path,
-        default=None,
-        help="Parquet de treino (default: fase 3)",
-    )
-    parser.add_argument(
-        "--test-out",
-        "--test-output",
-        dest="test_out",
-        type=Path,
-        default=None,
-        help="Parquet de teste (default: fase 3)",
-    )
-    parser.add_argument("--test-size", type=float, default=0.2, help="Fracao para teste")
-    parser.add_argument("--random-state", type=int, default=0, help="Seed para split")
-    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR, help="Diretorio para relatorios JSON")
+    parser = phase_parser("Fase 3 — train/test split")
+    parser.add_argument("--test-size", type=float, default=DEFAULT_TEST_SIZE, help="Artigo: 0.3 (70/30)")
+    parser.add_argument("--random-state", type=int, default=0)
     args = parser.parse_args()
 
-    ensure_intermediate_dirs()
-
-    inp = args.input or (INTERMEDIATE_DIR / P02_SAMPLED_KMEANS.replace(".csv", ".parquet"))
-
-    df = pd.read_parquet(inp)
-
+    paths = init_paths(args)
+    df = pd.read_parquet(supervised_path(paths, P02_SAMPLED_KMEANS))
     tr, te = split_train_test(df, random_state=args.random_state, test_size=args.test_size)
-
-    tr_path = args.train_out or (INTERMEDIATE_DIR / P03_TRAIN.replace(".csv", ".parquet"))
-    te_path = args.test_out or (INTERMEDIATE_DIR / P03_TEST.replace(".csv", ".parquet"))
+    tr_path = supervised_path(paths, P03_TRAIN)
+    te_path = supervised_path(paths, P03_TEST)
 
     tr.to_parquet(tr_path, index=False)
     te.to_parquet(te_path, index=False)
@@ -103,7 +67,7 @@ def main() -> None:
 
     label_col = "Label" if "Label" in tr.columns else tr.columns[-1]
     report = {
-        "input": str(inp),
+        "input": str(supervised_path(paths, P02_SAMPLED_KMEANS)),
         "train_output": str(tr_path),
         "test_output": str(te_path),
         "test_size": args.test_size,
@@ -111,7 +75,7 @@ def main() -> None:
         "train": dataset_report(tr, label_col),
         "test": dataset_report(te, label_col),
     }
-    report_path = write_report(args.report_dir, "phase03_train_test_split", report)
+    report_path = write_report(paths.reports, "phase03_train_test_split", report)
     print(f"Relatorio salvo em: {report_path}")
 
 

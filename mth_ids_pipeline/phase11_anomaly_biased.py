@@ -8,7 +8,6 @@ Fase 11 (anomaly tier 4): CL-k-means + biased classifiers B1/B2 + threshold p* (
 
 from __future__ import annotations
 
-import argparse
 import warnings
 from pathlib import Path
 
@@ -26,7 +25,8 @@ try:
         train_biased_pair,
     )
     from .clustering import cl_kmeans_fit_predict
-    from .config import ANOMALY_DIR, INTERMEDIATE_DIR, REPORTS_DIR, ensure_intermediate_dirs
+    from .cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
+    from .config import DEFAULT_BIASED_MODE
     from .evaluation import binary_dr_far_f1
     from .reporting import write_report
 except ImportError:
@@ -40,15 +40,16 @@ except ImportError:
         train_biased_pair,
     )
     from clustering import cl_kmeans_fit_predict
-    from config import ANOMALY_DIR, INTERMEDIATE_DIR, REPORTS_DIR, ensure_intermediate_dirs
+    from cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
+    from config import DEFAULT_BIASED_MODE
     from evaluation import binary_dr_far_f1
     from reporting import write_report
 
 
-def _resolve_n_clusters(args: argparse.Namespace) -> int:
-    if args.n_clusters is not None:
-        return int(args.n_clusters)
-    auto = load_best_n_clusters(args.report_dir)
+def _resolve_n_clusters(report_dir: Path, n_clusters: int | None) -> int:
+    if n_clusters is not None:
+        return int(n_clusters)
+    auto = load_best_n_clusters(report_dir)
     if auto is not None:
         print(f"k automático da fase 10: {auto}")
         return auto
@@ -58,55 +59,33 @@ def _resolve_n_clusters(args: argparse.Namespace) -> int:
 
 def main() -> None:
     warnings.filterwarnings("ignore")
-    parser = argparse.ArgumentParser(description="Fase 11 — CL-k-means + biased classifiers (tier 4)")
-    parser.add_argument("--input-dir", type=Path, default=ANOMALY_DIR)
-    parser.add_argument(
-        "--n-clusters",
-        type=int,
-        default=None,
-        help="k do CL-k-means (default: phase10 best_n_clusters)",
-    )
-    parser.add_argument("--p-star", type=float, default=0.933, help="Limiar p* (artigo)")
+    parser = phase_parser("Fase 11 — CL-k-means + biased classifiers (tier 4)")
+    add_work_dir(parser)
+    parser.add_argument("--n-clusters", type=int, default=None)
+    parser.add_argument("--p-star", type=float, default=0.933)
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument("--smote-target", type=int, default=18225)
-    parser.add_argument("--metric", type=str, default="euclidean", choices=("euclidean", "manhattan"))
+    parser.add_argument("--metric", choices=("euclidean", "manhattan"), default="euclidean")
     parser.add_argument(
         "--biased-mode",
-        type=str,
-        default="auto",
         choices=("auto", "both", "b1-only", "b2-only", "none"),
-        help="auto: escolhe o melhor F1 no hold-out do treino",
+        default=DEFAULT_BIASED_MODE,
+        help="Artigo: both (B1+B2); auto = gate por F1 no treino",
     )
-    parser.add_argument(
-        "--skip-biased",
-        action="store_true",
-        help="Equivalente a --biased-mode none",
-    )
-    parser.add_argument(
-        "--no-gate",
-        action="store_true",
-        help="Aplica biased mesmo se piorar F1 no hold-out do treino",
-    )
-    parser.add_argument(
-        "--supervised-metrics",
-        type=Path,
-        default=None,
-        help="06_supervised_metrics.json para escolher algoritmo B1/B2",
-    )
-    parser.add_argument("--report-dir", type=Path, default=REPORTS_DIR)
     args = parser.parse_args()
-    ensure_intermediate_dirs()
+    requested = args.biased_mode
 
-    requested: str = "none" if args.skip_biased else args.biased_mode
-    n_clusters = _resolve_n_clusters(args)
-
-    metrics_path = args.supervised_metrics or (INTERMEDIATE_DIR / "06_supervised_metrics.json")
+    paths = init_paths(args)
+    work = resolve_work_dir(args, paths)
+    report_dir = paths.reports
+    n_clusters = _resolve_n_clusters(report_dir, args.n_clusters)
+    metrics_path = paths.intermediate / "06_supervised_metrics.json"
     best_model_name = pick_best_supervised_model(metrics_path)
     factory = estimator_factory_for_supervised(best_model_name, random_state=args.random_state)
     print(f"Biased learners: família de '{best_model_name}'")
 
     X_train, X_test, y_train, y_test, did_smote = load_anomaly_splits(
-        args.input_dir,
+        work,
         smote_target=args.smote_target,
         random_state=args.random_state,
     )
@@ -143,9 +122,6 @@ def main() -> None:
         estimator_factory=factory,
         requested=requested,  # type: ignore[arg-type]
     )
-    if args.no_gate and requested != "auto" and requested != "none":
-        effective_mode = requested  # type: ignore[assignment]
-
     print(f"\nModo biased selecionado: {effective_mode}")
     if selection_info.get("scores"):
         print("F1 validação interna:", selection_info["scores"])
@@ -189,7 +165,7 @@ def main() -> None:
         print("\nResultado final = CL-k-means (sem biased).")
 
     report = {
-        "input_dir": str(args.input_dir),
+        "work_dir": str(work),
         "n_clusters": n_clusters,
         "n_clusters_source": "cli" if args.n_clusters is not None else "phase10",
         "p_star": args.p_star,
@@ -205,7 +181,7 @@ def main() -> None:
         "mth_ids_anomaly": metrics_final,
         "biased_training": biased_stats,
     }
-    report_path = write_report(args.report_dir, "phase11_anomaly_biased", report)
+    report_path = write_report(report_dir, "phase11_anomaly_biased", report)
     print(f"Relatório salvo em: {report_path}")
 
 
