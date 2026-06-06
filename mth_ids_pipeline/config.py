@@ -119,6 +119,9 @@ DEFAULT_RAW_CSV_FINE = DATA_DIR / "CICIDS2017_fine.csv"
 INTERMEDIATE_DIR_MERGED = DATA_DIR / "pipeline_mth_ids_merged"
 INTERMEDIATE_DIR_FINE = DATA_DIR / "pipeline_mth_ids_fine"
 
+# Log de sessão do ramo supervisionado (experiment_runner / run_supervised)
+SUPERVISED_RUN_LOG = "supervised_run.log"
+
 # Fase supervisionada (known attacks)
 P01_PREPROCESSED = "01_preprocessed.csv"
 P02_SAMPLED_KMEANS = "02_sampled_kmeans.csv"

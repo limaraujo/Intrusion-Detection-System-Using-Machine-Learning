@@ -44,6 +44,7 @@ data/pipeline_mth_ids_merged/
 ├── 04_train_after_fcbf.parquet
 ├── 05_train_after_smote.parquet
 ├── 06_supervised_metrics.json     ← melhor modelo para biased (tier 4)
+├── supervised_run.log             # run_supervised / experiment_runner (fases 1–6)
 └── phase_reports/
 ```
 
@@ -54,6 +55,7 @@ data/pipeline_mth_ids_fine/
 ├── 01_preprocessed.parquet          # bootstrap fases 1–2 (fine)
 ├── 02_sampled_kmeans.parquet        # obrigatório antes da fase 7
 ├── 06_supervised_metrics.json       # cópia da Tabela VII (merged); fase 11 biased
+├── supervised_run.log               # bootstrap fases 1–2 (fine) via experiment_runner
 ├── anomaly/                         # demo fases 7–11 (opcional)
 │   └── loao/                        # fase 12 — uma subpasta por ataque
 │       ├── attack_1/
@@ -112,7 +114,7 @@ No perfil **fine**, o padrão do `run_anomaly` aplica a **mesma regra via merge*
 | Infiltration | 9 |
 | WebAttack | 12, 13, 14 |
 
-Constante: `FINE_DEFAULT_MINORITY_LABELS` = `(1, 9, 12, 13, 14)` — calculada por `compute_fine_minority_labels_notebook_aligned()`.
+Constante: `FINE_DEFAULT_MINORITY_LABELS` = `(1, 8, 9, 12, 13, 14)` — calculada por `compute_fine_minority_labels_notebook_aligned()` (Bot/Infiltration/WebAttack + Heartbleed ultra-raro).
 
 #### Regra correta (não confundir com “não reduzidas pelo merge”)
 
@@ -320,6 +322,16 @@ python -m mth_ids_pipeline.run_all --label-profile fine `
 ```
 
 **Fases 9–11 manuais** (evita repetir fase 8 ~1 h): ver [PIPELINE_PHASES.md — Retomar LOAO](PIPELINE_PHASES.md#retomar-um-ataque-loao-fases-911-manuais).
+
+---
+
+## Supervisionado: log de sessão
+
+| Artefato | Quem grava | Conteúdo |
+|----------|------------|----------|
+| `supervised_run.log` | `experiment_runner` (`RunLog`) | Comandos e stdout das fases 1, 2, 4, 5, 6 |
+
+Gravado em `run_supervised`, `run_all --from 1 --to 6` e no bootstrap automático (ex.: fases 1–2 fine, Tabela VII merged). Execução manual de uma fase **não** acrescenta linhas a esse arquivo.
 
 ---
 

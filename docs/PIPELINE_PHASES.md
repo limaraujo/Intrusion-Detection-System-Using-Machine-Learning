@@ -157,7 +157,7 @@ python -m mth_ids_pipeline.experiment_runner --label-profile fine `
 | `--intermediate-dir PATH` | Raiz de parquets e relatórios (default: merged ou fine conforme o ramo) |
 | `--skip-bootstrap` | Anomaly: não preparar `02_` (fine) / `06_` (merged→fine) automaticamente |
 | `--minority-labels 6,1,4` | Classes preservadas intactas na fase 2 (merged) |
-| `--minority-labels` (fine) | Default: `1,9,12,13,14` (= famílias Bot/Infiltration/WebAttack pós-merge) |
+| `--minority-labels` (fine) | Default: `1,8,9,12,13,14` (= Bot/Infiltration/WebAttack + Heartbleed) |
 | `--auto-minority` (fase 2) | Override manual: todos os ataques preservados (dataset grande; evitar no fine) |
 | `--random-state 0` | Seed (split, k-means, modelos) |
 | `--loao` | Fases 7–12 (fase 12 = LOAO completo) |
@@ -481,7 +481,7 @@ Execução manual **não** acrescenta saída ao `loao_run.log` (só a fase 12 gr
 | Perfil | Default `--minority-labels` | Critério |
 |--------|----------------------------|----------|
 | **merged** | `6,1,4` (WebAttack, Bot, Infiltration) | Igual ao `df_minor` do notebook |
-| **fine** | `1,9,12,13,14` | Fine cujo destino merged ∈ `{Bot, Infiltration, WebAttack}` |
+| **fine** | `1,8,9,12,13,14` | Fine cujo destino merged ∈ `{Bot, Infiltration, WebAttack}` + Heartbleed (ultra-raro) |
 
 No **fine**, a regra **não** é “preservar rótulos que o merge não agrega”. **PortScan** não é agregado, mas é amostrado (k-means 0,8%) porque no merged também não entra no `df_minor`. Os subtipos **Web Attack** são agregados em WebAttack no merge, mas ficam **inteiros** no fine porque a família WebAttack está no `df_minor`.
 
@@ -726,7 +726,7 @@ Não há módulo `phase03_*`. O split ocorre em `phase04_feature_engineering.py`
 | `biased_classifiers.py` | B₁/B₂, modo auto, p* |
 | `anomaly_io.py` | Splits LOAO, SMOTE anomaly, descoberta de labels |
 | `loao_reporting.py` | `loao_summary.json`, agregação Tabela IX |
-| `run_log.py` | Log `attack_<N>/loao_run.log` (fase 12) |
+| `run_log.py` | `supervised_run.log` (fases 1–6 via runner) e `attack_<N>/loao_run.log` (fase 12) |
 | `evaluation.py` | DR, FAR, F1, comparação com artigo |
 | `experiment_runner.py` | Orquestração reprodutível, bootstrap |
 | `report_paper_tables.py` | Tabela VII / IX no terminal |

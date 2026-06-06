@@ -147,9 +147,11 @@ def main() -> None:
     df = pd.read_parquet(path_in)
 
     if args.attack_labels:
-        attacks = [int(x.strip()) for x in args.attack_labels.split(",")]
+        requested = [int(x.strip()) for x in args.attack_labels.split(",")]
     else:
-        attacks = discover_attack_labels(df)
+        requested = discover_attack_labels(df)
+
+    attacks = requested
 
     all_label_names = _resolve_label_names(discover_attack_labels(df))
 
@@ -338,7 +340,7 @@ def main() -> None:
         output_root,
         all_label_names,
         attacks_in_dataset=n_total,
-        attacks_planned=attacks,
+        attacks_planned=requested if args.attack_labels else attacks,
         attacks_succeeded_this_run=succeeded_this_run,
         attacks_failed_this_run=sorted(set(failed_this_run)),
     )

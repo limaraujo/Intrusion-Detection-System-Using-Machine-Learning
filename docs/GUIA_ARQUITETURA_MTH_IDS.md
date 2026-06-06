@@ -26,7 +26,7 @@ mth_ids_pipeline/
 ├── io/                    # persistência e relatórios
 │   ├── anomaly_io.py      # splits LOAO, SMOTE anomaly
 │   ├── loao_reporting.py  # agregação Tabela IX (loao_summary.json)
-│   ├── run_log.py         # log por ataque LOAO (fase 12)
+│   ├── run_log.py         # supervised_run.log (fases 1–6) e loao_run.log (fase 12)
 │   ├── reporting.py
 │   └── reproducibility.py
 │
@@ -82,7 +82,9 @@ Motivação completa (artigo × bootstrap antigo × implementação atual): [PAS
 
 **Orquestradores:** `run_supervised` (1–6), `run_anomaly` (7–12), `run_all` / `experiment_runner` (qualquer intervalo `--from` / `--to`).
 
-**LOAO (fase 12):** para cada ataque `N`, executa subprocessos das fases 7–11 em `anomaly/loao/attack_N/` e grava `loao_run.log` via `RunLog`. Fases rodadas manualmente **não** entram nesse log.
+**Supervisionado (fases 1–6):** `experiment_runner` grava `supervised_run.log` na pasta `intermediate-dir` via `RunLog` (comandos + stdout de cada fase).
+
+**LOAO (fase 12):** para cada ataque `N`, executa subprocessos das fases 7–11 em `anomaly/loao/attack_N/` e grava `loao_run.log` via `RunLog`. Fases rodadas manualmente **não** entram nesses logs.
 
 **Relatórios:** `report_paper_tables` (Tabela VII / IX); JSON por fase em `phase_reports/` ou `attack_N/reports/`.
 

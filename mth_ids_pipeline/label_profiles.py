@@ -101,6 +101,10 @@ def apply_cicids_label_merge(df, *, inplace: bool = False):
 # Famílias preservadas intactas no notebook merged (df_minor: Label 6, 1, 4 → WebAttack, Bot, Infiltration)
 NOTEBOOK_MERGED_PRESERVED_FAMILIES = frozenset({"Bot", "Infiltration", "WebAttack"})
 
+# Fine-only: ataques ultra-raros que somem no k-means 0,8% mas entram no LOAO (Tabela IX).
+# Heartbleed = 11 linhas no CICIDS2017; família merged DoS → não entra no df_minor do notebook.
+FINE_ULTRA_RARE_PRESERVED_LABELS: tuple[int, ...] = (8,)
+
 
 def merged_family_for_fine_label(label: str) -> str:
     """Mapeia rótulo fine → família merged (``CICIDS_LABEL_MERGE`` + Web Attack → WebAttack)."""
@@ -123,18 +127,20 @@ def compute_fine_minority_labels_notebook_aligned(
 
         df_minor = df[(df['Label']==6)|(df['Label']==1)|(df['Label']==4)]
 
-    DoS, PortScan, BruteForce e BENIGN passam pelo k-means 0,8% no merged **e** no fine.
+    DoS (exceto Heartbleed), PortScan, BruteForce e BENIGN passam pelo k-means 0,8% no merged
+    **e** no fine. Heartbleed (label 8) é preservado à parte — 11 amostras no dataset completo.
 
     **Não** confundir com “rótulos que o merge não agrega”: PortScan não é agregado, mas
     **não** é preservado; subtipos Web Attack **são** agregados em WebAttack, mas **são**
     preservados porque a família WebAttack está no ``df_minor``.
     """
     names = fine_label_names or CICIDS2017_FINE_LABEL_NAMES
-    preserved = [
+    preserved = {
         int(idx)
         for idx, name in names.items()
         if int(idx) != 0 and merged_family_for_fine_label(name) in NOTEBOOK_MERGED_PRESERVED_FAMILIES
-    ]
+    }
+    preserved.update(FINE_ULTRA_RARE_PRESERVED_LABELS)
     return tuple(sorted(preserved))
 
 
@@ -167,8 +173,9 @@ FINE_PROFILE = LabelProfile(
     minority_labels=FINE_DEFAULT_MINORITY_LABELS,
     description=(
         "Rótulos originais; fase 2 preserva fine equivalentes ao df_minor merged "
-        "(Bot, Infiltration, WebAttack) + k-means 0,8% em DoS/PortScan/BruteForce/BENIGN "
-        "(~escala notebook). LOAO nas labels presentes em 02_sampled_kmeans."
+        "(Bot, Infiltration, WebAttack) + Heartbleed (ultra-raro) + k-means 0,8% em "
+        "DoS/PortScan/BruteForce/BENIGN (~escala notebook). LOAO nas labels presentes em "
+        "02_sampled_kmeans."
     ),
 )
 
