@@ -5,7 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .config import PipelinePaths, ensure_intermediate_dirs, get_pipeline_paths
+from mth_ids_pipeline.config import PipelinePaths, ensure_intermediate_dirs, get_pipeline_paths
+from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8
 
 
 def phase_parser(description: str) -> argparse.ArgumentParser:
@@ -26,6 +27,7 @@ def phase_parser(description: str) -> argparse.ArgumentParser:
 
 
 def init_paths(args) -> PipelinePaths:
+    configure_stdio_utf8()
     paths = get_pipeline_paths(args.intermediate_dir, args.report_dir)
     ensure_intermediate_dirs(paths.intermediate)
     return paths

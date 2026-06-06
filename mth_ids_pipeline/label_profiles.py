@@ -2,7 +2,12 @@
 Perfis de rótulos CICIDS2017 para o pipeline MTH-IDS.
 
 - merged: famílias agregadas (Tabela VII) — ~7 classes
-- fine: rótulos originais do dataset — ~14 ataques para LOAO (Tabela IX)
+- fine: rótulos originais — amostra k-means estilo notebook
+
+Fase 2 fine: preserva inteiros os fine cuja família merged está no ``df_minor`` do notebook
+(Bot, Infiltration, WebAttack), não “todos os rótulos que o merge não agrega” (PortScan
+é amostrado). Ver ``compute_fine_minority_labels_notebook_aligned()`` e
+``docs/PASTAS_E_BOOTSTRAP.md``.
 """
 
 from __future__ import annotations
@@ -11,7 +16,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from .config import DATA_DIR, DEFAULT_MINORITY_LABELS
+from mth_ids_pipeline.config import DATA_DIR, CICIDS2017_FINE_LABEL_NAMES, DEFAULT_MINORITY_LABELS
 
 # Separador corrompido quando UTF-8 (U+FFFD) é lido com encoding="latin1"
 _WEB_ATTACK_SEP_MOJIBAKE = "\xef\xbf\xbd"
@@ -93,6 +98,49 @@ def apply_cicids_label_merge(df, *, inplace: bool = False):
     return out
 
 
+# Famílias preservadas intactas no notebook merged (df_minor: Label 6, 1, 4 → WebAttack, Bot, Infiltration)
+NOTEBOOK_MERGED_PRESERVED_FAMILIES = frozenset({"Bot", "Infiltration", "WebAttack"})
+
+
+def merged_family_for_fine_label(label: str) -> str:
+    """Mapeia rótulo fine → família merged (``CICIDS_LABEL_MERGE`` + Web Attack → WebAttack)."""
+    s = label.strip().replace(_WEB_ATTACK_SEP_MOJIBAKE, "\ufffd")
+    if s in CICIDS_LABEL_MERGE:
+        return CICIDS_LABEL_MERGE[s]
+    if s.startswith("Web Attack"):
+        return "WebAttack"
+    return s
+
+
+def compute_fine_minority_labels_notebook_aligned(
+    fine_label_names: dict[int, str] | None = None,
+) -> tuple[int, ...]:
+    """
+    IDs fine (LabelEncoder alfabético) preservados inteiros na fase 2 — espelha o notebook.
+
+    Critério: família merged ∈ ``NOTEBOOK_MERGED_PRESERVED_FAMILIES`` (Bot, Infiltration,
+    WebAttack), igual ao ``df_minor`` merged:
+
+        df_minor = df[(df['Label']==6)|(df['Label']==1)|(df['Label']==4)]
+
+    DoS, PortScan, BruteForce e BENIGN passam pelo k-means 0,8% no merged **e** no fine.
+
+    **Não** confundir com “rótulos que o merge não agrega”: PortScan não é agregado, mas
+    **não** é preservado; subtipos Web Attack **são** agregados em WebAttack, mas **são**
+    preservados porque a família WebAttack está no ``df_minor``.
+    """
+    names = fine_label_names or CICIDS2017_FINE_LABEL_NAMES
+    preserved = [
+        int(idx)
+        for idx, name in names.items()
+        if int(idx) != 0 and merged_family_for_fine_label(name) in NOTEBOOK_MERGED_PRESERVED_FAMILIES
+    ]
+    return tuple(sorted(preserved))
+
+
+FINE_DEFAULT_MINORITY_LABELS = compute_fine_minority_labels_notebook_aligned()
+
+
 def get_label_profile(name: str) -> LabelProfile:
     key = name.strip().lower()
     if key in (LabelProfileKind.MERGED.value, "merge", "7"):
@@ -116,8 +164,12 @@ FINE_PROFILE = LabelProfile(
     kind=LabelProfileKind.FINE,
     raw_csv=DATA_DIR / "CICIDS2017_fine.csv",
     intermediate_dir=DATA_DIR / "pipeline_mth_ids_fine",
-    minority_labels=None,
-    description="Rótulos originais CICIDS2017; LOAO ~14 ataques (Tabela IX — padrão anomaly).",
+    minority_labels=FINE_DEFAULT_MINORITY_LABELS,
+    description=(
+        "Rótulos originais; fase 2 preserva fine equivalentes ao df_minor merged "
+        "(Bot, Infiltration, WebAttack) + k-means 0,8% em DoS/PortScan/BruteForce/BENIGN "
+        "(~escala notebook). LOAO nas labels presentes em 02_sampled_kmeans."
+    ),
 )
 
 ALL_PROFILES: dict[str, LabelProfile] = {
@@ -137,7 +189,7 @@ def minority_labels_all_attacks(
 
     Assume BENIGN → 0 após LabelEncoder (ordem alfabética no CICIDS2017).
     """
-    from .preprocessing import encode_labels
+    from mth_ids_pipeline.core.preprocessing import encode_labels
 
     encoded, _ = encode_labels(df, label_col=label_col)
     return tuple(

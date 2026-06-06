@@ -1,53 +1,36 @@
-"""
-Ramo anomaly (zero-day): fases 7–12 — protocolo do artigo (Tabela IX) por padrão.
+"""Ramo anomaly — fases 7–12. Paper: fine + LOAO (Tabela IX).
 
-Exemplos:
-  python -m mth_ids_pipeline.run_anomaly
-  python -m mth_ids_pipeline.run_anomaly --label-profile fine --loao
+Artefatos em ``data/pipeline_mth_ids_fine`` (separado de ``pipeline_mth_ids_merged``).
+Bootstrap automático (se faltarem pré-requisitos):
+
+- fases **1–2** no fine → ``02_sampled_kmeans.parquet`` (k-means 0,8%; minoritárias fine =
+  equivalentes ao ``df_minor`` merged: Bot, Infiltration, WebAttack — ver ``label_profiles.py``)
+- fases **1–6** no merged (Tabela VII) → ``06_supervised_metrics.json`` copiado para fine (biased tier 4)
+
+Ver ``docs/PASTAS_E_BOOTSTRAP.md``.
 """
 
 from __future__ import annotations
 
-import argparse
-from pathlib import Path
-
-from .experiment_runner import ExperimentConfig, run_experiment
-from .label_profiles import get_label_profile
-from .reproducibility import DEFAULT_RANDOM_STATE
+from mth_ids_pipeline.config import INTERMEDIATE_DIR_FINE
+from mth_ids_pipeline.orchestration.experiment_runner import (
+    build_arg_parser,
+    config_from_args,
+    run_experiment,
+)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="MTH-IDS — ramo anomaly (fases 7–12)")
-    parser.add_argument(
-        "--label-profile",
-        choices=["merged", "fine"],
-        default="fine",
-        help="Artigo Tabela IX: fine (~14 LOAO); merged: 6 famílias",
+    parser = build_arg_parser(
+        "MTH-IDS anomaly (fases 7–12; pasta separada: data/pipeline_mth_ids_fine)"
     )
-    parser.add_argument("--raw-csv", type=Path, default=None)
-    parser.add_argument("--intermediate-dir", type=Path, default=None)
-    parser.add_argument("--from", dest="from_phase", type=int, default=7)
-    parser.add_argument("--to", type=int, default=11)
-    parser.add_argument("--only", type=int, default=None)
-    parser.add_argument("--loao", action="store_true", help="Executar fase 12 (LOAO completo)")
-    parser.add_argument("--random-state", type=int, default=DEFAULT_RANDOM_STATE)
+    parser.set_defaults(from_phase=7, to=11, label_profile="fine")
     args = parser.parse_args()
-
-    profile = get_label_profile(args.label_profile)
-    to_phase = 12 if args.loao else args.to
-    cfg = ExperimentConfig(
-        raw_csv=args.raw_csv or profile.raw_csv,
-        intermediate_dir=args.intermediate_dir or profile.intermediate_dir,
-        minority_labels=profile.minority_labels_csv() or "",
-        auto_minority=profile.auto_minority,
-        label_profile=args.label_profile,
-        from_phase=args.from_phase,
-        to_phase=to_phase,
-        only_phase=args.only,
-        random_state=args.random_state,
-        run_loao=args.loao or to_phase == 12,
-    )
-    run_experiment(cfg)
+    if args.loao:
+        args.to = 12
+    if args.intermediate_dir is None:
+        args.intermediate_dir = INTERMEDIATE_DIR_FINE
+    run_experiment(config_from_args(args, branch="anomaly"))
 
 
 if __name__ == "__main__":

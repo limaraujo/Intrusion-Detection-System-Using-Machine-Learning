@@ -13,6 +13,25 @@ REPORTS_DIR = INTERMEDIATE_DIR / "phase_reports"
 
 DEFAULT_MINORITY_LABELS: tuple[int, ...] = (6, 1, 4)
 
+# Fine: ver ``label_profiles.compute_fine_minority_labels_notebook_aligned()`` (Bot/Infiltration/WebAttack)
+CICIDS2017_FINE_LABEL_NAMES: dict[int, str] = {
+    0: "BENIGN",
+    1: "Bot",
+    2: "DDoS",
+    3: "DoS GoldenEye",
+    4: "DoS Hulk",
+    5: "DoS Slowhttptest",
+    6: "DoS slowloris",
+    7: "FTP-Patator",
+    8: "Heartbleed",
+    9: "Infiltration",
+    10: "PortScan",
+    11: "SSH-Patator",
+    12: "Web Attack Brute Force",
+    13: "Web Attack Sql Injection",
+    14: "Web Attack XSS",
+}
+
 # CICIDS2017 merged — LabelEncoder alfabético:
 # 0=BENIGN 1=Bot 2=BruteForce 3=DoS 4=Infiltration 5=PortScan 6=WebAttack
 CICIDS2017_MERGED_LABEL_NAMES: dict[int, str] = {
@@ -31,7 +50,7 @@ NOTEBOOK_SMOTE_TARGETS: dict[int, int] = {
     4: 1_000,  # Infiltration
 }
 
-# SMOTE supervisionado — artigo (Yang et al., IEEE IoT Journal 2022)
+# SMOTE supervisionado — artigo original (Yang et al. 2022); protocolo paper usa NOTEBOOK_SMOTE_TARGETS
 PAPER_SMOTE_TARGETS: dict[int, int] = {
     1: 100_000,  # Bot
     2: 100_000,  # BruteForce
@@ -39,13 +58,30 @@ PAPER_SMOTE_TARGETS: dict[int, int] = {
     6: 100_000,  # WebAttack
 }
 
-DEFAULT_TEST_SIZE = 0.2  # notebook: split 80/20 na engenharia de features
+DEFAULT_TEST_SIZE = 0.2  # notebook e protocolo paper: split 80/20 na engenharia de features
+PAPER_TEST_SIZE = 0.3  # artigo original: 70% treino / 30% teste (legado)
 DEFAULT_CV_FOLDS = 0  # notebook: HPO por acurácia no hold-out
+PAPER_CV_FOLDS = 10
 DEFAULT_META_LEARNER = "xgb"  # notebook: stacking meta XGBoost + HPO
+PAPER_META_LEARNER = "best-base"  # artigo tier 2: clone do melhor base (maior F1 no hold-out)
 DEFAULT_SMOTE_TARGETS = NOTEBOOK_SMOTE_TARGETS
 DEFAULT_HPO_ON_VALIDATION = False  # notebook: accuracy_score(y_test, y_pred)
+PAPER_HPO_ON_VALIDATION = True  # artigo Sec. IV-F: HPO por acurácia em validação
+PAPER_IG_CUMULATIVE = 0.9
+PAPER_FCBF_K = 20
+PAPER_KPCA_COMPONENTS = 10
+PAPER_KPCA_KERNEL = "rbf"
+PAPER_FEATURE_FIT_SCOPE = "combined"  # anomaly tier 3: IG/FCBF/KPCA no conjunto combinado
+PAPER_FCBF_SCOPE = "train"  # supervisionado: FCBF só no treino
+PAPER_SUPERVISED_SCALE = "split"  # StandardScaler após split (artigo)
+NOTEBOOK_SUPERVISED_SCALE = "phase1"  # Z-score só da fase 1 (IoTJ)
+NOTEBOOK_ANOMALY_ZSCORE = "per_split"  # Z-score em df1/df2 separados (IoTJ)
+PAPER_ANOMALY_ZSCORE = "combined"  # Z-score no conjunto concatenado
+PAPER_HPO_N_CALLS = 15
 DEFAULT_BIASED_MODE = "both"  # tier 4: B1 + B2
-DEFAULT_ANOMALY_SMOTE_TARGET = 18225
+# Notebook IoTJ: SMOTE(sampling_strategy={1: N}) com N = nº de BENIGN no treino df1 (18225 no demo PortScan).
+DEFAULT_ANOMALY_SMOTE_TARGET: int | None = None
+NOTEBOOK_ANOMALY_SMOTE_DEMO_BENIGN = 18225
 DEFAULT_CL_P_STAR = 0.933
 
 

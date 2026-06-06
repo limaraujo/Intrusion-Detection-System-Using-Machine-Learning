@@ -4,7 +4,7 @@ Documentação das **12 fases** modulares que reproduzem o método **MTH-IDS** (
 
 **Referência:** L. Yang, A. Moubayed, A. Shami, *MTH-IDS: A Multi-Tiered Hybrid Intrusion Detection System for Internet of Vehicles*, IEEE IoT Journal, 2022.
 
-> **Leitura recomendada:** [GUIA_ARQUITETURA_MTH_IDS.md](GUIA_ARQUITETURA_MTH_IDS.md) — explica os dois ramos (supervisionado vs anomaly), a diferença entre 7 classes e 14 LOAO, e os perfis `merged` / `fine`.
+> **Leitura recomendada:** [README.md](README.md) (índice) · [GUIA_ARQUITETURA_MTH_IDS.md](GUIA_ARQUITETURA_MTH_IDS.md) — ramos supervisionado vs anomaly · [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md) — pastas `merged` / `fine` e bootstrap · [Rodar cada fase manualmente](#rodar-cada-fase-manualmente) — comandos CLI completos.
 
 ---
 
@@ -52,34 +52,33 @@ flowchart TB
 
 ## Estrutura de diretórios
 
-Por padrão, artefatos ficam em `data/pipeline_mth_ids/`. Use `--intermediate-dir` para outro caminho (ex.: `data/pipeline_mth_ids_full`).
+Por padrão (**protocolo paper**), existem **duas raizes** de artefatos — uma por ramo:
+
+| Pasta | Perfil | Comando |
+|-------|--------|---------|
+| `data/pipeline_mth_ids_merged/` | merged | `run_supervised` |
+| `data/pipeline_mth_ids_fine/` | fine | `run_anomaly` |
+
+Detalhes: [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md).
 
 ```
-data/pipeline_mth_ids/
-├── 01_preprocessed.parquet          # Fase 1
-├── 02_sampled_kmeans.parquet        # Fase 2
-├── 03_train.parquet                 # Fase 3
-├── 03_test.parquet
-├── 04_train_after_fcbf.parquet      # Fase 4
-├── 04_test_after_fcbf.parquet
-├── 04_selected_features.txt
-├── 05_train_after_smote.parquet     # Fase 5
-├── 05_test_unchanged.parquet
-├── 06_supervised_metrics.json       # Fase 6
-├── anomaly/                         # Ramo anomaly (fases 7–11)
-│   ├── a01_without_portscan.parquet
-│   ├── a02_portscan_only.parquet
-│   ├── a03_combined_normalized.parquet
-│   ├── a04_after_kpca.parquet
-│   ├── a05_train_after_smote.parquet
-│   ├── a06_test_slice.json
-│   └── loao/                        # Fase 12
+data/pipeline_mth_ids_merged/          # Tabela VII
+├── 01_preprocessed.parquet
+├── 02_sampled_kmeans.parquet
+├── 04_train_after_fcbf.parquet
+├── 05_train_after_smote.parquet
+├── 06_supervised_metrics.json
+└── phase_reports/
+
+data/pipeline_mth_ids_fine/          # Tabela IX
+├── 01_preprocessed.parquet          # bootstrap auto (fases 1–2 fine)
+├── 02_sampled_kmeans.parquet
+├── 06_supervised_metrics.json
+├── anomaly/
+│   └── loao/                        # fase 12
 │       ├── attack_1/
-│       ├── attack_3/
 │       └── loao_summary.json
-└── phase_reports/                   # JSON por fase
-    ├── phase01_load_preprocess.json
-    └── ...
+└── phase_reports/
 ```
 
 Relatórios JSON registram parâmetros, shapes, contagens de labels e duração.
@@ -127,9 +126,11 @@ python -m mth_ids_pipeline.run_anomaly --label-profile merged --loao
 **Fluxo fine (Tabela IX ~14 ataques):**
 
 ```powershell
-python -m mth_ids_pipeline.run_supervised --label-profile fine --from 1 --to 2
-python -m mth_ids_pipeline.run_anomaly --label-profile fine --loao
+python -m mth_ids_pipeline.utils.merge_cicids --profile fine
+python -m mth_ids_pipeline.run_anomaly --protocol paper --loao
 ```
+
+O `run_anomaly` prepara automaticamente: fases **1–2** no fine (`02_…`) e **Tabela VII** no merged (`06_…` copiado para fine). Ver [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md).
 
 Artefatos antigos em `data/pipeline_mth_ids_full/` continuam válidos; equivalem ao perfil merged se o CSV já tinha famílias agregadas. Use `--intermediate-dir data/pipeline_mth_ids_full` com `--label-profile merged` se quiser reutilizá-los.
 
@@ -143,10 +144,9 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 python -m mth_ids_pipeline.experiment_runner --label-profile fine --from 1 --to 2
 python -m mth_ids_pipeline.experiment_runner --label-profile fine --run-loao --from 12 --to 12
 
-# Padrão = artigo (supervisionado)
-python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --to 6
-
-python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --to 6
+# LOAO — um ataque
+python -m mth_ids_pipeline.experiment_runner --label-profile fine `
+  --protocol paper --from 12 --to 12 --attack-label 1
 ```
 
 ### Flags globais importantes
@@ -154,12 +154,284 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 | Flag | Efeito |
 |------|--------|
 | `--label-profile merged\|fine` | CSV + `intermediate-dir` + minority defaults do perfil |
-| `--intermediate-dir PATH` | Raiz de todos os parquets e relatórios |
+| `--intermediate-dir PATH` | Raiz de parquets e relatórios (default: merged ou fine conforme o ramo) |
+| `--skip-bootstrap` | Anomaly: não preparar `02_` (fine) / `06_` (merged→fine) automaticamente |
 | `--minority-labels 6,1,4` | Classes preservadas intactas na fase 2 (merged) |
-| `--auto-minority` (fase 2) | Todos os ataques preservados (fine; automático com perfil fine) |
+| `--minority-labels` (fine) | Default: `1,9,12,13,14` (= famílias Bot/Infiltration/WebAttack pós-merge) |
+| `--auto-minority` (fase 2) | Override manual: todos os ataques preservados (dataset grande; evitar no fine) |
 | `--random-state 0` | Seed (split, k-means, modelos) |
-| *(padrão)* | **Artigo:** split 70/30, SMOTE 100k, CV 10-fold, meta best-base, HPO na validação |
-| `--run-loao` | Habilita fase 12 no experiment_runner |
+| `--loao` | Fases 7–12 (fase 12 = LOAO completo) |
+| `--run-loao` | Habilita fase 12 no `experiment_runner` |
+| `--attack-label N` | LOAO: um zero-day (vira `--attack-labels N` na fase 12) |
+| `--attack-labels 1,5` | LOAO: subset de ataques |
+
+---
+
+## Rodar cada fase manualmente
+
+Execute os comandos **na raiz do repositório**. Troque os caminhos se usar outro `--intermediate-dir`.
+
+**Pastas padrão (protocolo paper):**
+
+| Variável | Caminho |
+|----------|---------|
+| `MERGED` | `data/pipeline_mth_ids_merged` — supervisionado (Tabela VII) |
+| `FINE` | `data/pipeline_mth_ids_fine` — anomaly / LOAO (Tabela IX) |
+| `LOAO_N` | `data/pipeline_mth_ids_fine/anomaly/loao/attack_<N>` — uma rodada LOAO |
+
+Todas as fases aceitam `--intermediate-dir` e `--report-dir` (default: `<intermediate>/phase_reports`).  
+Fases **7–11** do ramo anomaly aceitam também `--work-dir` (pasta onde estão `a01_…`, `a04_…`, etc.).
+
+> **Nota:** não existe módulo `phase03_*` — o split 80/20 supervisionado ocorre **dentro da fase 4**.
+
+### Por intervalo (orquestradores)
+
+Equivalente a rodar várias fases em sequência:
+
+```powershell
+# Supervisionado merged (fases 1–6)
+python -m mth_ids_pipeline.run_supervised --protocol paper --from 1 --to 6
+
+# Pré-processamento fine (fases 1–2)
+python -m mth_ids_pipeline.run_all --label-profile fine --from 1 --to 2
+
+# Um ataque LOAO completo (fases 7→11 dentro da 12)
+python -m mth_ids_pipeline.run_all --label-profile fine `
+  --protocol paper --from 12 --to 12 --skip-bootstrap `
+  --attack-label 1
+
+# Subset de ataques LOAO
+python -m mth_ids_pipeline.run_anomaly --protocol paper --loao `
+  --attack-labels 1,5,10
+```
+
+`run_all`, `run_supervised` e `run_anomaly` são atalhos de `experiment_runner` (repassam `--from`, `--to`, `--protocol`, etc.).
+
+### Fase 1 — load + preprocess
+
+```powershell
+# merged
+python -m mth_ids_pipeline.phases.phase01_load_preprocess `
+  --intermediate-dir data/pipeline_mth_ids_merged `
+  --input data/CICIDS2017.csv
+
+# fine
+python -m mth_ids_pipeline.phases.phase01_load_preprocess `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --input data/CICIDS2017_fine.csv
+```
+
+**Saída:** `01_preprocessed.parquet`
+
+### Fase 2 — k-means sampling (0,8%)
+
+```powershell
+python -m mth_ids_pipeline.phases.phase02_sample_kmeans `
+  --intermediate-dir data/pipeline_mth_ids_merged `
+  --frac 0.008 --n-clusters 1000 --random-state 0
+
+# fine (minoritárias default do perfil fine)
+python -m mth_ids_pipeline.phases.phase02_sample_kmeans `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --frac 0.008 --random-state 0
+```
+
+**Saída:** `02_sampled_kmeans.parquet`
+
+### Fase 4 — IG + FCBF + split 80/20 (supervisionado)
+
+A fase 4 inclui o split treino/teste (equivalente conceitual à “fase 3”).
+
+```powershell
+# Protocolo paper (FCBF no treino, BO-GP α opcional)
+python -m mth_ids_pipeline.phases.phase04_feature_engineering `
+  --intermediate-dir data/pipeline_mth_ids_merged `
+  --fcbf-scope train --scale-mode split `
+  --optimize-ig --ig-hpo-calls 15 --cv-folds 10
+
+# Notebook (FCBF no dataset completo)
+python -m mth_ids_pipeline.phases.phase04_feature_engineering `
+  --intermediate-dir data/pipeline_mth_ids_merged `
+  --fcbf-scope full --scale-mode phase1
+```
+
+**Saída:** `04_train_after_fcbf.parquet`, `04_test_after_fcbf.parquet`, `04_selected_features.txt`
+
+### Fase 5 — SMOTE (supervisionado)
+
+```powershell
+python -m mth_ids_pipeline.phases.phase05_smote `
+  --intermediate-dir data/pipeline_mth_ids_merged
+```
+
+**Saída:** `05_train_after_smote.parquet`, `05_test_unchanged.parquet`
+
+### Fase 6 — modelos supervisionados (Tabela VII)
+
+```powershell
+python -m mth_ids_pipeline.phases.phase06_supervised_models `
+  --intermediate-dir data/pipeline_mth_ids_merged `
+  --cv-folds 10 --hpo-on-validation --meta-learner best-base
+
+# Rápido (sem HPO)
+python -m mth_ids_pipeline.phases.phase06_supervised_models `
+  --intermediate-dir data/pipeline_mth_ids_merged --no-hpo --no-plots
+```
+
+**Saída:** `06_supervised_metrics.json`
+
+### Fase 7 — partição binária LOAO (um zero-day)
+
+Demo notebook (um ataque em `anomaly/`):
+
+```powershell
+python -m mth_ids_pipeline.phases.phase07_anomaly_datasets `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --work-dir data/pipeline_mth_ids_fine/anomaly `
+  --attack-label 5
+```
+
+Uma rodada LOAO (ataque Bot = label 1):
+
+```powershell
+python -m mth_ids_pipeline.phases.phase07_anomaly_datasets `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --work-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1 `
+  --report-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1/reports `
+  --attack-label 1
+```
+
+**Saída:** `a01_without_portscan.parquet`, `a02_portscan_only.parquet` (nomes legados do notebook)
+
+### Fase 8 — Z-score + IG + FCBF + KPCA (anomaly)
+
+**Tempo típico LOAO:** ~1 h (KernelPCA ~3 GiB RAM com `feature-fit-scope combined`).
+
+```powershell
+python -m mth_ids_pipeline.phases.phase08_anomaly_features `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --work-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1 `
+  --report-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1/reports `
+  --random-state 0 `
+  --feature-fit-scope combined --zscore-scope combined `
+  --fcbf-k 20 --kpca-components 10 --kpca-kernel rbf `
+  --ig-cumulative 0.9 --cv-folds 10 `
+  --optimize-ig --optimize-kpca `
+  --ig-hpo-calls 15 --kpca-hpo-calls 15
+```
+
+**Saída:** `a03_combined_normalized.parquet`, `a04_after_kpca.parquet`, `a06_test_slice.json`
+
+### Fase 9 — SMOTE + CL-k-means inicial
+
+```powershell
+python -m mth_ids_pipeline.phases.phase09_anomaly_cluster `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --work-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1 `
+  --report-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1/reports `
+  --random-state 0
+```
+
+SMOTE anomaly: classe binária `1` → número de benignos no treino (default notebook).  
+**Saída:** `a05_train_after_smote.parquet`
+
+### Fase 10 — BO-GP para `n_clusters` e métrica
+
+```powershell
+# Protocolo paper (BO-GP completo; n_calls >= 10)
+python -m mth_ids_pipeline.phases.phase10_anomaly_cluster_hpo `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --work-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1 `
+  --report-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1/reports `
+  --random-state 0 --n-calls 15 --hpo-metric f1 `
+  --metrics euclidean,manhattan,cosine,mahalanobis
+
+# Preview rápido (sem BO-GP)
+python -m mth_ids_pipeline.phases.phase10_anomaly_cluster_hpo `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --work-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1 `
+  --report-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1/reports `
+  --random-state 0 --skip-hpo --hpo-metric f1
+```
+
+**Saída:** `reports/phase10_anomaly_cluster_hpo.json` (`best_n_clusters`, `best_metric`)
+
+### Fase 11 — biased B₁/B₂ + p* (Tabela IX por ataque)
+
+Requer `06_supervised_metrics.json` em `--intermediate-dir` (bootstrap copia da Tabela VII merged).
+
+```powershell
+python -m mth_ids_pipeline.phases.phase11_anomaly_biased `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --work-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1 `
+  --report-dir data/pipeline_mth_ids_fine/anomaly/loao/attack_1/reports `
+  --random-state 0 --biased-mode both --force-biased `
+  --optimize-p-star --p-star-n-calls 15
+```
+
+**Saída:** `reports/phase11_anomaly_biased.json` → métricas em `mth_ids_anomaly` (DR, FAR, F1)
+
+### Fase 12 — LOAO (todos os ataques ou subset)
+
+Orquestra 7→8→9→10→11 por ataque; grava log em `attack_<N>/loao_run.log`.
+
+```powershell
+python -m mth_ids_pipeline.phases.phase12_anomaly_loao `
+  --intermediate-dir data/pipeline_mth_ids_fine `
+  --report-dir data/pipeline_mth_ids_fine/phase_reports `
+  --attack-label 1 `
+  --random-state 0 --hpo-n-calls 15 --hpo-metric f1 `
+  --biased-mode both --force-biased --optimize-p-star `
+  --feature-fit-scope combined --zscore-scope combined `
+  --fcbf-k 20 --kpca-components 10 --kpca-kernel rbf `
+  --ig-cumulative 0.9 --cv-folds 10 `
+  --optimize-ig --optimize-kpca `
+  --ig-hpo-calls 15 --kpca-hpo-calls 15 `
+  --metrics euclidean,manhattan,cosine,mahalanobis
+```
+
+| Flag fase 12 | Efeito |
+|--------------|--------|
+| `--attack-label N` | Um zero-day |
+| `--attack-labels 1,5,10` | Subset |
+| `--skip-phase9` | Pula SMOTE inicial (se `a05_…` já existe) |
+| `--skip-phase10` | Pula BO-GP de clusters |
+
+Não há `--skip-phase7` nem `--skip-phase8`: reexecutar a fase 12 **sempre refaz** IG/KPCA (~1 h por ataque).
+
+### Retomar um ataque LOAO (fases 9–11 manuais)
+
+Se a fase 8 já terminou e só faltam 9–11 (evita repetir KPCA):
+
+1. Rode as fases **9, 10 e 11** com os comandos acima (`--work-dir` = `attack_<N>`).
+2. Atualize o resumo agregado:
+
+```powershell
+python -c "
+from pathlib import Path
+from mth_ids_pipeline.config import CICIDS2017_FINE_LABEL_NAMES
+from mth_ids_pipeline.io.loao_reporting import build_loao_summary, write_loao_summary
+root = Path('data/pipeline_mth_ids_fine/anomaly/loao')
+labels = {k: v for k, v in CICIDS2017_FINE_LABEL_NAMES.items() if k > 0}
+summary = build_loao_summary(root, labels, attacks_in_dataset=len(labels))
+write_loao_summary(root, summary)
+print('Atualizado:', root / 'loao_summary.json')
+"
+
+python -m mth_ids_pipeline.report_paper_tables --table ix `
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
+```
+
+Execução manual **não** acrescenta saída ao `loao_run.log` (só a fase 12 grava esse arquivo).
+
+### Ver resultados
+
+| O quê | Onde |
+|-------|------|
+| Métricas por ataque LOAO | `anomaly/loao/attack_<N>/reports/phase11_anomaly_biased.json` |
+| Resumo Tabela IX | `anomaly/loao/loao_summary.json` |
+| Tabela VII | `06_supervised_metrics.json` |
+| Relatório no terminal | `python -m mth_ids_pipeline.report_paper_tables --table all` |
 
 ---
 
@@ -204,20 +476,33 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 
 **Nota:** Após rodar a fase 1 no CSV completo, confira o mapeamento label→inteiro em `phase_reports/phase02_sample_kmeans.json` antes de fixar `--minority-labels`.
 
+#### Perfil `merged` vs `fine` (minoritárias na fase 2)
+
+| Perfil | Default `--minority-labels` | Critério |
+|--------|----------------------------|----------|
+| **merged** | `6,1,4` (WebAttack, Bot, Infiltration) | Igual ao `df_minor` do notebook |
+| **fine** | `1,9,12,13,14` | Fine cujo destino merged ∈ `{Bot, Infiltration, WebAttack}` |
+
+No **fine**, a regra **não** é “preservar rótulos que o merge não agrega”. **PortScan** não é agregado, mas é amostrado (k-means 0,8%) porque no merged também não entra no `df_minor`. Os subtipos **Web Attack** são agregados em WebAttack no merge, mas ficam **inteiros** no fine porque a família WebAttack está no `df_minor`.
+
+Detalhes e tabela completa: [PASTAS_E_BOOTSTRAP.md — Fase 2 no fine](PASTAS_E_BOOTSTRAP.md#fase-2-no-fine-escala-notebook-alinhada-ao-merge).
+
 ---
 
-### Fase 3 — `phase03_train_test_split`
+### Fase 3 — split 80/20 (dentro da fase 4)
 
 **Papel:** Primeiro split estratificado do ramo **supervisionado**.
 
+Não há módulo `phase03_*`. O split ocorre em `phase04_feature_engineering.py` via `train_test_split` antes de IG/FCBF.
+
 **O que faz:**
 - `train_test_split` estratificado com `random_state=0`.
-- Default: **80% treino / 20% teste** (`--test-size 0.2`).
-- Padrão (artigo): **70% / 30%** (`DEFAULT_TEST_SIZE=0.3`).
+- Default (`--protocol paper` e `notebook`): **80% treino / 20% teste** (`--test-size 0.2`, alinhado ao notebook).
+- Legado artigo (texto): 70/30 (`PAPER_TEST_SIZE=0.3` em `config.py`; não usado pelo runner).
 
 **Entrada:** `02_sampled_kmeans.parquet`.
 
-**Saída:** `03_train.parquet`, `03_test.parquet`.
+**Saída:** parquets da fase 4 (`04_train_after_fcbf.parquet`, `04_test_after_fcbf.parquet`) — não existem `03_train.parquet` / `03_test.parquet` separados.
 
 ---
 
@@ -250,7 +535,8 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 
 **O que faz:**
 - **SMOTE** apenas no conjunto de **treino** (teste inalterado).
-- Padrão (artigo): famílias **Bot (1), BruteForce (2), Infiltration (4), WebAttack (6)** → **100.000** cada (`PAPER_SMOTE_TARGETS` em `config.py`).
+- Padrão (`--protocol paper` e `notebook`): **BruteForce (2) e Infiltration (4) → 1 000** cada (`NOTEBOOK_SMOTE_TARGETS`; igual ao notebook IoTJ).
+- Texto do artigo (`PAPER_SMOTE_TARGETS`): quatro famílias → 100 000 — não usado pelo runner.
 
 **Entrada:** parquets da fase 4.
 
@@ -270,8 +556,8 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
   - **XGBoost** (XGB)
 - **HPO opcional** com **BO-TPE** (Hyperopt, `--no-hpo` usa params fixos do notebook).
 - **Stacking:** meta-learner sobre predições dos quatro bases.
-  - `--meta-learner best-base` (**artigo**): `clone` do melhor base (maior F1 weighted no hold-out).
-  - `--meta-learner xgb` (**notebook**, default): meta XGBoost + HPO opcional.
+  - `--meta-learner best-base` (**`--protocol paper`**): `clone` do melhor base (maior F1 weighted no hold-out).
+  - `--meta-learner xgb` (**`--protocol notebook`**): meta XGBoost + HPO opcional.
 - Métricas: accuracy, precision, recall, F1 (weighted) no **hold-out teste**; opcional `--binary`.
 - Com `--cv-folds N`: relatório **N-fold CV estratificado no treino** (todos os modelos) — comparável à Tabela VII.
 - **HPO** (sem `--no-hpo`):
@@ -283,7 +569,8 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 **Saída:** `06_supervised_metrics.json`, relatório `phase06_supervised_models.json` (inclui `cv_reports` se CV ativo).
 
 **Flags úteis:**
-- Padrão (artigo): 70/30, SMOTE 100k, CV 10-fold, meta best-base, **BO-TPE (HPO) na validação**.
+- Padrão (`--protocol paper`): 80/20, SMOTE notebook `{2,4}→1000`, CV 10-fold, meta **best-base**, **BO-TPE (HPO) na validação**.
+- Padrão (`--protocol notebook`): 80/20, SMOTE notebook, HPO no hold-out, meta **xgb**.
 - `--no-hpo --no-plots` — treino rápido com hiperparâmetros fixos (não reproduz o artigo).
 
 **Resultado típico (amostra):** stacking ~99,5% accuracy.
@@ -327,7 +614,7 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 - `a04_after_kpca.parquet`
 - `a06_test_slice.json` (índice que separa treino df1 vs teste df2+benignos)
 
-**Tempo típico:** ~5–10 min na amostra (~27k linhas).
+**Tempo típico:** demo notebook ~5–10 min; **LOAO com BO-GP IG+KPCA** ~1 h por ataque (KernelPCA ~3 GiB RAM no combinado).
 
 ---
 
@@ -337,7 +624,7 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 
 **O que faz:**
 1. Divide `a04_after_kpca.parquet` em treino (parte df1) e teste (df2 + benignos amostrados).
-2. **SMOTE** na classe ataque do treino → **18225** amostras (`--smote-target`).
+2. **SMOTE** na classe ataque do treino → alvo = nº de **benignos** no treino (default notebook; ex. 18225 no demo PortScan). Compatível com `imbalanced-learn` recente (sem `n_jobs` fixo).
 3. **CL-k-means:** MiniBatchKMeans + rotula clusters como benigno/ataque pela classe majoritária no cluster.
 4. Calcula **confiança pᵢ** (proporção da classe majoritária no cluster).
 
@@ -380,7 +667,7 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 4. Modo **`--biased-mode auto`** (default no experiment_runner): testa none / b1-only / b2-only / both no hold-out interno e aplica só o que **melhora F1 no teste interno** (geralmente **b1-only**).
 5. Métricas binárias: **DR**, **FAR**, **F1**.
 
-**Entrada:** diretório `anomaly/`, opcionalmente `06_supervised_metrics.json`.
+**Entrada:** diretório `anomaly/`; `06_supervised_metrics.json` no `--intermediate-dir` (cópia da **Tabela VII merged** — ver [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md#por-que-o-bootstrap-é-assim-decisão-de-design)).
 
 **Saída:** `phase_reports/phase11_anomaly_biased.json`.
 
@@ -437,14 +724,37 @@ python -m mth_ids_pipeline.experiment_runner --label-profile merged --from 1 --t
 | `dimensionality_reduction.py` | Kernel PCA |
 | `hyperparameter_optimization.py` | BO-TPE, BO-GP |
 | `biased_classifiers.py` | B₁/B₂, modo auto, p* |
-| `anomaly_io.py` | Splits LOAO, descoberta de labels de ataque |
+| `anomaly_io.py` | Splits LOAO, SMOTE anomaly, descoberta de labels |
+| `loao_reporting.py` | `loao_summary.json`, agregação Tabela IX |
+| `run_log.py` | Log `attack_<N>/loao_run.log` (fase 12) |
 | `evaluation.py` | DR, FAR, F1, comparação com artigo |
-| `experiment_runner.py` | Orquestração reprodutível |
-| `validate_reproduction.py` | Compara pipeline vs notebook/artigo |
+| `experiment_runner.py` | Orquestração reprodutível, bootstrap |
+| `report_paper_tables.py` | Tabela VII / IX no terminal |
+
+---
+
+## Solução de problemas
+
+| Erro / sintoma | Causa provável | O que fazer |
+|----------------|----------------|-------------|
+| `02_sampled_kmeans.parquet` não encontrado | Fine sem bootstrap | `run_anomaly` sem `--skip-bootstrap`, ou fases 1–2 no fine |
+| `06_supervised_metrics.json` ausente (fase 11) | Tabela VII não rodou no merged | `run_supervised --protocol paper` (bootstrap copia para fine) |
+| `SMOTE … n_jobs` na fase 9 | `imbalanced-learn` antigo no código | Atualizar repo; `anomaly_io` já trata API |
+| `n_calls >= 10` (skopt) | `--n-calls` ou `--p-star-n-calls` < 10 | Usar ≥ 15 (padrão paper) |
+| LOAO refaz fase 8 (~1 h) | Fase 12 sem skip 7/8 | Retomar fases 9–11 manualmente se `a04_…` existe |
+| `loao_summary.json` com 0 ataques | Falha mid-run; resumo não reconstruído | Script em [Retomar LOAO](#retomar-um-ataque-loao-fases-911-manuais) |
+| Tabela IX vazia no terminal | Mesmo que acima | Reconstruir `loao_summary` antes de `report_paper_tables` |
+| `MemoryError` na fase 8 | KernelPCA grande | Fechar apps; menos RAM → máquina com mais memória |
+
+Mais contexto: [PASTAS_E_BOOTSTRAP.md — Erros comuns](PASTAS_E_BOOTSTRAP.md#erros-comuns), [docs/README.md](README.md).
 
 ---
 
 ## Documentos relacionados
 
-- [`METHODOLOGICAL_AUDIT.md`](METHODOLOGICAL_AUDIT.md) — divergências artigo × notebook × código
-- [`REPRODUCTION_REPORT.md`](REPRODUCTION_REPORT.md) — resultados e validação numérica
+- [README.md](README.md) — índice da documentação
+- [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) — protocolo paper vs notebook
+- [GUIA_ARQUITETURA_MTH_IDS.md](GUIA_ARQUITETURA_MTH_IDS.md) — estrutura do pacote
+- [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md) — merged/fine e bootstrap
+- [archive/METHODOLOGICAL_AUDIT.md](archive/METHODOLOGICAL_AUDIT.md) — divergências artigo × notebook × código
+- [archive/REPRODUCTION_REPORT.md](archive/REPRODUCTION_REPORT.md) — resultados e validação numérica

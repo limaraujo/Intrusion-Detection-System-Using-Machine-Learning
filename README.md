@@ -64,54 +64,90 @@ CAN-intrusion dataset, a benchmark network security dataset for intra-vehicle in
 * [LCCDE_IDS_GlobeCom22.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/LCCDE_IDS_GlobeCom22.ipynb): code for the paper "LCCDE: A Decision-Based Ensemble Framework for Intrusion Detection in The Internet of Vehicles"  
 
 #### MTH-IDS modular pipeline (Parquet + reports)
-The folder [mth_ids_pipeline](mth_ids_pipeline) contains a phase-based pipeline aligned with the MTH-IDS notebook. All phases write Parquet outputs and optional JSON reports under data/pipeline_mth_ids/phase_reports.
 
-Run the full pipeline:
+The package [mth_ids_pipeline](mth_ids_pipeline) reproduces the MTH-IDS paper (default `--protocol paper`) or the published IoTJ notebook (`--protocol notebook`). Layout: `core/` (ML), `io/` (artifacts), `phases/` (executable steps), `orchestration/` (runner).
+
+**Documentation (Portuguese):**
+
+| Doc | Content |
+|-----|---------|
+| [docs/README.md](docs/README.md) | Index, quick start, troubleshooting |
+| [docs/PIPELINE_PHASES.md](docs/PIPELINE_PHASES.md) | All 12 phases + **[run each phase manually](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente)** |
+| [docs/PAPER_PROTOCOL.md](docs/PAPER_PROTOCOL.md) | Paper vs notebook parameters (Tables VII & IX) |
+| [docs/GUIA_ARQUITETURA_MTH_IDS.md](docs/GUIA_ARQUITETURA_MTH_IDS.md) | Package layout and execution branches |
+| [docs/PASTAS_E_BOOTSTRAP.md](docs/PASTAS_E_BOOTSTRAP.md) | `merged` / `fine` folders and auto-bootstrap |
+
+Prepare datasets:
 ```bash
-python -m mth_ids_pipeline.run_all --to 9
+python -m mth_ids_pipeline.utils.merge_cicids --profile merged
+python -m mth_ids_pipeline.utils.merge_cicids --profile fine
 ```
 
-Run only supervised phases (1-6):
-```bash
-python -m mth_ids_pipeline.run_all --to 6
+**Fine: load + sampling, then LOAO (Table IX)** — run from the repo root. Step 1 can be skipped if `data/CICIDS2017_fine.csv` already exists. Step 2 forces regeneration of phases 1–2 (~27k rows; minority labels aligned with merged `df_minor` — see [docs/PASTAS_E_BOOTSTRAP.md](docs/PASTAS_E_BOOTSTRAP.md)). Step 3 auto-bootstraps `06_supervised_metrics.json` from merged Table VII if missing.
+
+```powershell
+# 1) Fine CSV (skip if data\CICIDS2017_fine.csv already exists)
+python -m mth_ids_pipeline.utils.merge_cicids --profile fine
+
+# 2) Regenerate load + k-means sampling (phases 1–2)
+Remove-Item data\pipeline_mth_ids_fine\01_preprocessed.parquet -ErrorAction SilentlyContinue
+Remove-Item data\pipeline_mth_ids_fine\02_sampled_kmeans.parquet -ErrorAction SilentlyContinue
+python -m mth_ids_pipeline.run_all --label-profile fine --from 1 --to 2
+
+# 3) LOAO (phases 7–12; may take many hours)
+python -m mth_ids_pipeline.run_anomaly --protocol paper --loao
+
+# 4) Table IX report (after LOAO finishes)
+python -m mth_ids_pipeline.report_paper_tables --table ix `
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
 ```
 
-Resume from a phase:
-```bash
-python -m mth_ids_pipeline.run_all --from 4 --to 9
+Stop after step 2 for load + sampling only. If step 3 fails on `06_supervised_metrics.json`, run supervised first: `python -m mth_ids_pipeline.run_supervised --protocol paper`.
+
+Single LOAO attack (e.g. Bot, label 1) — still re-runs phases 7–8 (~1 h) per attack:
+
+```powershell
+python -m mth_ids_pipeline.run_all --label-profile fine `
+  --protocol paper --from 12 --to 12 --skip-bootstrap `
+  --attack-label 1
 ```
 
-Override input dataset for phase 1:
+To resume phases 9–11 only (skip re-running phase 8), see [docs/PIPELINE_PHASES.md — Retomar LOAO](docs/PIPELINE_PHASES.md#retomar-um-ataque-loao-fases-911-manuais).
+
+Supervised (paper — Table VII) → `data/pipeline_mth_ids_merged/`:
 ```bash
-python -m mth_ids_pipeline.run_all --raw-csv data/CICIDS2017_sample_km.csv --to 6
+python -m mth_ids_pipeline.run_supervised --protocol paper
 ```
 
-Pass phase-specific arguments:
+Anomaly LOAO (paper — Table IX) → `data/pipeline_mth_ids_fine/` (auto: fine 1–2 + merged Table VII → `06_…` copy):
 ```bash
-python -m mth_ids_pipeline.run_all --to 9 \
-  --phase8-args "--benign-target 1255" \
-  --phase9-args "--smote-target 18225"
+python -m mth_ids_pipeline.run_anomaly --protocol paper --loao
 ```
 
-Common CLI conventions across phases:
-- Single-file phases use `--input` and `--output`.
-- Train/test phases use `--train-input` and `--test-input` (aliases: `--train`, `--test`).
-- Anomaly phases use `--input-dir` and `--output-dir` (alias: `--dir`).
-- All phases accept `--report-dir` to set the JSON report location.
+Compare metrics vs paper/notebook:
+```bash
+python -m mth_ids_pipeline.report_paper_tables --table all \
+  --intermediate-dir data/pipeline_mth_ids_merged \
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
+```
+
+**Run each phase manually** (full commands, LOAO resume, flags): [docs/PIPELINE_PHASES.md — Rodar cada fase manualmente](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente).
 
 CLI quick reference:
 
-| Phase | Key inputs | Key outputs | Typical extras |
+| Phase | Module | `--intermediate-dir` | Typical extras |
 | --- | --- | --- | --- |
-| phase01_load_preprocess | `--input` | `--output` | `--report-dir` |
-| phase02_sample_kmeans | `--input` | `--output` | `--n-clusters`, `--frac`, `--random-state` |
-| phase03_train_test_split | `--input` | `--train-output`, `--test-output` | `--test-size`, `--random-state` |
-| phase04_feature_engineering | `--input` | `--output-dir` | `--fcbf-k`, `--random-state` |
-| phase05_smote | `--train-input`, `--test-input` | `--output-dir` | `--report-dir` |
-| phase06_supervised_models | `--train-input`, `--test-input` | `--metrics-json` | `--no-hpo`, `--no-plots` |
-| phase07_anomaly_datasets | `--input` | `--output-dir` | `--report-dir` |
-| phase08_anomaly_features | `--input-dir` | `--output-dir` | `--fcbf-k`, `--kpca-components`, `--benign-target` |
-| phase09_anomaly_cluster | `--input-dir` | `--output-dir` | `--n-clusters`, `--smote-target` |
+| 1 | `phases.phase01_load_preprocess` | merged or fine | `--input data/CICIDS2017.csv` |
+| 2 | `phases.phase02_sample_kmeans` | merged or fine | `--frac 0.008` |
+| 4 | `phases.phase04_feature_engineering` | merged | `--fcbf-scope train`, `--optimize-ig` (split 80/20 inside) |
+| 5 | `phases.phase05_smote` | merged | — |
+| 6 | `phases.phase06_supervised_models` | merged | `--cv-folds 10`, `--hpo-on-validation` |
+| 7 | `phases.phase07_anomaly_datasets` | fine | `--work-dir …/loao/attack_N`, `--attack-label N` |
+| 8 | `phases.phase08_anomaly_features` | fine | `--work-dir …/attack_N`, `--optimize-ig --optimize-kpca` |
+| 9 | `phases.phase09_anomaly_cluster` | fine | `--work-dir …/attack_N` |
+| 10 | `phases.phase10_anomaly_cluster_hpo` | fine | `--work-dir …/attack_N`, `--n-calls 15` or `--skip-hpo` |
+| 11 | `phases.phase11_anomaly_biased` | fine | `--work-dir …/attack_N`, `--force-biased --optimize-p-star` |
+| 12 | `phases.phase12_anomaly_loao` | fine | `--attack-label N`, orchestrates 7→11 |
 
 ### Machine Learning Algorithms  
 * Decision tree (DT)
@@ -131,8 +167,12 @@ If you are interested in hyperparameter tuning of machine learning algorithms, p
 https://github.com/LiYangHart/Hyperparameter-Optimization-of-Machine-Learning-Algorithms
 
 ### Requirements & Libraries  
+
+Install: `pip install -r requirements.txt` (Python 3.10+ recommended; tested with 3.13).
+
 * Python 3.6+ 
 * [scikit-learn](https://scikit-learn.org/stable/)  
+* [imbalanced-learn](https://imbalanced-learn.org/) — SMOTE (API without `n_jobs` in recent versions)
 * [Xgboost](https://xgboost.readthedocs.io/en/latest/python/python_intro.html)
 * [lightgbm](https://lightgbm.readthedocs.io/en/v3.3.2/Python-Intro.html)
 * [catboost](https://xgboost.readthedocs.io/en/latest/python/python_intro.html)
