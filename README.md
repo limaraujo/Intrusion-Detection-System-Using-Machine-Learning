@@ -73,6 +73,11 @@ The package [mth_ids_pipeline](mth_ids_pipeline) reproduces the MTH-IDS paper (d
 |-----|---------|
 | [docs/README.md](docs/README.md) | Index, quick start, troubleshooting |
 | [docs/PIPELINE_PHASES.md](docs/PIPELINE_PHASES.md) | All 12 phases + **[run each phase manually](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente)** |
+| [docs/IDS2018_TABELAS_VII_IX_X.md](docs/IDS2018_TABELAS_VII_IX_X.md) | **IDS2018** — Tabelas VII, IX e X (passo a passo) |
+| [docs/PROTOCOLO_CSE_CIC_IDS2018.md](docs/PROTOCOLO_CSE_CIC_IDS2018.md) | IDS2018 — isolamento do CICIDS2017 |
+| [docs/TABELAS_COMANDOS_SEPARADOS.md](docs/TABELAS_COMANDOS_SEPARADOS.md) | Comandos separados VII / IX / X + test set Tabela X |
+| [docs/COMO_RODAR_TABELAS.md](docs/COMO_RODAR_TABELAS.md) | **Passo a passo** Tabelas VII, IX e X |
+| [docs/MERGED_VS_FINE_E_TABELAS.md](docs/MERGED_VS_FINE_E_TABELAS.md) | Merged vs fine, LOAO vs global |
 | [docs/PAPER_PROTOCOL.md](docs/PAPER_PROTOCOL.md) | Paper vs notebook parameters (Tables VII & IX) |
 | [docs/GUIA_ARQUITETURA_MTH_IDS.md](docs/GUIA_ARQUITETURA_MTH_IDS.md) | Package layout and execution branches |
 | [docs/PASTAS_E_BOOTSTRAP.md](docs/PASTAS_E_BOOTSTRAP.md) | `merged` / `fine` folders and auto-bootstrap |

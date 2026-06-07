@@ -142,6 +142,41 @@ A04_AFTER_KPCA = "a04_after_kpca.parquet"
 A05_TRAIN_SMOTE = "a05_train_after_smote.parquet"
 A06_TEST_SLICE_INFO = "a06_test_slice.json"
 
+# Artefatos de inferência (fases 4/6/11 salvam; fase 13 carrega)
+MODELS_DIR = "models"
+MODELS_SUPERVISED_DIR = "models/supervised"
+MODELS_ANOMALY_DIR = "models/anomaly"
+MODEL_MANIFEST = "manifest.json"
+SUP_SCALER = "scaler.joblib"
+SUP_FCBF = "fcbf.joblib"
+SUP_FEATURE_NAMES = "feature_names.txt"
+SUP_IG_FEATURES = "ig_features.txt"
+SUP_DT = "dt.joblib"
+SUP_RF = "rf.joblib"
+SUP_ET = "et.joblib"
+SUP_XGB = "xgb.joblib"
+SUP_STACKING_META = "stacking_meta.joblib"
+ANOM_CL_STATE = "cl_kmeans_state.joblib"
+ANOM_B1 = "b1.joblib"
+ANOM_B2 = "b2.joblib"
+DEFAULT_ANOMALY_ATTACK_PRED_LABEL = 99
+GLOBAL_TABLE_X_PROTOCOL = "global_table_x"
+ANOMALY_GLOBAL_WORK_SUBDIR = "anomaly/global"
+PAPER_TABLE_X_REFERENCE = {
+    "cicids2017": {
+        "accuracy_pct": 99.88,
+        "detection_rate_pct": 99.77,
+        "false_alarm_rate_pct": 0.10,
+        "f1": 0.9988,
+    },
+    "can": {
+        "accuracy_pct": 99.99,
+        "detection_rate_pct": 100.0,
+        "false_alarm_rate_pct": 0.00005,
+        "f1": 0.9999,
+    },
+}
+
 
 def ensure_intermediate_dirs(intermediate_dir: Path | None = None) -> PipelinePaths:
     paths = get_pipeline_paths(intermediate_dir)

@@ -14,7 +14,12 @@ from imblearn.over_sampling import SMOTE
 from sklearn.decomposition import KernelPCA
 from sklearn.preprocessing import StandardScaler
 
-from mth_ids_pipeline.config import A04_AFTER_KPCA, A05_TRAIN_SMOTE, A06_TEST_SLICE_INFO
+from mth_ids_pipeline.config import (
+    A04_AFTER_KPCA,
+    A05_TRAIN_SMOTE,
+    A06_TEST_SLICE_INFO,
+    GLOBAL_TABLE_X_PROTOCOL,
+)
 
 FITTED_SCALER = "fitted_scaler.joblib"
 FITTED_IG_FEATURES = "fitted_ig_features.txt"
@@ -182,6 +187,113 @@ def validate_loao_partition(
 
 def numeric_feature_columns(df: pd.DataFrame, *, label_col: str = "Label") -> list[str]:
     return [c for c in df.columns if c != label_col and pd.api.types.is_numeric_dtype(df[c])]
+
+
+def binarize_attack_labels(df: pd.DataFrame, *, label_col: str = "Label") -> pd.DataFrame:
+    """0 = BENIGN; 1 = qualquer ataque (detector global Tabela X)."""
+    out = df.copy()
+    out.loc[out[label_col] > 0, label_col] = 1
+    return out
+
+
+def build_global_binary_train_split(
+    df: pd.DataFrame,
+    *,
+    test_size: float,
+    random_state: int,
+    label_col: str = "Label",
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """
+    Split estratificado igual à fase 4 (Tabela X).
+
+    Retorna treino binário (80% default) e hold-out intocado (reservado à fase 13).
+    """
+    from sklearn.model_selection import train_test_split
+
+    feature_cols = [c for c in df.columns if c != label_col]
+    X = df[feature_cols].values
+    y = np.ravel(df[label_col].values)
+    X_train, X_holdout, y_train, y_holdout = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=y,
+    )
+    train_raw = pd.DataFrame(X_train, columns=feature_cols)
+    train_raw[label_col] = y_train
+    holdout_raw = pd.DataFrame(X_holdout, columns=feature_cols)
+    holdout_raw[label_col] = y_holdout
+
+    train_df = binarize_attack_labels(train_raw, label_col=label_col)
+    meta: dict[str, Any] = {
+        "protocol": GLOBAL_TABLE_X_PROTOCOL,
+        "test_size": float(test_size),
+        "random_state": int(random_state),
+        "n_train_rows": int(len(train_df)),
+        "n_holdout_rows": int(len(holdout_raw)),
+        "holdout_reserved_for_phase13": True,
+        "train_original_label_counts": label_value_counts_dict(train_raw[label_col]),
+        "train_binary_label_counts": label_value_counts_dict(train_df[label_col]),
+        "holdout_label_counts": label_value_counts_dict(holdout_raw[label_col]),
+        "train_attack_labels_present": sorted(
+            int(x) for x in train_raw[label_col].unique() if int(x) > 0
+        ),
+    }
+    return train_df, holdout_raw, meta
+
+
+def build_global_anomaly_partition(
+    train_df: pd.DataFrame,
+    *,
+    round_meta: dict[str, Any],
+    label_col: str = "Label",
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """Treino = 70% binário; teste vazio nas fases 8–11 (hold-out só na fase 13)."""
+    test_df = train_df.iloc[0:0].copy()
+    n_train = int(len(train_df))
+    meta: dict[str, Any] = {
+        **round_meta,
+        "n_train_rows": n_train,
+        "n_test_rows": 0,
+        "n_df1_rows": n_train,
+        "train_row_start": 0,
+        "train_row_end": n_train,
+        "test_row_start": n_train,
+        "test_row_end": n_train,
+        "zero_day_samples": 0,
+        "benign_sampled": 0,
+        "benign_available_in_train": int((train_df[label_col] == 0).sum()),
+        "benign_pairing_rule": "none_holdout_reserved",
+        "benign_test_indices_in_df1": [],
+        "benign_overlap_train_test": 0,
+        "train_binary_label_counts": label_value_counts_dict(train_df[label_col]),
+        "test_binary_label_counts": {},
+        "protocol": GLOBAL_TABLE_X_PROTOCOL,
+    }
+    validate_global_partition(train_df, test_df, meta, label_col=label_col)
+    return train_df, test_df, meta
+
+
+def validate_global_partition(
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    meta: dict[str, Any],
+    *,
+    label_col: str = "Label",
+) -> None:
+    if meta.get("protocol") != GLOBAL_TABLE_X_PROTOCOL:
+        raise ValueError(f"Protocolo global esperado, recebido: {meta.get('protocol')}")
+    if int(len(test_df)) != 0:
+        raise ValueError("Tabela X: teste interno deve estar vazio nas fases 8–11")
+    if int(meta.get("n_test_rows", -1)) != 0:
+        raise ValueError("n_test_rows deve ser 0 no modo global")
+    if train_df[label_col].max() > 1 or train_df[label_col].min() < 0:
+        raise ValueError("Treino global deve usar rótulos binários {0, 1}")
+
+
+def is_global_table_x_protocol(meta: dict[str, Any] | None) -> bool:
+    return bool(meta) and meta.get("protocol") == GLOBAL_TABLE_X_PROTOCOL
 
 
 def build_loao_train_test_split(
@@ -356,15 +468,33 @@ def load_anomaly_splits(
     X_test = X_all[n_train:]
     y_test = y_all[n_train:]
 
+    internal_val = False
+    if len(X_test) == 0 and is_global_table_x_protocol(meta):
+        from sklearn.model_selection import train_test_split
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_train,
+            y_train,
+            test_size=0.2,
+            random_state=random_state,
+            stratify=y_train,
+        )
+        internal_val = True
+        print(
+            "Modo global (Tabela X): validação interna 20% do treino para fases 9–11 "
+            "(hold-out 20% reservado à fase 13)."
+        )
+
     train_counts = label_value_counts_dict(pd.Series(y_train))
     test_counts = label_value_counts_dict(pd.Series(y_test))
+    partition_label = "validação interna" if internal_val else "teste"
     print(
         f"Partição KPCA: treino={X_train.shape} labels={train_counts} | "
-        f"teste={X_test.shape} labels={test_counts}"
+        f"{partition_label}={X_test.shape} labels={test_counts}"
     )
 
     train_path = input_dir / A05_TRAIN_SMOTE
-    if train_path.exists():
+    if train_path.exists() and not internal_val:
         tr = pd.read_parquet(train_path)
         X_train = tr.drop(columns=[label_col]).values
         y_train = np.ravel(tr[label_col].values)
@@ -379,3 +509,33 @@ def load_anomaly_splits(
     if did_smote and resolved is not None:
         print(f"SMOTE notebook: classe 1 -> {resolved} (alvo = n benignos no treino)")
     return X_train, X_test, y_train, y_test, did_smote
+
+
+def load_anomaly_full_train_smote(
+    input_dir: Path,
+    *,
+    smote_target: int | None,
+    random_state: int,
+    label_col: str = "Label",
+) -> tuple[np.ndarray, np.ndarray, bool]:
+    """Treino KPCA completo (sem validação interna) — persistência fase 11 modo global."""
+    df = pd.read_parquet(input_dir / A04_AFTER_KPCA)
+    meta = json.loads((input_dir / A06_TEST_SLICE_INFO).read_text(encoding="utf-8"))
+    n_train = int(meta.get("n_train_rows", meta["n_df1_rows"]))
+    X_train = df.drop(columns=[label_col]).values[:n_train]
+    y_train = np.ravel(df[label_col].values[:n_train])
+
+    train_path = input_dir / A05_TRAIN_SMOTE
+    if train_path.exists():
+        tr = pd.read_parquet(train_path)
+        return tr.drop(columns=[label_col]).values, np.ravel(tr[label_col].values), True
+
+    X_res, y_res, did_smote, resolved = apply_notebook_anomaly_smote(
+        X_train,
+        y_train,
+        smote_target=smote_target,
+        random_state=random_state,
+    )
+    if did_smote and resolved is not None:
+        print(f"SMOTE (treino completo global): classe 1 -> {resolved}")
+    return X_res, y_res, did_smote

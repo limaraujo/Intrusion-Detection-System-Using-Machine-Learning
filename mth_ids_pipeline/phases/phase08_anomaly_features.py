@@ -20,7 +20,9 @@ import pandas as pd
 
 try:
     from mth_ids_pipeline.io.anomaly_io import (
+        build_global_anomaly_partition,
         build_loao_train_test_split,
+        is_global_table_x_protocol,
         log_loao_partition,
         numeric_feature_columns,
         require_path,
@@ -37,7 +39,9 @@ try:
     from mth_ids_pipeline.core.preprocessing import zscore_array
 except ImportError:
     from mth_ids_pipeline.io.anomaly_io import (
+        build_global_anomaly_partition,
         build_loao_train_test_split,
+        is_global_table_x_protocol,
         log_loao_partition,
         numeric_feature_columns,
         require_path,
@@ -313,39 +317,55 @@ def main() -> None:
     if round_meta_path.is_file():
         orig_meta = json.loads(round_meta_path.read_text(encoding="utf-8"))
 
-    train_df, test_df, partition_meta = build_loao_train_test_split(
-        df1,
-        df2,
-        label_col=label_col,
-        benign_target=args.benign_target,
-        random_state=args.random_state,
-    )
-    if orig_meta:
-        partition_meta.update(
-            {
-                k: orig_meta[k]
-                for k in (
-                    "zero_day_label",
-                    "train_original_label_counts",
-                    "train_attack_labels_present",
-                    "zero_day_fully_excluded_from_train",
-                )
-                if k in orig_meta
-            }
+    if is_global_table_x_protocol(orig_meta):
+        train_df, test_df, partition_meta = build_global_anomaly_partition(
+            df1,
+            round_meta=orig_meta,
+            label_col=label_col,
         )
-    validate_loao_partition(train_df, test_df, partition_meta, label_col=label_col)
-    log_loao_partition(
-        stage="fase 8 (pré-normalização)",
-        train_df=train_df,
-        test_df=test_df,
-        meta=partition_meta,
-        label_col=label_col,
-    )
+        log_loao_partition(
+            stage="fase 8 (global — pré-normalização)",
+            train_df=train_df,
+            test_df=test_df,
+            meta=partition_meta,
+            label_col=label_col,
+        )
+        print(
+            f"Partição global (Tabela X): treino={train_df.shape}, "
+            f"teste interno vazio (hold-out na fase 13)"
+        )
+    else:
+        train_df, test_df, partition_meta = build_loao_train_test_split(
+            df1,
+            df2,
+            label_col=label_col,
+            benign_target=args.benign_target,
+            random_state=args.random_state,
+        )
+        if orig_meta:
+            partition_meta.update(
+                {
+                    k: orig_meta[k]
+                    for k in (
+                        "zero_day_label",
+                        "train_original_label_counts",
+                        "train_attack_labels_present",
+                        "zero_day_fully_excluded_from_train",
+                    )
+                    if k in orig_meta
+                }
+            )
+        validate_loao_partition(train_df, test_df, partition_meta, label_col=label_col)
+        log_loao_partition(
+            stage="fase 8 (pré-normalização)",
+            train_df=train_df,
+            test_df=test_df,
+            meta=partition_meta,
+            label_col=label_col,
+        )
+        print(f"Partição LOAO: treino={train_df.shape}, teste={test_df.shape}")
     feature_names = numeric_feature_columns(train_df, label_col=label_col)
-    print(
-        f"Partição LOAO: treino={train_df.shape}, teste={test_df.shape}, "
-        f"features={len(feature_names)}"
-    )
+    print(f"features={len(feature_names)}")
     tick("Partição treino/teste")
 
     rs = args.random_state if args.random_state is not None else 0
@@ -399,9 +419,14 @@ def main() -> None:
         y_train = np.ravel(train_df[label_col].values)
         X_test = test_df[feature_names].values
         y_test = np.ravel(test_df[label_col].values)
+        skip_test_transform = len(test_df) == 0
         pipeline = AnomalyFeaturePipeline(fcbf_k=args.fcbf_k, ig_cumulative=ig_cumulative, random_state=rs)
         X_train_fcbf = pipeline.fit(X_train, y_train, feature_names)
-        X_test_fcbf = pipeline.transform(X_test, split="teste")
+        if skip_test_transform:
+            X_test_fcbf = np.empty((0, X_train_fcbf.shape[1]), dtype=X_train_fcbf.dtype)
+            print("  [Tabela X] teste interno vazio — transform teste omitido (hold-out na fase 13)")
+        else:
+            X_test_fcbf = pipeline.transform(X_test, split="teste")
         tick("Z-score + IG + FCBF (fit treino, transform teste)")
         if args.optimize_kpca:
             try:
@@ -424,10 +449,17 @@ def main() -> None:
             }
         kpca = fit_kpca(X_train_fcbf, n_components=n_comp, kernel=kernel)
         X_train_kpca = transform_kpca(X_train_fcbf, kpca, split="treino")
-        X_test_kpca = transform_kpca(X_test_fcbf, kpca, split="teste")
+        if skip_test_transform:
+            X_test_kpca = np.empty((0, n_comp), dtype=np.float32)
+        else:
+            X_test_kpca = transform_kpca(X_test_fcbf, kpca, split="teste")
         ig_features = pipeline.ig_features
         train_z = pipeline.scaler.transform(X_train)
-        test_z = pipeline.scaler.transform(X_test)
+        test_z = (
+            np.empty((0, len(feature_names)), dtype=X_train.dtype)
+            if skip_test_transform
+            else pipeline.scaler.transform(X_test)
+        )
         fcbf = pipeline.fcbf
         protocol_name = "fit_train_transform_test"
         tick("KPCA (fit treino, transform teste)")

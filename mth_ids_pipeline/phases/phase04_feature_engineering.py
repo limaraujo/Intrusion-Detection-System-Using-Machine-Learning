@@ -41,15 +41,15 @@ def _scale_features(
     X_all: np.ndarray,
     *,
     scale_mode: str,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, StandardScaler | None]:
     """phase1 = IoTJ (sem reescalar); split = StandardScaler fit no treino."""
     if scale_mode == "phase1":
-        return X_train, X_test, X_all
+        return X_train, X_test, X_all, None
     scaler = StandardScaler()
     X_train_s = scaler.fit_transform(X_train)
     X_test_s = scaler.transform(X_test)
     X_all_s = scaler.transform(X_all)
-    return X_train_s, X_test_s, X_all_s
+    return X_train_s, X_test_s, X_all_s, scaler
 
 
 def main() -> None:
@@ -102,7 +102,9 @@ def main() -> None:
         stratify=y,
     )
 
-    X_train_s, X_test_s, X_all_s = _scale_features(X_train, X_test, X, scale_mode=scale_mode)
+    X_train_s, X_test_s, X_all_s, fitted_scaler = _scale_features(
+        X_train, X_test, X, scale_mode=scale_mode
+    )
 
     ig_cumulative = float(args.ig_cumulative)
     ig_hpo_report: dict | None = None
@@ -181,6 +183,25 @@ def main() -> None:
     if ig_hpo_report:
         report["ig_hpo"] = ig_hpo_report
     write_report(paths.reports, "phase04_feature_engineering", report)
+
+    try:
+        from mth_ids_pipeline.io.model_io import save_supervised_preprocess_artifacts
+    except ImportError:
+        from mth_ids_pipeline.io.model_io import save_supervised_preprocess_artifacts
+
+    artifact_paths = save_supervised_preprocess_artifacts(
+        output_dir,
+        scaler=fitted_scaler,
+        fcbf=fcbf,
+        ig_features=ig_features,
+        feature_names=feature_names,
+        scale_mode=scale_mode,
+        test_size=float(args.test_size),
+        random_state=int(args.random_state),
+        fcbf_scope=args.fcbf_scope,
+        ig_cumulative=ig_cumulative,
+    )
+    print(f"Preprocessores supervisionados salvos: {artifact_paths['manifest']}")
 
 
 if __name__ == "__main__":

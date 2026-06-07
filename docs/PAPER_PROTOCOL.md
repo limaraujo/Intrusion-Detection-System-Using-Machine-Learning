@@ -79,6 +79,32 @@ Flags: `--skip-bootstrap` (não preparar `02_` / `06_` automaticamente).
 
 **Por quê?** O artigo separa Tabela VII (merged, tiers 1–2) de Tabela IX (fine, LOAO). A fase 11 só precisa saber **qual família** de modelo venceu na Tabela VII (RF/XGB/DT/ET) para treinar B₁/B₂ — não um supervisionado re-treinado em 14 classes no fine. Detalhes: [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md#por-que-o-bootstrap-é-assim-decisão-de-design).
 
+Guia visual merged × fine × tabelas: [MERGED_VS_FINE_E_TABELAS.md](MERGED_VS_FINE_E_TABELAS.md).
+
+## Sistema completo (Tabela X + figuras 4–5)
+
+| Item | Valor |
+|------|-------|
+| Pasta | **`data/pipeline_mth_ids_merged`** (perfil **merged**, não fine) |
+| Pré-requisitos | Fases **1–2** e **4–6** no merged; depois anomaly **global** (fases 7–11) |
+| Detector anomaly | **Um** modelo binário em `anomaly/global/` (não LOAO) |
+| Avaliação | Fase **13** — cascata tiers 1→4 no hold-out 20% |
+| Split | 80/20 (artigo cita 70/30 na Tabela X — comparação aproximada) |
+| Métricas | Acc, DR, FAR, F1 + confusion matrices |
+
+```powershell
+python -m mth_ids_pipeline.run_supervised --protocol paper --from 1 --to 2
+python -m mth_ids_pipeline.run_supervised --protocol paper --from 4 --to 6
+python -m mth_ids_pipeline.run_global_anomaly --protocol paper
+python -m mth_ids_pipeline.run_eval `
+  --intermediate-dir data/pipeline_mth_ids_merged `
+  --work-dir data/pipeline_mth_ids_merged/anomaly/global
+python -m mth_ids_pipeline.report_paper_tables --table x `
+  --merged-dir data/pipeline_mth_ids_merged
+```
+
+**Não confundir com LOAO:** Tabela IX usa **fine** e `anomaly/loao/attack_*` (14 modelos). Tabela X usa **merged** e `anomaly/global` (1 modelo + cascata com stacking).
+
 ## Notebook (`--protocol notebook`)
 
 Alinhado ao `MTH_IDS_IoTJ.ipynb`:
@@ -105,6 +131,7 @@ BO-GP (`scikit-optimize`): `n_calls` mínimo **10** — o protocolo paper usa **
 ## Índice da documentação
 
 - [docs/README.md](README.md) — índice geral e troubleshooting resumido
+- [MERGED_VS_FINE_E_TABELAS.md](MERGED_VS_FINE_E_TABELAS.md) — merged vs fine, Tabelas VII/IX/X, LOAO vs global
 - [PIPELINE_PHASES.md](PIPELINE_PHASES.md) — guia completo das fases e CLI
 - [GUIA_ARQUITETURA_MTH_IDS.md](GUIA_ARQUITETURA_MTH_IDS.md) — estrutura do pacote
 - [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md) — pastas merged/fine e bootstrap
