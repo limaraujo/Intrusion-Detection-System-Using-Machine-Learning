@@ -16,16 +16,16 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 try:
     from mth_ids_pipeline.io.anomaly_io import (
-        apply_notebook_anomaly_smote,
         label_value_counts_dict,
+        load_anomaly_splits,
     )
     from mth_ids_pipeline.cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
     from mth_ids_pipeline.core.clustering import cl_kmeans
     from mth_ids_pipeline.config import A04_AFTER_KPCA, A05_TRAIN_SMOTE, A06_TEST_SLICE_INFO
 except ImportError:
     from mth_ids_pipeline.io.anomaly_io import (
-        apply_notebook_anomaly_smote,
         label_value_counts_dict,
+        load_anomaly_splits,
     )
     from mth_ids_pipeline.cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
     from mth_ids_pipeline.core.clustering import cl_kmeans
@@ -55,31 +55,15 @@ def main() -> None:
     work = resolve_work_dir(args, paths)
     df = pd.read_parquet(work / A04_AFTER_KPCA)
     meta = json.loads((work / A06_TEST_SLICE_INFO).read_text(encoding="utf-8"))
-    n_df1 = int(meta["n_df1_rows"])
+    n_df1 = int(meta.get("n_train_rows", meta["n_df1_rows"]))
     label_col = "Label"
+    counts_before = pd.Series(np.ravel(df[label_col].values[:n_df1])).value_counts()
 
-    X_all = df.drop(columns=[label_col]).values
-    y_all = np.ravel(df[label_col].values)
-
-    X_train = X_all[:n_df1]
-    y_train = y_all[:n_df1]
-    X_test = X_all[n_df1:]
-    y_test = y_all[n_df1:]
-
-    print(
-        f"Partição LOAO (fase 9): treino={X_train.shape} labels={label_value_counts_dict(pd.Series(y_train))} | "
-        f"teste={X_test.shape} labels={label_value_counts_dict(pd.Series(y_test))}"
-    )
-
-    counts_before = pd.Series(y_train).value_counts()
-    X_train, y_train, did_smote, resolved = apply_notebook_anomaly_smote(
-        X_train,
-        y_train,
+    X_train, X_test, y_train, y_test, did_smote = load_anomaly_splits(
+        work,
         smote_target=args.smote_target,
         random_state=args.random_state,
     )
-    if did_smote and resolved is not None:
-        print(f"SMOTE notebook: classe 1 -> {resolved} (alvo = n benignos no treino)")
 
     cols = [c for c in df.columns if c != label_col]
     train_out = work / A05_TRAIN_SMOTE
@@ -96,6 +80,7 @@ def main() -> None:
     print("CM:\n", confusion_matrix(y_test, pred))
 
     counts_after = pd.Series(y_train).value_counts()
+    resolved = int(counts_after.get(1, 0)) if did_smote else args.smote_target
     report = {
         "input": str(work / A04_AFTER_KPCA),
         "train_output": str(train_out),

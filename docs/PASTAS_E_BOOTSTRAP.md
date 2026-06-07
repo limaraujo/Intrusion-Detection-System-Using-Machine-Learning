@@ -14,8 +14,11 @@ O artigo usa o **mesmo dataset CICIDS2017** em dois experimentos distintos:
 |-------------|---------|----------|
 | **Tabela VII** | 7 famílias agregadas (BENIGN + 6 ataques) | Ataques **conhecidos** (tiers 1–2) |
 | **Tabela IX** | ~14 tipos de ataque originais | **Zero-day** — leave-one-attack-out (LOAO) |
+| **Tabela X** | 7 famílias (merged) | **Sistema completo** — cascata tiers 1→4 no hold-out |
 
 São **perfis de rótulo diferentes** (`merged` vs `fine`), gerados por `merge_cicids`, com **CSVs e parquets distintos**. Rodar fases 1–6 só no merged **não** alimenta o LOAO fine: a fase 7 lê `02_sampled_kmeans.parquet` do `--intermediate-dir` ativo.
+
+**Tabela X também usa merged** (`anomaly/global/`), não fine. Guia completo: [MERGED_VS_FINE_E_TABELAS.md](MERGED_VS_FINE_E_TABELAS.md).
 
 ---
 
@@ -23,8 +26,8 @@ São **perfis de rótulo diferentes** (`merged` vs `fine`), gerados por `merge_c
 
 | Pasta | Perfil | CSV de entrada | Comando principal |
 |-------|--------|----------------|-------------------|
-| `data/pipeline_mth_ids_merged/` | `merged` | `data/CICIDS2017.csv` | `run_supervised` |
-| `data/pipeline_mth_ids_fine/` | `fine` | `data/CICIDS2017_fine.csv` | `run_anomaly` |
+| `data/pipeline_mth_ids_merged/` | `merged` | `data/CICIDS2017.csv` | `run_supervised`, `run_global_anomaly`, `run_eval` |
+| `data/pipeline_mth_ids_fine/` | `fine` | `data/CICIDS2017_fine.csv` | `run_anomaly` (`--loao`) |
 
 Constantes em `mth_ids_pipeline/config.py`:
 
@@ -40,12 +43,18 @@ Constantes em `mth_ids_pipeline/config.py`:
 ```
 data/pipeline_mth_ids_merged/
 ├── 01_preprocessed.parquet
-├── 02_sampled_kmeans.parquet      ← entrada da fase 7 (se reutilizar merged)
+├── 02_sampled_kmeans.parquet      ← entrada fase 7 global (Tabela X)
 ├── 04_train_after_fcbf.parquet
 ├── 05_train_after_smote.parquet
 ├── 06_supervised_metrics.json     ← melhor modelo para biased (tier 4)
 ├── supervised_run.log             # run_supervised / experiment_runner (fases 1–6)
+├── anomaly/
+│   └── global/                    ← Tabela X: fases 7–11 (modo global, 1 detector)
+│       ├── a04_after_kpca.parquet
+│       └── reports/phase07…phase11.json
+├── figures/                       ← CM fase 13 (fig_multiclass_cm, fig_binary_cm)
 └── phase_reports/
+    └── phase13_full_system_eval.json
 ```
 
 ### Anomaly / LOAO (`pipeline_mth_ids_fine`)

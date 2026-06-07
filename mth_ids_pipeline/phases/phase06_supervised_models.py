@@ -540,6 +540,23 @@ def main() -> None:
     out_metrics.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     print(f"\nMétricas salvas em: {out_metrics}")
 
+    try:
+        from mth_ids_pipeline.io.model_io import save_supervised_classifier_artifacts
+    except ImportError:
+        from mth_ids_pipeline.io.model_io import save_supervised_classifier_artifacts
+
+    save_supervised_classifier_artifacts(
+        output_dir,
+        dt=dt_hpo,
+        rf=rf_hpo,
+        et=et_hpo,
+        xgb_model=xg,
+        stacking_meta=meta,
+        meta_label=meta_label,
+        meta_learner=args.meta_learner,
+        binary=bool(args.binary),
+    )
+
     report = {
         "train_input": str(output_dir / P05_TRAIN_SMOTE),
         "test_input": str(output_dir / P05_TEST),

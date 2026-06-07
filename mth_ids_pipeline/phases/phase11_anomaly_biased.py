@@ -10,6 +10,7 @@ Fase 11 (anomaly tier 4): CL-k-means + biased classifiers B1/B2 + threshold p* (
 
 from __future__ import annotations
 
+import json
 import warnings
 from pathlib import Path
 
@@ -18,7 +19,12 @@ import pandas as pd
 from sklearn.metrics import classification_report, confusion_matrix
 
 try:
-    from mth_ids_pipeline.io.anomaly_io import label_value_counts_dict, load_anomaly_splits
+    from mth_ids_pipeline.io.anomaly_io import (
+        is_global_table_x_protocol,
+        label_value_counts_dict,
+        load_anomaly_full_train_smote,
+        load_anomaly_splits,
+    )
     from mth_ids_pipeline.core.biased_classifiers import (
         apply_biased_refinement,
         estimator_factory_for_supervised,
@@ -34,7 +40,12 @@ try:
     from mth_ids_pipeline.core.evaluation import binary_dr_far_f1
     from mth_ids_pipeline.io.reporting import write_report
 except ImportError:
-    from mth_ids_pipeline.io.anomaly_io import label_value_counts_dict, load_anomaly_splits
+    from mth_ids_pipeline.io.anomaly_io import (
+        is_global_table_x_protocol,
+        label_value_counts_dict,
+        load_anomaly_full_train_smote,
+        load_anomaly_splits,
+    )
     from mth_ids_pipeline.core.biased_classifiers import (
         apply_biased_refinement,
         estimator_factory_for_supervised,
@@ -156,6 +167,8 @@ def main() -> None:
     metrics_final = metrics_cl
     biased_stats: dict = {}
     selection_info: dict = {}
+    b1 = None
+    b2 = None
 
     effective_mode, selection_info = pick_best_biased_mode(
         X_train,
@@ -264,6 +277,67 @@ def main() -> None:
     }
     report_path = write_report(report_dir, "phase11_anomaly_biased", report)
     print(f"Relatório salvo em: {report_path}")
+
+    try:
+        from mth_ids_pipeline.core.clustering import cl_kmeans_build_inference_state
+        from mth_ids_pipeline.core.inference import resolve_anomaly_feature_names
+        from mth_ids_pipeline.io.model_io import save_anomaly_inference_artifacts
+    except ImportError:
+        from mth_ids_pipeline.core.clustering import cl_kmeans_build_inference_state
+        from mth_ids_pipeline.core.inference import resolve_anomaly_feature_names
+        from mth_ids_pipeline.io.model_io import save_anomaly_inference_artifacts
+
+    slice_meta: dict = {}
+    slice_path = work / "a06_test_slice.json"
+    if slice_path.is_file():
+        slice_meta = json.loads(slice_path.read_text(encoding="utf-8"))
+    if is_global_table_x_protocol(slice_meta):
+        X_full, y_full, _ = load_anomaly_full_train_smote(
+            work,
+            smote_target=args.smote_target,
+            random_state=args.random_state,
+        )
+        y_fit = np.ravel(y_full).astype(np.int64)
+        X_fit = X_full
+        print(f"Persistência global: CL-k-means no treino completo {X_fit.shape}")
+    else:
+        X_fit = X_train
+        y_fit = np.ravel(y_train).astype(np.int64)
+    cl_state = cl_kmeans_build_inference_state(
+        X_fit,
+        y_fit,
+        n_clusters=n_clusters,
+        random_state=args.random_state,
+        metric=metric,
+    )
+    save_b1 = b1 if effective_mode in ("both", "b1-only") else None
+    save_b2 = b2 if effective_mode in ("both", "b2-only") else None
+    if is_global_table_x_protocol(slice_meta) and effective_mode != "none":
+        from mth_ids_pipeline.core.clustering import cl_kmeans_predict_inference
+
+        y_cl_fit, _ = cl_kmeans_predict_inference(cl_state, X_fit)
+        save_b1, save_b2, _ = train_biased_pair(
+            X_fit,
+            y_fit,
+            y_cl_fit,
+            estimator_factory=factory,
+            random_state=args.random_state,
+            mode=effective_mode,  # type: ignore[arg-type]
+        )
+        print("Persistência global: B1/B2 re-treinados no treino completo")
+
+    save_anomaly_inference_artifacts(
+        work,
+        cl_state=cl_state,
+        b1=save_b1,
+        b2=save_b2,
+        n_clusters=n_clusters,
+        metric=metric,
+        p_star=p_star,
+        biased_mode=effective_mode,
+        feature_names=resolve_anomaly_feature_names(work),
+        random_state=args.random_state,
+    )
 
 
 if __name__ == "__main__":

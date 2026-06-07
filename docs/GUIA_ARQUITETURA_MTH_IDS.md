@@ -8,10 +8,12 @@ mth_ids_pipeline/
 ├── protocol.py            # presets paper vs notebook
 ├── label_profiles.py      # merged (7 classes) vs fine (LOAO)
 ├── cli.py                 # argumentos CLI compartilhados
-├── run_supervised.py      # entrada: fases 1–6
-├── run_anomaly.py         # entrada: fases 7–12
+├── run_supervised.py      # entrada: fases 1–6 (merged)
+├── run_anomaly.py         # entrada: fases 7–12 LOAO (fine)
+├── run_global_anomaly.py  # entrada: fases 7–11 global (merged, Tabela X)
+├── run_eval.py            # entrada: fase 13 (cascata completa)
 ├── run_all.py             # entrada genérica
-├── report_paper_tables.py # Tabela VII / IX vs artigo
+├── report_paper_tables.py # Tabela VII / IX / X vs artigo
 │
 ├── core/                  # algoritmos ML reutilizáveis
 │   ├── preprocessing.py
@@ -41,7 +43,8 @@ mth_ids_pipeline/
 │   ├── phase09_anomaly_cluster.py
 │   ├── phase10_anomaly_cluster_hpo.py
 │   ├── phase11_anomaly_biased.py
-│   └── phase12_anomaly_loao.py
+│   ├── phase12_anomaly_loao.py
+│   └── phase13_full_system_eval.py
 │
 ├── orchestration/
 │   └── experiment_runner.py
@@ -58,8 +61,9 @@ mth_ids_pipeline/
 |------|-------|--------------|-----|--------------|
 | Supervisionado | 1–6 | `merged` | `CICIDS2017.csv` | `data/pipeline_mth_ids_merged/` |
 | Anomaly LOAO | 7–12 | `fine` | `CICIDS2017_fine.csv` | `data/pipeline_mth_ids_fine/` |
+| Anomaly global + eval | 7–11, 13 | `merged` | `CICIDS2017.csv` | `data/pipeline_mth_ids_merged/anomaly/global/` |
 
-Ver [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) para parâmetros do artigo e [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md) para separação de pastas e bootstrap automático.
+Ver [MERGED_VS_FINE_E_TABELAS.md](MERGED_VS_FINE_E_TABELAS.md) para quando usar cada perfil, [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) para parâmetros do artigo e [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md) para separação de pastas e bootstrap automático.
 
 ### Bootstrap no ramo anomaly
 
@@ -80,13 +84,13 @@ Motivação completa (artigo × bootstrap antigo × implementação atual): [PAS
 | Protocolo paper vs notebook | [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) |
 | Índice geral da documentação | [README.md](README.md) |
 
-**Orquestradores:** `run_supervised` (1–6), `run_anomaly` (7–12), `run_all` / `experiment_runner` (qualquer intervalo `--from` / `--to`).
+**Orquestradores:** `run_supervised` (1–6 merged), `run_anomaly` (7–12 fine LOAO), `run_global_anomaly` (7–11 merged global), `run_eval` (13), `run_all` / `experiment_runner` (qualquer intervalo `--from` / `--to`).
 
 **Supervisionado (fases 1–6):** `experiment_runner` grava `supervised_run.log` na pasta `intermediate-dir` via `RunLog` (comandos + stdout de cada fase).
 
 **LOAO (fase 12):** para cada ataque `N`, executa subprocessos das fases 7–11 em `anomaly/loao/attack_N/` e grava `loao_run.log` via `RunLog`. Fases rodadas manualmente **não** entram nesses logs.
 
-**Relatórios:** `report_paper_tables` (Tabela VII / IX); JSON por fase em `phase_reports/` ou `attack_N/reports/`.
+**Relatórios:** `report_paper_tables` (Tabela VII / IX / X); JSON por fase em `phase_reports/`, `anomaly/global/reports/` ou `attack_N/reports/`.
 
 ## Documentação histórica
 

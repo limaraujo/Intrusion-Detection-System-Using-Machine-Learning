@@ -32,6 +32,7 @@ from mth_ids_pipeline.protocol import MthIdsProtocol, get_protocol_settings
 
 SUPERVISED = frozenset(range(1, 7))
 ANOMALY = frozenset(range(7, 13))
+EVAL = frozenset({13})
 
 PHASES = {
     1: "mth_ids_pipeline.phases.phase01_load_preprocess",
@@ -45,6 +46,7 @@ PHASES = {
     10: "mth_ids_pipeline.phases.phase10_anomaly_cluster_hpo",
     11: "mth_ids_pipeline.phases.phase11_anomaly_biased",
     12: "mth_ids_pipeline.phases.phase12_anomaly_loao",
+    13: "mth_ids_pipeline.phases.phase13_full_system_eval",
 }
 
 SUPERVISED_PHASE_LABELS: dict[int, str] = {
@@ -285,6 +287,17 @@ def _phase_args(phase: int, cfg: ExperimentConfig) -> list[str]:
             extra += ["--benign-target", str(cfg.anomaly_benign_target)]
         if cfg.loao_attack_labels:
             extra += ["--attack-labels", cfg.loao_attack_labels]
+    if phase == 13:
+        extra += [
+            "--random-state", str(cfg.random_state),
+            "--test-size", str(cfg.test_size),
+            "--no-plots",
+        ]
+        if cfg.intermediate_dir:
+            merged = INTERMEDIATE_DIR_MERGED
+            if cfg.intermediate_dir != merged:
+                extra += ["--intermediate-dir", str(merged)]
+            extra += ["--work-dir", str(cfg.intermediate_dir)]
     return extra
 
 
@@ -553,6 +566,8 @@ def config_from_args(args: argparse.Namespace, *, branch: str) -> ExperimentConf
         cfg.intermediate_dir = INTERMEDIATE_DIR_FINE
     elif branch == "supervised" and args.intermediate_dir is None:
         cfg.intermediate_dir = INTERMEDIATE_DIR_MERGED
+    elif branch == "eval" and args.intermediate_dir is None:
+        cfg.intermediate_dir = INTERMEDIATE_DIR_FINE
     return cfg
 
 
@@ -560,7 +575,12 @@ def main() -> None:
     args = build_arg_parser("MTH-IDS").parse_args()
     if args.loao:
         args.to = max(args.to, 12)
-    branch = "anomaly" if args.from_phase >= 7 or args.loao or args.to >= 7 else "supervised"
+    if args.from_phase >= 13 or args.to >= 13 or args.only == 13:
+        branch = "eval"
+    elif args.from_phase >= 7 or args.loao or args.to >= 7:
+        branch = "anomaly"
+    else:
+        branch = "supervised"
     run_experiment(config_from_args(args, branch=branch))
 
 

@@ -328,3 +328,109 @@ def cl_kmeans(
         metric=metric,
     )
     return res.y_pred, res.accuracy
+
+
+@dataclass
+class CLKmeansInferenceState:
+    """Estado serializável do CL-k-means para inferência (fase 13)."""
+
+    model: Any
+    benign_clusters: frozenset[int]
+    majority_ratio: np.ndarray
+    n_clusters: int
+    metric: str
+    batch_size: int = 100
+    random_state: int | None = 0
+
+
+def _predict_cluster_labels(X: np.ndarray, model: Any, metric: str) -> np.ndarray:
+    """Atribui rótulos de cluster sem re-treinar."""
+    metric = _validate_metric(metric)
+    if metric == "euclidean":
+        return np.asarray(model.predict(X), dtype=np.int64)
+    if metric == "cosine":
+        X_n = _l2_normalize_rows(X)
+        return np.asarray(model.predict(X_n), dtype=np.int64)
+    if metric == "manhattan":
+        centers = np.asarray(model.cluster_centers_, dtype=np.float64)
+        return _assign_clusters(np.asarray(X, dtype=np.float64), centers, "manhattan")
+    cov_inv = getattr(model, "cov_inv_", None)
+    if cov_inv is None:
+        raise ValueError("Modelo mahalanobis sem cov_inv_")
+    centers = np.asarray(model.cluster_centers_, dtype=np.float64)
+    return _assign_clusters_mahalanobis(np.asarray(X, dtype=np.float64), centers, cov_inv)
+
+
+def _cluster_label_mapping(
+    train_labels: np.ndarray,
+    y_train: np.ndarray,
+    n_clusters: int,
+) -> tuple[frozenset[int], np.ndarray]:
+    attack_counts = np.zeros(n_clusters, dtype=np.float64)
+    benign_counts = np.zeros(n_clusters, dtype=np.float64)
+    for i, cluster in enumerate(train_labels):
+        if y_train[i] == 1:
+            attack_counts[cluster] += 1
+        else:
+            benign_counts[cluster] += 1
+
+    benign_clusters: set[int] = set()
+    majority_ratio = np.zeros(n_clusters, dtype=np.float64)
+    for c in range(n_clusters):
+        total = attack_counts[c] + benign_counts[c]
+        if total <= 0:
+            majority_ratio[c] = 0.0
+            benign_clusters.add(c)
+            continue
+        if attack_counts[c] <= benign_counts[c]:
+            benign_clusters.add(c)
+            majority_ratio[c] = benign_counts[c] / total
+        else:
+            majority_ratio[c] = attack_counts[c] / total
+    return frozenset(benign_clusters), majority_ratio
+
+
+def cl_kmeans_build_inference_state(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    *,
+    n_clusters: int,
+    batch_size: int = 100,
+    random_state: int | None = 0,
+    metric: str = "euclidean",
+) -> CLKmeansInferenceState:
+    """Ajusta CL-k-means no treino e devolve estado para inferência."""
+    probe = X_train[:1]
+    train_labels, _, model = _fit_predict_clusters(
+        X_train,
+        probe,
+        n_clusters=n_clusters,
+        batch_size=batch_size,
+        random_state=random_state,
+        metric=metric,
+    )
+    benign_clusters, majority_ratio = _cluster_label_mapping(train_labels, y_train, n_clusters)
+    return CLKmeansInferenceState(
+        model=model,
+        benign_clusters=benign_clusters,
+        majority_ratio=majority_ratio,
+        n_clusters=n_clusters,
+        metric=metric,
+        batch_size=batch_size,
+        random_state=random_state,
+    )
+
+
+def cl_kmeans_predict_inference(
+    state: CLKmeansInferenceState,
+    X: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Prediz rótulo binário e confiança p_i a partir de estado salvo."""
+    test_labels = _predict_cluster_labels(X, state.model, state.metric)
+    mapped = np.zeros(len(X), dtype=np.int64)
+    conf = np.zeros(len(X), dtype=np.float64)
+    for i in range(len(X)):
+        c = int(test_labels[i])
+        mapped[i] = 0 if c in state.benign_clusters else 1
+        conf[i] = state.majority_ratio[c]
+    return mapped, conf

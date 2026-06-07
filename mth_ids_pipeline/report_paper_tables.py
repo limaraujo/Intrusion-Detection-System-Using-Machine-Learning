@@ -1,9 +1,12 @@
 """
-Gera tabelas de comparação com o artigo (Tabela VII supervisionado, Tabela IX LOAO).
+Gera tabelas de comparação com o artigo MTH-IDS (Tabelas VII, IX e X).
 
-Uso:
-  python -m mth_ids_pipeline.report_paper_tables --intermediate-dir data/pipeline_mth_ids_merged
-  python -m mth_ids_pipeline.report_paper_tables --loao-root data/pipeline_mth_ids_fine/anomaly/loao
+Uso (comparativo completo):
+  python -m mth_ids_pipeline.report_paper_tables --table all \\
+    --merged-dir data/pipeline_mth_ids_merged \\
+    --loao-root data/pipeline_mth_ids_fine/anomaly/loao
+
+Tabelas individuais: --table vii | ix | x | notebook
 """
 
 from __future__ import annotations
@@ -12,12 +15,22 @@ import argparse
 import json
 from pathlib import Path
 
-from mth_ids_pipeline.config import INTERMEDIATE_DIR
+from mth_ids_pipeline.config import (
+    INTERMEDIATE_DIR_FINE,
+    INTERMEDIATE_DIR_MERGED,
+    PAPER_TABLE_X_REFERENCE,
+)
 from mth_ids_pipeline.core.evaluation import (
     NOTEBOOK_REFERENCE_SUPERVISED,
     PAPER_REFERENCE_SUPERVISED,
     compare_metrics,
 )
+from mth_ids_pipeline.io.loao_reporting import PAPER_REFERENCE_CICIDS2017
+
+# Modelo do artigo na Tabela VII (tier multi-class / stacking)
+PAPER_TABLE_VII_MODEL = "MTH-IDS (Multi-Class Model)"
+# Modelo reproduzido mais próximo do tier 1 do artigo
+REPRO_STACKING_MODEL = "Stacking meta (HPO XGB)"
 
 
 def _load_json(path: Path) -> dict | list | None:
@@ -54,7 +67,7 @@ def report_notebook_comparison(intermediate_dir: Path) -> None:
     print("\n" + "=" * 72)
     print("Comparação vs Notebook (hold-out)")
     print("=" * 72)
-    print(f"{'Modelo/Métrica':<28} {'Ref':>10} {'Reprod':>10} {'Δ abs':>10} {'Δ %':>8}")
+    print(f"{'Modelo/Métrica':<28} {'Ref':>10} {'Reprod':>10} {'Diff abs':>10} {'Diff %':>8}")
     print("-" * 72)
     for row in rows:
         print(
@@ -66,37 +79,59 @@ def report_notebook_comparison(intermediate_dir: Path) -> None:
         )
 
 
-def report_table_vii(intermediate_dir: Path) -> None:
+def _paper_ref_pct(ref: dict, key_pct: str) -> float:
+    return float(ref.get(key_pct, 0)) / 100.0
+
+
+def report_table_vii(intermediate_dir: Path) -> dict | None:
     metrics_path = intermediate_dir / "06_supervised_metrics.json"
     cv_path = intermediate_dir / "phase_reports" / "phase06_supervised_models.json"
     if not metrics_path.is_file():
         print(f"Tabela VII: métricas não encontradas em {metrics_path}")
-        return
+        return None
 
     metrics = _load_json(metrics_path)
     cv_report = _load_json(cv_path) if cv_path else None
-    print("\n" + "=" * 72)
-    print("TABELA VII — Supervisionado (multi-class)")
-    print("=" * 72)
-    print(f"{'Modelo':<24} {'Acc':>10} {'F1(w)':>10} {'Ref Acc':>10} {'Δ Acc':>10}")
-    print("-" * 72)
+    paper = PAPER_REFERENCE_SUPERVISED[PAPER_TABLE_VII_MODEL]
+    ref_acc = _paper_ref_pct(paper, "accuracy_pct")
+    ref_f1 = float(paper.get("f1", 0))
 
-    ref = PAPER_REFERENCE_SUPERVISED
+    print("\n" + "=" * 72)
+    print("TABELA VII — Supervisionado (multi-class, hold-out 80/20)")
+    print("=" * 72)
+    print(f"{'Modelo':<24} {'Acc':>10} {'F1(w)':>10}")
+    print("-" * 72)
+    stacking_row: dict | None = None
     for row in metrics:
         name = row.get("model", "?")
         acc = float(row.get("accuracy", 0))
         f1 = float(row.get("f1_weighted", 0))
-        ref_acc = float(ref.get("accuracy", 0))
-        delta = acc - ref_acc
-        print(f"{name:<24} {acc:>10.6f} {f1:>10.6f} {ref_acc:>10.6f} {delta:>+10.6f}")
+        print(f"{name:<24} {acc:>10.6f} {f1:>10.6f}")
+        if name == REPRO_STACKING_MODEL:
+            stacking_row = row
+
+    print("\nComparação vs artigo (tier multi-class / stacking):")
+    print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
+    print("-" * 72)
+    out: dict = {"paper_model": PAPER_TABLE_VII_MODEL, "repro_model": REPRO_STACKING_MODEL}
+    if stacking_row:
+        acc = float(stacking_row.get("accuracy", 0))
+        f1 = float(stacking_row.get("f1_weighted", 0))
+        print(f"{'Acc':<12} {acc:>12.6f} {ref_acc:>12.6f} {acc - ref_acc:>+12.6f}")
+        print(f"{'F1(w)':<12} {f1:>12.6f} {ref_f1:>12.6f} {f1 - ref_f1:>+12.6f}")
+        out["accuracy"] = {"reproduced": acc, "reference": ref_acc, "delta": acc - ref_acc}
+        out["f1_weighted"] = {"reproduced": f1, "reference": ref_f1, "delta": f1 - ref_f1}
+    else:
+        print(f"  (modelo '{REPRO_STACKING_MODEL}' não encontrado em 06_supervised_metrics.json)")
 
     if cv_report and cv_report.get("cv_reports"):
-        print("\n10-fold CV no treino (artigo):")
+        print("\n10-fold CV no treino (reprodução):")
         for name, rep in cv_report["cv_reports"].items():
             print(f"  {name}: {rep['mean']:.4f} ± {rep['std']:.4f}")
+    return out
 
 
-def report_table_ix(loao_root: Path) -> None:
+def report_table_ix(loao_root: Path) -> dict | None:
     summary_path = loao_root / "loao_summary.json"
     summary = _load_json(summary_path)
     if not summary:
@@ -119,54 +154,156 @@ def report_table_ix(loao_root: Path) -> None:
             pass
     if not summary:
         print(f"Tabela IX: resumo LOAO nao encontrado em {loao_root}")
-        return
+        return None
+
+    ref = summary.get("paper_reference_cicids2017", PAPER_REFERENCE_CICIDS2017)
+    mean_f1 = float(summary.get("mean_f1", 0))
+    mean_dr = float(summary.get("mean_detection_rate", 0))
+    mean_far = float(summary.get("mean_false_alarm_rate", 0))
+    ref_f1 = float(ref.get("mean_f1", 0.80013))
+    ref_dr = float(ref.get("mean_dr_pct", 75.943)) / 100.0
+    ref_far = float(ref.get("mean_far_pct", 13.882)) / 100.0
+    n_done = len(summary.get("per_attack", []))
+    n_planned = int(summary.get("attacks_in_dataset", 14))
 
     print("\n" + "=" * 72)
-    print("TABELA IX — Anomaly LOAO (DR / FAR / F1)")
+    print("TABELA IX — Anomaly LOAO (média sobre ataques concluídos)")
     print("=" * 72)
-    ref = summary.get("paper_reference_cicids2017", {})
-    print(
-        f"Média F1: {summary.get('mean_f1', 0):.5f} "
-        f"(ref artigo: {ref.get('mean_f1', 0.80013):.5f})"
-    )
-    print(
-        f"Média DR: {summary.get('mean_detection_rate', 0):.4f} "
-        f"(ref: {ref.get('mean_dr_pct', 75.943) / 100:.4f})"
-    )
-    print(
-        f"Média FAR: {summary.get('mean_false_alarm_rate', 0):.4f} "
-        f"(ref: {ref.get('mean_far_pct', 13.882) / 100:.4f})"
-    )
-    print(f"\n{'Ataque':<8} {'F1':>10} {'DR':>10} {'FAR':>10} {'N test':>10}")
-    print("-" * 52)
+    print(f"Ataques concluídos: {n_done}/{n_planned}")
+    print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
+    print("-" * 72)
+    print(f"{'F1':<12} {mean_f1:>12.5f} {ref_f1:>12.5f} {mean_f1 - ref_f1:>+12.5f}")
+    print(f"{'DR':<12} {mean_dr:>12.4f} {ref_dr:>12.4f} {mean_dr - ref_dr:>+12.4f}")
+    print(f"{'FAR':<12} {mean_far:>12.4f} {ref_far:>12.4f} {mean_far - ref_far:>+12.4f}")
+    print(f"\n{'Ataque':<6} {'Nome':<22} {'F1':>8} {'DR':>8} {'FAR':>8} {'N test':>8}")
+    print("-" * 72)
     for row in summary.get("per_attack", []):
         print(
-            f"{row.get('attack_label', '?'):<8} "
-            f"{(row.get('f1') or 0):>10.4f} "
-            f"{(row.get('detection_rate') or 0):>10.4f} "
-            f"{(row.get('false_alarm_rate') or 0):>10.4f} "
-            f"{(row.get('test_rows') or 0):>10}"
+            f"{row.get('attack_label', '?'):<6} "
+            f"{str(row.get('attack_name', ''))[:22]:<22} "
+            f"{(row.get('f1') or 0):>8.4f} "
+            f"{(row.get('detection_rate') or 0):>8.4f} "
+            f"{(row.get('false_alarm_rate') or 0):>8.4f} "
+            f"{(row.get('test_rows') or 0):>8}"
         )
+    if n_done < n_planned:
+        print(f"\nNota: média parcial — execute LOAO completo para comparar com o artigo.")
+    return {
+        "attacks_done": n_done,
+        "attacks_planned": n_planned,
+        "mean_f1": {"reproduced": mean_f1, "reference": ref_f1, "delta": mean_f1 - ref_f1},
+        "mean_dr": {"reproduced": mean_dr, "reference": ref_dr, "delta": mean_dr - ref_dr},
+        "mean_far": {"reproduced": mean_far, "reference": ref_far, "delta": mean_far - ref_far},
+        "per_attack": summary.get("per_attack", []),
+    }
+
+
+def report_table_x(intermediate_dir: Path) -> dict | None:
+    """Tabela X — sistema completo no hold-out (fase 13)."""
+    report_path = intermediate_dir / "phase_reports" / "phase13_full_system_eval.json"
+    data = _load_json(report_path)
+    if not data:
+        print(
+            f"Tabela X: relatório não encontrado em {report_path}\n"
+            "Execute:\n"
+            "  python -m mth_ids_pipeline.run_global_anomaly --protocol paper\n"
+            "  python -m mth_ids_pipeline.run_eval "
+            f"--intermediate-dir {intermediate_dir} "
+            f"--work-dir {intermediate_dir / 'anomaly' / 'global'}"
+        )
+        return None
+
+    binary = data.get("binary_metrics") or {}
+    ref = PAPER_TABLE_X_REFERENCE["cicids2017"]
+    acc_pct = float(data.get("accuracy", 0)) * 100.0
+    dr_pct = float(binary.get("detection_rate", 0)) * 100.0
+    far_pct = float(binary.get("false_alarm_rate", 0)) * 100.0
+    f1 = float(binary.get("f1", 0))
+    split_note = data.get("test_split") or "hold-out 80/20 (artigo: 70/30)"
+
+    print("\n" + "=" * 72)
+    print("TABELA X — Sistema completo no hold-out (CICIDS2017)")
+    print("=" * 72)
+    print(f"Protocolo: {split_note}")
+    print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
+    print("-" * 72)
+    print(f"{'Acc (%)':<12} {acc_pct:>12.2f} {ref['accuracy_pct']:>12.2f} {acc_pct - ref['accuracy_pct']:>+12.2f}")
+    print(f"{'DR (%)':<12} {dr_pct:>12.2f} {ref['detection_rate_pct']:>12.2f} {dr_pct - ref['detection_rate_pct']:>+12.2f}")
+    print(f"{'FAR (%)':<12} {far_pct:>12.4f} {ref['false_alarm_rate_pct']:>12.4f} {far_pct - ref['false_alarm_rate_pct']:>+12.4f}")
+    print(f"{'F1':<12} {f1:>12.4f} {ref['f1']:>12.4f} {f1 - ref['f1']:>+12.4f}")
+    if data.get("route_stats"):
+        print(f"\nRoteamento: {data['route_stats']}")
+    figures = intermediate_dir / "figures"
+    print(f"CM: {figures / 'fig_multiclass_cm.png'} | {figures / 'fig_binary_cm.png'}")
+    return {
+        "protocol": split_note,
+        "accuracy_pct": {"reproduced": acc_pct, "reference": ref["accuracy_pct"], "delta": acc_pct - ref["accuracy_pct"]},
+        "detection_rate_pct": {"reproduced": dr_pct, "reference": ref["detection_rate_pct"], "delta": dr_pct - ref["detection_rate_pct"]},
+        "false_alarm_rate_pct": {"reproduced": far_pct, "reference": ref["false_alarm_rate_pct"], "delta": far_pct - ref["false_alarm_rate_pct"]},
+        "f1": {"reproduced": f1, "reference": ref["f1"], "delta": f1 - ref["f1"]},
+    }
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Relatórios Tabela VII / IX vs artigo")
-    parser.add_argument("--intermediate-dir", type=Path, default=INTERMEDIATE_DIR)
-    parser.add_argument("--loao-root", type=Path, default=None)
+    parser = argparse.ArgumentParser(description="Relatórios Tabela VII / IX / X vs artigo")
+    parser.add_argument(
+        "--merged-dir",
+        type=Path,
+        default=INTERMEDIATE_DIR_MERGED,
+        help="Pipeline merged (supervisionado + anomaly global / Tabela X)",
+    )
+    parser.add_argument(
+        "--intermediate-dir",
+        type=Path,
+        default=None,
+        help="Alias de --merged-dir (retrocompatível)",
+    )
+    parser.add_argument(
+        "--loao-root",
+        type=Path,
+        default=INTERMEDIATE_DIR_FINE / "anomaly" / "loao",
+        help="Raiz LOAO fine (Tabela IX)",
+    )
     parser.add_argument(
         "--table",
-        choices=("vii", "ix", "notebook", "all"),
+        choices=("vii", "ix", "x", "notebook", "all"),
         default="all",
+    )
+    parser.add_argument(
+        "--save-json",
+        type=Path,
+        default=None,
+        help="Salvar comparativo estruturado (JSON)",
     )
     args = parser.parse_args()
 
+    merged_dir = args.intermediate_dir or args.merged_dir
+
+    if args.table == "all":
+        print("=" * 72)
+        print("COMPARATIVO MTH-IDS vs artigo (CICIDS2017)")
+        print("=" * 72)
+        print(f"Supervisionado / Tabela X: {merged_dir}")
+        print(f"LOAO / Tabela IX:          {args.loao_root}")
+
+    comparison: dict = {"merged_dir": str(merged_dir), "loao_root": str(args.loao_root)}
+
     if args.table in ("notebook", "all"):
-        report_notebook_comparison(args.intermediate_dir)
+        report_notebook_comparison(merged_dir)
     if args.table in ("vii", "all"):
-        report_table_vii(args.intermediate_dir)
+        comparison["table_vii"] = report_table_vii(merged_dir)
     if args.table in ("ix", "all"):
-        loao = args.loao_root or (args.intermediate_dir / "anomaly" / "loao")
-        report_table_ix(loao)
+        comparison["table_ix"] = report_table_ix(args.loao_root)
+    if args.table in ("x", "all"):
+        comparison["table_x"] = report_table_x(merged_dir)
+
+    if args.save_json:
+        args.save_json.parent.mkdir(parents=True, exist_ok=True)
+        args.save_json.write_text(
+            json.dumps(comparison, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(f"\nComparativo JSON: {args.save_json}")
 
 
 if __name__ == "__main__":
