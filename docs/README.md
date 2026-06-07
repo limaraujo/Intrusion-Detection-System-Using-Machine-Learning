@@ -7,7 +7,7 @@
 | Objetivo | Documento |
 |----------|-----------|
 | **Comandos separados por tabela (VII / IX / X)** | [TABELAS_COMANDOS_SEPARADOS.md](TABELAS_COMANDOS_SEPARADOS.md) |
-| **Passo a passo para rodar Tabelas VII, IX e X** | [COMO_RODAR_TABELAS.md](COMO_RODAR_TABELAS.md) |
+| **Passo a passo para rodar Tabelas VII, IX e X** | [COMO_RODAR_TABELAS.md](COMO_RODAR_TABELAS.md) (incl. pasta [`results/`](COMO_RODAR_TABELAS.md#pasta-results-tabelas-exportadas)) |
 | **CSE-CIC-IDS2018 — cada tabela (VII / IX / X)** | [IDS2018_TABELAS_VII_IX_X.md](IDS2018_TABELAS_VII_IX_X.md) |
 | **CSE-CIC-IDS2018 — isolamento e bootstrap** | [PROTOCOLO_CSE_CIC_IDS2018.md](PROTOCOLO_CSE_CIC_IDS2018.md) |
 | **Merged vs fine**, Tabelas VII/IX/X, LOAO vs global | [MERGED_VS_FINE_E_TABELAS.md](MERGED_VS_FINE_E_TABELAS.md) |
@@ -36,11 +36,13 @@ python -m mth_ids_pipeline.run_eval `
   --intermediate-dir data/pipeline_mth_ids_merged `
   --work-dir data/pipeline_mth_ids_merged/anomaly/global
 
-# 5) Relatórios vs artigo
+# 5) Relatórios vs artigo (grava em results/)
 python -m mth_ids_pipeline.report_paper_tables --table all `
   --merged-dir data/pipeline_mth_ids_merged `
   --loao-root data/pipeline_mth_ids_fine/anomaly/loao
 ```
+
+Saída: `results/paper_comparison.json` + `results/tables_report.txt`. Use `--no-save` para só imprimir no terminal.
 
 Um único ataque LOAO (ex.: Bot, label 1):
 
@@ -62,6 +64,8 @@ Comandos fase a fase e retomada após falha na fase 9+: [PIPELINE_PHASES.md](PIP
 | `data/pipeline_mth_ids_fine/` | fine | Fases 1–2, bootstrap; LOAO em `anomaly/loao/` |
 | `data/pipeline_mth_ids_fine/anomaly/loao/attack_<N>/` | fine | Uma rodada LOAO (fases 7–11), `loao_run.log` |
 | `data/pipeline_mth_ids_fine/anomaly/loao/loao_summary.json` | fine | Agregado Tabela IX |
+| `results/paper_comparison.json` | — | Tabelas VII + IX + X exportadas (JSON) |
+| `results/tables_report.txt` | — | Tabelas formatadas vs artigo (texto) |
 
 ## Entrada do código
 
@@ -72,7 +76,7 @@ Comandos fase a fase e retomada após falha na fase 9+: [PIPELINE_PHASES.md](PIP
 | `run_global_anomaly` | 7–11 (modo global) | `merged` | X (pré-requisito) |
 | `run_eval` | 13 | `merged` (via `--intermediate-dir`) | X |
 | `run_all` | alias de `experiment_runner` | `--protocol paper` | — |
-| `report_paper_tables` | — | VII / IX / X vs artigo | — |
+| `report_paper_tables` | — | VII / IX / X vs artigo | grava em `results/` |
 
 ## Solução de problemas (resumo)
 

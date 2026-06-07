@@ -90,7 +90,7 @@ Motivação completa (artigo × bootstrap antigo × implementação atual): [PAS
 
 **LOAO (fase 12):** para cada ataque `N`, executa subprocessos das fases 7–11 em `anomaly/loao/attack_N/` e grava `loao_run.log` via `RunLog`. Fases rodadas manualmente **não** entram nesses logs.
 
-**Relatórios:** `report_paper_tables` (Tabela VII / IX / X); JSON por fase em `phase_reports/`, `anomaly/global/reports/` ou `attack_N/reports/`.
+**Relatórios:** `report_paper_tables` (Tabela VII / IX / X) grava tabelas em `results/` (`paper_comparison.json`, `tables_report.txt`); métricas brutas por fase em `data/…/phase_reports/`, `anomaly/global/reports/` ou `attack_N/reports/`.
 
 ## Documentação histórica
 

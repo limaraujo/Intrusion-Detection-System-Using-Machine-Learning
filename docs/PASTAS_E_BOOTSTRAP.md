@@ -309,6 +309,7 @@ python -m mth_ids_pipeline.utils.merge_cicids --profile merged
 python -m mth_ids_pipeline.run_supervised --protocol paper
 python -m mth_ids_pipeline.report_paper_tables --table vii `
   --intermediate-dir data/pipeline_mth_ids_merged
+# grava tabelas em results/ (paper_comparison.json + tables_report.txt)
 ```
 
 ### Tabela IX — LOAO anomaly

@@ -129,7 +129,7 @@ Salvar só métricas 2018 (ignore coluna **Diff** vs artigo 2017):
 ```powershell
 python -m mth_ids_pipeline.report_paper_tables --table vii `
   --merged-dir $MERGED18 `
-  --save-json $MERGED18/phase_reports/table_vii_ids2018.json
+  --results-dir results/ids2018
 ```
 
 ## Retomar
@@ -211,7 +211,7 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
 ```powershell
 python -m mth_ids_pipeline.report_paper_tables --table x `
   --merged-dir $MERGED18 `
-  --save-json $MERGED18/phase_reports/table_x_ids2018.json
+  --results-dir results/ids2018
 ```
 
 ## Retomar
@@ -323,7 +323,7 @@ python -m mth_ids_pipeline.report_paper_tables --table ix `
 ```powershell
 python -m mth_ids_pipeline.report_paper_tables --table ix `
   --loao-root $LOAO18 `
-  --save-json $FINE18/phase_reports/table_ix_ids2018.json
+  --results-dir results/ids2018
 ```
 
 ## Retomar um ataque (fases 9–11)
@@ -351,8 +351,10 @@ Depois de treinar VII, IX e X no 2018:
 python -m mth_ids_pipeline.report_paper_tables --table all `
   --merged-dir $MERGED18 `
   --loao-root $LOAO18 `
-  --save-json $MERGED18/phase_reports/paper_comparison_ids2018.json
+  --results-dir results/ids2018
 ```
+
+Grava em `results/ids2018/paper_comparison.json` e `results/ids2018/tables_report.txt`.
 
 | Flag `--table` | Tabela |
 |----------------|--------|

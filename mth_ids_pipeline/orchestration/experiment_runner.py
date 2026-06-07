@@ -199,12 +199,22 @@ def _phase_args(phase: int, cfg: ExperimentConfig) -> list[str]:
         ]
         if cfg.optimize_ig:
             extra.append("--optimize-ig")
-    if phase == 5 and cfg.smote_strategy:
-        extra += ["--smote-strategy", json.dumps({str(k): v for k, v in cfg.smote_strategy.items()})]
+    if phase == 5:
+        extra += ["--random-state", str(cfg.random_state)]
+        if cfg.smote_strategy:
+            extra += ["--smote-strategy", json.dumps({str(k): v for k, v in cfg.smote_strategy.items()})]
     if phase == 6:
         if not cfg.run_hpo:
             extra.append("--no-hpo")
-        extra += ["--no-plots", "--cv-folds", str(cfg.cv_folds), "--meta-learner", cfg.meta_learner]
+        extra += [
+            "--no-plots",
+            "--cv-folds",
+            str(cfg.cv_folds),
+            "--meta-learner",
+            cfg.meta_learner,
+            "--random-state",
+            str(cfg.random_state),
+        ]
         if cfg.hpo_on_validation:
             extra.append("--hpo-on-validation")
     if phase == 8:

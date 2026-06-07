@@ -131,7 +131,11 @@ def main() -> None:
     metric, metric_source = _resolve_metric(report_dir, args.metric)
     metrics_path = paths.intermediate / "06_supervised_metrics.json"
     best_model_name = pick_best_supervised_model(metrics_path)
-    factory = estimator_factory_for_supervised(best_model_name, random_state=args.random_state)
+    factory = estimator_factory_for_supervised(
+        best_model_name,
+        random_state=args.random_state,
+        intermediate_dir=paths.intermediate,
+    )
     print(f"Biased learners: família de '{best_model_name}'")
 
     X_train, X_test, y_train, y_test, did_smote = load_anomaly_splits(

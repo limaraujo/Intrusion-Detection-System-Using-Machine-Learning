@@ -129,12 +129,15 @@ Anomaly LOAO (paper — Table IX) → `data/pipeline_mth_ids_fine/` (auto: fine 
 python -m mth_ids_pipeline.run_anomaly --protocol paper --loao
 ```
 
-Compare metrics vs paper/notebook:
+Compare metrics vs paper/notebook (writes to `results/`):
+
 ```bash
 python -m mth_ids_pipeline.report_paper_tables --table all \
   --intermediate-dir data/pipeline_mth_ids_merged \
   --loao-root data/pipeline_mth_ids_fine/anomaly/loao
 ```
+
+Output: `results/paper_comparison.json` and `results/tables_report.txt`.
 
 **Run each phase manually** (full commands, LOAO resume, flags): [docs/PIPELINE_PHASES.md — Rodar cada fase manualmente](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente).
 

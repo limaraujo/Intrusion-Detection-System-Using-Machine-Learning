@@ -8,6 +8,8 @@ from typing import Any, Callable
 import numpy as np
 from sklearn.metrics import accuracy_score
 
+from mth_ids_pipeline.io.reproducibility import numpy_random_state
+
 
 @dataclass
 class CLKmeansHpoResult:
@@ -96,7 +98,13 @@ def optimize_xgb_hyperparams(
         "max_depth": hp.quniform("max_depth", 4, 100, 1),
         "learning_rate": hp.normal("learning_rate", 0.01, 0.9),
     }
-    best = fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=max_evals)
+    best = fmin(
+        fn=objective,
+        space=space,
+        algo=tpe.suggest,
+        max_evals=max_evals,
+        rstate=numpy_random_state(random_state),
+    )
     return {
         "n_estimators": int(best["n_estimators"]),
         "max_depth": int(best["max_depth"]),
@@ -163,7 +171,13 @@ def optimize_sklearn_tree_hyperparams(
     if include_n_estimators:
         space["n_estimators"] = hp.quniform("n_estimators", 10, 200, 1)
 
-    best = fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=max_evals)
+    best = fmin(
+        fn=objective,
+        space=space,
+        algo=tpe.suggest,
+        max_evals=max_evals,
+        rstate=numpy_random_state(random_state),
+    )
     out: dict[str, Any] = {
         "max_depth": int(best["max_depth"]),
         "max_features": int(best["max_features"]),
@@ -419,6 +433,7 @@ def optimize_cl_kmeans_tpe(
     max_evals: int = 20,
     low: int = 2,
     high: int = 50,
+    random_state: int = 0,
 ) -> tuple[int, float]:
     """BO-TPE alternativo para n_clusters (notebook também testa)."""
     from hyperopt import STATUS_OK, fmin, hp, tpe
@@ -436,5 +451,11 @@ def optimize_cl_kmeans_tpe(
         return {"loss": -acc, "status": STATUS_OK}
 
     space = {"n_clusters": hp.quniform("n_clusters", low, high, 1)}
-    fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=max_evals)
+    fmin(
+        fn=objective,
+        space=space,
+        algo=tpe.suggest,
+        max_evals=max_evals,
+        rstate=numpy_random_state(random_state),
+    )
     return best_n, best_acc

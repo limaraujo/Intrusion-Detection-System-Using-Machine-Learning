@@ -1,17 +1,20 @@
 """
 Gera tabelas de comparação com o artigo MTH-IDS (Tabelas VII, IX e X).
 
-Uso (comparativo completo):
+Uso (comparativo completo — grava em results/ fora de data/):
   python -m mth_ids_pipeline.report_paper_tables --table all \\
     --merged-dir data/pipeline_mth_ids_merged \\
     --loao-root data/pipeline_mth_ids_fine/anomaly/loao
 
+Saída padrão: results/paper_comparison.json + results/tables_report.txt
 Tabelas individuais: --table vii | ix | x | notebook
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 from pathlib import Path
 
@@ -19,6 +22,7 @@ from mth_ids_pipeline.config import (
     INTERMEDIATE_DIR_FINE,
     INTERMEDIATE_DIR_MERGED,
     PAPER_TABLE_X_REFERENCE,
+    RESULTS_DIR,
 )
 from mth_ids_pipeline.core.evaluation import (
     NOTEBOOK_REFERENCE_SUPERVISED,
@@ -29,8 +33,26 @@ from mth_ids_pipeline.io.loao_reporting import PAPER_REFERENCE_CICIDS2017
 
 # Modelo do artigo na Tabela VII (tier multi-class / stacking)
 PAPER_TABLE_VII_MODEL = "MTH-IDS (Multi-Class Model)"
-# Modelo reproduzido mais próximo do tier 1 do artigo
-REPRO_STACKING_MODEL = "Stacking meta (HPO XGB)"
+# Notebook protocol (--meta-learner xgb + HPO)
+NOTEBOOK_STACKING_MODEL = "Stacking meta (HPO XGB)"
+# Prefixo usado no paper protocol (--meta-learner best-base)
+PAPER_STACKING_PREFIX = "Stacking meta ("
+
+
+def _find_stacking_row(metrics: list[dict]) -> dict | None:
+    """Stacking no JSON: paper → ``Stacking meta (<melhor base>)``; notebook → ``Stacking meta (HPO XGB)``."""
+    for row in metrics:
+        if row.get("model") == NOTEBOOK_STACKING_MODEL:
+            return row
+    for row in metrics:
+        name = str(row.get("model", ""))
+        if name.startswith(PAPER_STACKING_PREFIX) and name.endswith(")"):
+            return row
+    for legacy in ("Stacking (XGB meta)",):
+        for row in metrics:
+            if row.get("model") == legacy:
+                return row
+    return None
 
 
 def _load_json(path: Path) -> dict | list | None:
@@ -51,11 +73,13 @@ def report_notebook_comparison(intermediate_dir: Path) -> None:
         "RandomForest (HPO)": "RandomForest HPO",
         "DecisionTree (HPO)": "DecisionTree HPO",
         "ExtraTrees (HPO)": "ExtraTrees HPO",
-        "Stacking meta (HPO XGB)": "Stacking meta HPO",
+        NOTEBOOK_STACKING_MODEL: "Stacking meta HPO",
     }
     rows: list[dict] = []
     for entry in metrics:
         ref_key = model_map.get(entry["model"])
+        if not ref_key and str(entry.get("model", "")).startswith(PAPER_STACKING_PREFIX):
+            ref_key = "Stacking meta HPO"
         if not ref_key or ref_key not in NOTEBOOK_REFERENCE_SUPERVISED:
             continue
         ref = NOTEBOOK_REFERENCE_SUPERVISED[ref_key]
@@ -101,19 +125,18 @@ def report_table_vii(intermediate_dir: Path) -> dict | None:
     print("=" * 72)
     print(f"{'Modelo':<24} {'Acc':>10} {'F1(w)':>10}")
     print("-" * 72)
-    stacking_row: dict | None = None
+    stacking_row = _find_stacking_row(metrics)
     for row in metrics:
         name = row.get("model", "?")
         acc = float(row.get("accuracy", 0))
         f1 = float(row.get("f1_weighted", 0))
         print(f"{name:<24} {acc:>10.6f} {f1:>10.6f}")
-        if name == REPRO_STACKING_MODEL:
-            stacking_row = row
 
     print("\nComparação vs artigo (tier multi-class / stacking):")
     print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
     print("-" * 72)
-    out: dict = {"paper_model": PAPER_TABLE_VII_MODEL, "repro_model": REPRO_STACKING_MODEL}
+    repro_model = stacking_row.get("model") if stacking_row else NOTEBOOK_STACKING_MODEL
+    out: dict = {"paper_model": PAPER_TABLE_VII_MODEL, "repro_model": repro_model}
     if stacking_row:
         acc = float(stacking_row.get("accuracy", 0))
         f1 = float(stacking_row.get("f1_weighted", 0))
@@ -122,7 +145,10 @@ def report_table_vii(intermediate_dir: Path) -> dict | None:
         out["accuracy"] = {"reproduced": acc, "reference": ref_acc, "delta": acc - ref_acc}
         out["f1_weighted"] = {"reproduced": f1, "reference": ref_f1, "delta": f1 - ref_f1}
     else:
-        print(f"  (modelo '{REPRO_STACKING_MODEL}' não encontrado em 06_supervised_metrics.json)")
+        print(
+            f"  (nenhum stacking encontrado em 06_supervised_metrics.json; "
+            f"esperado '{NOTEBOOK_STACKING_MODEL}' ou '{PAPER_STACKING_PREFIX}…)')"
+        )
 
     if cv_report and cv_report.get("cv_reports"):
         print("\n10-fold CV no treino (reprodução):")
@@ -244,6 +270,39 @@ def report_table_x(intermediate_dir: Path) -> dict | None:
     }
 
 
+def _run_reports(
+    *,
+    merged_dir: Path,
+    loao_root: Path,
+    table: str,
+) -> tuple[dict, str]:
+    """Executa relatórios; retorna (comparison dict, texto formatado)."""
+    buf = io.StringIO()
+
+    comparison: dict = {"merged_dir": str(merged_dir), "loao_root": str(loao_root)}
+
+    with contextlib.redirect_stdout(buf):
+        if table == "all":
+            print("=" * 72)
+            print("COMPARATIVO MTH-IDS vs artigo (CICIDS2017)")
+            print("=" * 72)
+            print(f"Supervisionado / Tabela X: {merged_dir}")
+            print(f"LOAO / Tabela IX:          {loao_root}")
+
+        if table in ("notebook", "all"):
+            report_notebook_comparison(merged_dir)
+        if table in ("vii", "all"):
+            comparison["table_vii"] = report_table_vii(merged_dir)
+        if table in ("ix", "all"):
+            comparison["table_ix"] = report_table_ix(loao_root)
+        if table in ("x", "all"):
+            comparison["table_x"] = report_table_x(merged_dir)
+
+    report_text = buf.getvalue()
+    print(report_text, end="" if report_text.endswith("\n") else "\n")
+    return comparison, report_text
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Relatórios Tabela VII / IX / X vs artigo")
     parser.add_argument(
@@ -270,40 +329,44 @@ def main() -> None:
         default="all",
     )
     parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=RESULTS_DIR,
+        help=f"Salvar tabelas em JSON + TXT fora de data/ (default: {RESULTS_DIR})",
+    )
+    parser.add_argument(
         "--save-json",
         type=Path,
         default=None,
-        help="Salvar comparativo estruturado (JSON)",
+        help="Salvar comparativo estruturado (JSON); sobrescreve caminho em --results-dir",
+    )
+    parser.add_argument(
+        "--no-save",
+        action="store_true",
+        help="Não gravar arquivos em disco (só imprimir no terminal)",
     )
     args = parser.parse_args()
 
     merged_dir = args.intermediate_dir or args.merged_dir
+    comparison, report_text = _run_reports(
+        merged_dir=merged_dir,
+        loao_root=args.loao_root,
+        table=args.table,
+    )
 
-    if args.table == "all":
-        print("=" * 72)
-        print("COMPARATIVO MTH-IDS vs artigo (CICIDS2017)")
-        print("=" * 72)
-        print(f"Supervisionado / Tabela X: {merged_dir}")
-        print(f"LOAO / Tabela IX:          {args.loao_root}")
+    if args.no_save:
+        return
 
-    comparison: dict = {"merged_dir": str(merged_dir), "loao_root": str(args.loao_root)}
-
-    if args.table in ("notebook", "all"):
-        report_notebook_comparison(merged_dir)
-    if args.table in ("vii", "all"):
-        comparison["table_vii"] = report_table_vii(merged_dir)
-    if args.table in ("ix", "all"):
-        comparison["table_ix"] = report_table_ix(args.loao_root)
-    if args.table in ("x", "all"):
-        comparison["table_x"] = report_table_x(merged_dir)
-
-    if args.save_json:
-        args.save_json.parent.mkdir(parents=True, exist_ok=True)
-        args.save_json.write_text(
-            json.dumps(comparison, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        print(f"\nComparativo JSON: {args.save_json}")
+    json_path = args.save_json or (args.results_dir / "paper_comparison.json")
+    txt_path = args.results_dir / "tables_report.txt"
+    args.results_dir.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(
+        json.dumps(comparison, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    txt_path.write_text(report_text, encoding="utf-8")
+    print(f"\nComparativo JSON: {json_path}")
+    print(f"Relatório texto:  {txt_path}")
 
 
 if __name__ == "__main__":

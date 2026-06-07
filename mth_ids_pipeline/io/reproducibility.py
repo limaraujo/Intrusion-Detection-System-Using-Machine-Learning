@@ -35,6 +35,11 @@ def set_global_seeds(seed: int = DEFAULT_RANDOM_STATE) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
+def numpy_random_state(seed: int = DEFAULT_RANDOM_STATE) -> np.random.RandomState:
+    """RNG NumPy legado para Hyperopt ``fmin(..., rstate=...)``."""
+    return np.random.RandomState(seed)
+
+
 def collect_environment_versions() -> dict[str, str]:
     versions: dict[str, str] = {
         "python": sys.version.replace("\n", " "),
@@ -76,11 +81,8 @@ def log_run_config(
         "environment": collect_environment_versions(),
         "config": _json_safe(config),
         "non_deterministic_components": [
-            "Hyperopt fmin (sem random_state explícito no notebook)",
             "KernelPCA (sklearn, sem random_state)",
-            "SMOTE (imbalanced-learn, sem random_state no notebook)",
-            "MiniBatchKMeans no ramo anomaly (sem seed no notebook)",
-            "Amostragem benigna PortScan (random_state=None no notebook)",
+            "MiniBatchKMeans / paralelismo (n_jobs=-1) pode variar ordem numérica",
         ],
     }
     if extra:

@@ -10,13 +10,13 @@ Guia completo passo a passo: [COMO_RODAR_TABELAS.md](COMO_RODAR_TABELAS.md)
 
 **Sim — são comandos separados.** Não existe um único script que treina as três tabelas de uma vez.
 
-| Tabela (artigo) | Treino | Impressão |
-|-----------------|--------|-----------|
+| Tabela (artigo) | Treino | Impressão / exportação |
+|-----------------|--------|------------------------|
 | **VII** | `run_supervised` | `report_paper_tables --table vii` |
 | **IX** | `run_anomaly --loao` | `report_paper_tables --table ix` |
 | **X** | `run_global_anomaly` + `run_eval` | `report_paper_tables --table x` |
 
-O script `report_paper_tables` **só lê** resultados já salvos; não treina modelos.
+O script `report_paper_tables` **só lê** resultados já salvos em `data/`; não treina modelos. Por padrão **grava as tabelas** em `results/` (fora de `data/`): `paper_comparison.json` + `tables_report.txt`.
 
 ---
 
@@ -31,6 +31,10 @@ data/pipeline_mth_ids_merged/          ← Tabela VII + Tabela X
 
 data/pipeline_mth_ids_fine/            ← Tabela IX
 └── anomaly/loao/attack_1 … attack_14/ ← LOAO (1 detector por ataque)
+
+results/                               ← tabelas exportadas (fora de data/)
+├── paper_comparison.json              ← VII + IX + X (JSON)
+└── tables_report.txt                  ← tabelas formatadas (texto)
 ```
 
 | | Tabela VII | Tabela IX | Tabela X |
@@ -94,7 +98,7 @@ python -m mth_ids_pipeline.report_paper_tables --table all `
 2. run_supervised                   ← Tabela VII  (obrigatório antes da X)
 3. run_anomaly --loao               ← Tabela IX   (independente, pode ser em paralelo)
 4. run_global_anomaly + run_eval    ← Tabela X
-5. report_paper_tables              ← terminal
+5. report_paper_tables              ← terminal + results/
 ```
 
 A Tabela **X depende da VII** (modelos stacking + hold-out). A Tabela **IX é independente**.
@@ -109,7 +113,7 @@ A Tabela **X depende da VII** (modelos stacking + hold-out). A Tabela **IX é in
 | `run_global_anomaly` | `anomaly/global/`, reports fase 7–11 | — |
 | `run_eval` | `phase13_…json`, `figures/` | — |
 | `run_anomaly --loao` | copia `06_…json` (bootstrap) | `loao/attack_*` |
-| `report_paper_tables` | nada (só lê) | nada (só lê) |
+| `report_paper_tables` | nada (só lê em `data/`) | nada (só lê) | grava em `results/` |
 
 ### Args que isolam a Tabela X
 
@@ -174,7 +178,7 @@ O pipeline quebrava ao tentar transformar/clusterizar **0 amostras** de teste na
 | `run_anomaly --loao` | 7–12 (×14 ataques) | IX |
 | `run_global_anomaly` | 7–11 (global) | X (pré-requisito) |
 | `run_eval` | 13 | X |
-| `report_paper_tables --table vii\|ix\|x\|all` | — | imprime |
+| `report_paper_tables --table vii\|ix\|x\|all` | — | imprime + `results/` |
 
 ---
 

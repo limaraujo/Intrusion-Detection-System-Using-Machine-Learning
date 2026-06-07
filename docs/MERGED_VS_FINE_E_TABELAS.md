@@ -136,9 +136,10 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
 ```powershell
 python -m mth_ids_pipeline.report_paper_tables --table all `
   --merged-dir data/pipeline_mth_ids_merged `
-  --loao-root data/pipeline_mth_ids_fine/anomaly/loao `
-  --save-json data/pipeline_mth_ids_fine/phase_reports/paper_comparison.json
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
 ```
+
+Grava automaticamente em `results/paper_comparison.json` e `results/tables_report.txt`.
 
 ---
 
@@ -160,11 +161,15 @@ Rodar `run_global_anomaly` **não** substitui LOAO. Rodar LOAO **não** gera Tab
 ## Mapa de pastas (atualizado)
 
 ```
+results/                        # tabelas exportadas (fora de data/)
+├── paper_comparison.json
+└── tables_report.txt
+
 data/
 ├── CICIDS2017.csv              # merged (7 classes)
 ├── CICIDS2017_fine.csv         # fine (~15 classes)
 │
-├── pipeline_mth_ids_merged/    # Tabela VII + Tabela X
+├── pipeline_mth_ids_merged/    # Tabela VII + Tabela X (treino)
 │   ├── 01_preprocessed.parquet
 │   ├── 02_sampled_kmeans.parquet
 │   ├── 06_supervised_metrics.json
@@ -211,7 +216,7 @@ data/
 | `run_anomaly --loao` | fine | 7–12 | IX |
 | `run_global_anomaly` | merged | 7–11 (global) | X (pré-requisito) |
 | `run_eval` | merged (via `--intermediate-dir`) | 13 | X |
-| `report_paper_tables` | — | — | VII / IX / X |
+| `report_paper_tables` | — | — | VII / IX / X → `results/` |
 
 ---
 

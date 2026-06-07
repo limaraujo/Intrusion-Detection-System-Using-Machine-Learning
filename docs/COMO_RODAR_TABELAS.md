@@ -48,6 +48,36 @@ Use `--protocol notebook` apenas se quiser reproduzir o notebook IoTJ publicado.
 
 ---
 
+## Pasta `results/` (tabelas exportadas)
+
+O `report_paper_tables` **lê** métricas em `data/pipeline_*` e **grava as tabelas formatadas** na raiz do repositório, **fora de `data/`**:
+
+```text
+results/
+├── paper_comparison.json   # métricas estruturadas (VII, IX, X)
+└── tables_report.txt       # tabelas legíveis (terminal)
+```
+
+Comando (salva automaticamente em `results/`):
+
+```powershell
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_mth_ids_merged `
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
+```
+
+| Flag | Efeito |
+|------|--------|
+| `--results-dir results/cicids2017` | Outra pasta de saída |
+| `--save-json results/custom.json` | JSON em caminho específico (sobrescreve o JSON de `--results-dir`) |
+| `--no-save` | Só imprime no terminal, sem gravar arquivos |
+
+> **Artefatos de treino** (parquets, modelos, `phase_reports/`) continuam em `data/`. A pasta `results/` contém apenas o **relatório comparativo** vs artigo.
+
+Para **IDS2018**, use pastas separadas: `--results-dir results/ids2018` (ver [IDS2018_TABELAS_VII_IX_X.md](IDS2018_TABELAS_VII_IX_X.md)).
+
+---
+
 ## Tabela VII — supervisionado
 
 ### O que é
@@ -70,7 +100,7 @@ python -m mth_ids_pipeline.report_paper_tables --table vii `
 | Comando | Fases | Saída principal |
 |---------|-------|-----------------|
 | `run_supervised` | 1–6 | `06_supervised_metrics.json`, `models/supervised/` |
-| `report_paper_tables --table vii` | — | Tabela no terminal (Acc, F1 vs artigo) |
+| `report_paper_tables --table vii` | — | Tabela no terminal + `results/` (JSON + TXT) |
 
 ### Retomar por fase
 
@@ -253,22 +283,25 @@ python -m mth_ids_pipeline.run_global_anomaly --protocol paper --no-hpo --from-p
 ```powershell
 python -m mth_ids_pipeline.report_paper_tables --table all `
   --merged-dir data/pipeline_mth_ids_merged `
-  --loao-root data/pipeline_mth_ids_fine/anomaly/loao `
-  --save-json data/pipeline_mth_ids_fine/phase_reports/paper_comparison.json
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
 ```
 
-Opções de `--table`: `vii` | `ix` | `x` | `notebook` | `all`.
+Grava em `results/paper_comparison.json` e `results/tables_report.txt`. Opções de `--table`: `vii` | `ix` | `x` | `notebook` | `all`.
 
 ---
 
 ## Mapa de pastas
 
 ```
+results/                              # tabelas exportadas (fora de data/)
+├── paper_comparison.json             # VII + IX + X (estruturado)
+└── tables_report.txt                 # tabelas formatadas
+
 data/
 ├── CICIDS2017.csv                    # merged
 ├── CICIDS2017_fine.csv               # fine
 │
-├── pipeline_mth_ids_merged/          # Tabela VII + X
+├── pipeline_mth_ids_merged/          # Tabela VII + X (artefatos de treino)
 │   ├── 06_supervised_metrics.json
 │   ├── 05_test_unchanged.parquet     # hold-out fase 13
 │   ├── anomaly/global/               # fases 7–11
@@ -278,7 +311,7 @@ data/
 │       ├── fig_multiclass_cm.png
 │       └── fig_binary_cm.png
 │
-└── pipeline_mth_ids_fine/            # Tabela IX
+└── pipeline_mth_ids_fine/            # Tabela IX (artefatos de treino)
     └── anomaly/loao/
         ├── attack_1/ … attack_14/
         └── loao_summary.json
@@ -308,7 +341,7 @@ data/
 | `run_anomaly --loao` | fine, fases 7–12 | IX |
 | `run_global_anomaly` | merged, fases 7–11 global | X (pré-requisito) |
 | `run_eval` | fase 13 | X |
-| `report_paper_tables` | — | VII / IX / X |
+| `report_paper_tables` | grava em `results/` | VII / IX / X |
 
 ---
 

@@ -50,6 +50,7 @@ def main() -> None:
         default=None,
         help='JSON, ex.: {"2":1000,"4":1000} (default: config do protocolo)',
     )
+    parser.add_argument("--random-state", type=int, default=0)
     args = parser.parse_args()
 
     paths = init_paths(args)
@@ -83,6 +84,8 @@ def main() -> None:
     kw: dict = {"sampling_strategy": strategy}
     if "n_jobs" in inspect.signature(SMOTE.__init__).parameters:
         kw["n_jobs"] = -1
+    if "random_state" in inspect.signature(SMOTE.__init__).parameters:
+        kw["random_state"] = int(args.random_state)
     smote = SMOTE(**kw)
     X_res, y_res = smote.fit_resample(X_train, y_train)
 
@@ -108,6 +111,7 @@ def main() -> None:
         "smote_sampling_strategy": {str(k): v for k, v in strategy.items()},
         "train_counts_before": {str(k): int(v) for k, v in orig_counts.items()},
         "train_counts_after": {str(k): int(v) for k, v in smote_counts.items()},
+        "random_state": int(args.random_state),
     }
     report_path = write_report(paths.reports, "phase05_smote", report)
     print(f"Relatorio salvo em: {report_path}")

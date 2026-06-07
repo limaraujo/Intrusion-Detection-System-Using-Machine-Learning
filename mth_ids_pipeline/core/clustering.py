@@ -54,7 +54,7 @@ def sample_kmeans(
     df_major["klabel"] = kmeans.labels_
 
     def typical_sampling(group: pd.DataFrame) -> pd.DataFrame:
-        return group.sample(frac=frac)
+        return group.sample(frac=frac, random_state=random_state)
 
     result = df_major.groupby("klabel", group_keys=False).apply(typical_sampling)
     result = result.drop(columns=["klabel"], errors="ignore")

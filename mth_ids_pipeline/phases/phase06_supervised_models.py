@@ -126,10 +126,29 @@ def _hyperopt_objective(
     return objective
 
 
-def _fmin_best(objective, space: dict, *, max_evals: int, label: str) -> dict:
+def _fmin_best(
+    objective,
+    space: dict,
+    *,
+    max_evals: int,
+    label: str,
+    random_state: int = 0,
+) -> dict:
     from hyperopt import fmin, tpe
 
-    best = fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=max_evals, verbose=False)
+    try:
+        from mth_ids_pipeline.io.reproducibility import numpy_random_state
+    except ImportError:
+        from mth_ids_pipeline.io.reproducibility import numpy_random_state
+
+    best = fmin(
+        fn=objective,
+        space=space,
+        algo=tpe.suggest,
+        max_evals=max_evals,
+        verbose=False,
+        rstate=numpy_random_state(random_state),
+    )
     print(f"{label} HPO best:", best)
     return best
 
@@ -177,10 +196,12 @@ def main() -> None:
         help="Notebook: HPO no hold-out (padrão). Use --hpo-on-validation para CV no treino (artigo)",
     )
     parser.add_argument("--meta-learner", choices=("best-base", "xgb"), default=DEFAULT_META_LEARNER)
+    parser.add_argument("--random-state", type=int, default=0)
     args = parser.parse_args()
 
     paths = init_paths(args)
     output_dir = paths.intermediate
+    rs = int(args.random_state)
     tr = pd.read_parquet(output_dir / P05_TRAIN_SMOTE)
     te = pd.read_parquet(output_dir / P05_TEST)
     label_col = "Label"
@@ -221,7 +242,7 @@ def main() -> None:
 
     # ----- XGBoost -----
     if args.no_hpo:
-        xg = xgb.XGBClassifier(learning_rate=0.7340229699980686, n_estimators=70, max_depth=14, random_state=0)
+        xg = xgb.XGBClassifier(learning_rate=0.7340229699980686, n_estimators=70, max_depth=14, random_state=rs)
     else:
         from hyperopt import hp
 
@@ -230,7 +251,7 @@ def main() -> None:
                 n_estimators=int(params["n_estimators"]),
                 max_depth=int(params["max_depth"]),
                 learning_rate=abs(float(params["learning_rate"])),
-                random_state=0,
+                random_state=rs,
             )
 
         xg_space = {
@@ -247,16 +268,18 @@ def main() -> None:
                 y_test,
                 hpo_on_validation=args.hpo_on_validation,
                 cv_folds=cv_folds,
+                random_state=rs,
             ),
             xg_space,
             max_evals=20,
             label="XGBoost",
+            random_state=rs,
         )
         xg = xgb.XGBClassifier(
             n_estimators=int(best["n_estimators"]),
             max_depth=int(best["max_depth"]),
             learning_rate=abs(float(best["learning_rate"])),
-            random_state=0,
+            random_state=rs,
         )
 
     xg.fit(X_train, y_train)
@@ -274,7 +297,7 @@ def main() -> None:
             min_samples_split=9,
             max_features=20,
             criterion="entropy",
-            random_state=0,
+            random_state=rs,
         )
     else:
         from hyperopt import hp
@@ -287,7 +310,7 @@ def main() -> None:
                 min_samples_split=int(params["min_samples_split"]),
                 min_samples_leaf=int(params["min_samples_leaf"]),
                 criterion=_criterion_value(params["criterion"]),
-                random_state=0,
+                random_state=rs,
             )
 
         rf_space = {
@@ -307,10 +330,12 @@ def main() -> None:
                 y_test,
                 hpo_on_validation=args.hpo_on_validation,
                 cv_folds=cv_folds,
+                random_state=rs,
             ),
             rf_space,
             max_evals=20,
             label="RandomForest",
+            random_state=rs,
         )
         crit = _criterion_value(best["criterion"])
         rf_hpo = RandomForestClassifier(
@@ -320,7 +345,7 @@ def main() -> None:
             min_samples_split=int(best["min_samples_split"]),
             min_samples_leaf=int(best["min_samples_leaf"]),
             criterion=crit,
-            random_state=0,
+            random_state=rs,
         )
 
     rf_hpo.fit(X_train, y_train)
@@ -332,7 +357,7 @@ def main() -> None:
     # ----- Decision Tree -----
     if args.no_hpo:
         dt_hpo = DecisionTreeClassifier(
-            min_samples_leaf=2, max_depth=47, min_samples_split=3, max_features=19, criterion="gini", random_state=0
+            min_samples_leaf=2, max_depth=47, min_samples_split=3, max_features=19, criterion="gini", random_state=rs
         )
     else:
         from hyperopt import hp
@@ -344,7 +369,7 @@ def main() -> None:
                 min_samples_split=int(params["min_samples_split"]),
                 min_samples_leaf=int(params["min_samples_leaf"]),
                 criterion=_criterion_value(params["criterion"]),
-                random_state=0,
+                random_state=rs,
             )
 
         dt_space = {
@@ -363,10 +388,12 @@ def main() -> None:
                 y_test,
                 hpo_on_validation=args.hpo_on_validation,
                 cv_folds=cv_folds,
+                random_state=rs,
             ),
             dt_space,
             max_evals=50,
             label="DecisionTree",
+            random_state=rs,
         )
         crit = _criterion_value(best["criterion"])
         dt_hpo = DecisionTreeClassifier(
@@ -375,7 +402,7 @@ def main() -> None:
             min_samples_split=int(best["min_samples_split"]),
             min_samples_leaf=int(best["min_samples_leaf"]),
             criterion=crit,
-            random_state=0,
+            random_state=rs,
         )
 
     dt_hpo.fit(X_train, y_train)
@@ -393,7 +420,7 @@ def main() -> None:
             min_samples_split=5,
             max_features=20,
             criterion="entropy",
-            random_state=0,
+            random_state=rs,
         )
     else:
         from hyperopt import hp
@@ -406,7 +433,7 @@ def main() -> None:
                 min_samples_split=int(params["min_samples_split"]),
                 min_samples_leaf=int(params["min_samples_leaf"]),
                 criterion=_criterion_value(params["criterion"]),
-                random_state=0,
+                random_state=rs,
             )
 
         et_space = {
@@ -426,10 +453,12 @@ def main() -> None:
                 y_test,
                 hpo_on_validation=args.hpo_on_validation,
                 cv_folds=cv_folds,
+                random_state=rs,
             ),
             et_space,
             max_evals=20,
             label="ExtraTrees",
+            random_state=rs,
         )
         crit = _criterion_value(best["criterion"])
         et_hpo = ExtraTreesClassifier(
@@ -439,7 +468,7 @@ def main() -> None:
             min_samples_split=int(best["min_samples_split"]),
             min_samples_leaf=int(best["min_samples_leaf"]),
             criterion=crit,
-            random_state=0,
+            random_state=rs,
         )
 
     et_hpo.fit(X_train, y_train)
@@ -472,7 +501,7 @@ def main() -> None:
         metrics.append(_evaluate(meta_label, meta, x_test_meta, y_test, binary=args.binary))
         heatmap(y_test, meta.predict(x_test_meta), "Stacking meta (best base)")
     else:
-        stk = xgb.XGBClassifier(random_state=0)
+        stk = xgb.XGBClassifier(random_state=rs)
         stk.fit(x_train_meta, y_train)
         stk_for_cv = stk
         metrics.append(_evaluate("Stacking (XGB meta)", stk, x_test_meta, y_test))
@@ -480,7 +509,7 @@ def main() -> None:
 
         if args.no_hpo:
             meta = xgb.XGBClassifier(
-                learning_rate=0.19229249758051492, n_estimators=30, max_depth=36, random_state=0
+                learning_rate=0.19229249758051492, n_estimators=30, max_depth=36, random_state=rs
             )
         else:
             from hyperopt import hp
@@ -490,7 +519,7 @@ def main() -> None:
                     n_estimators=int(params["n_estimators"]),
                     max_depth=int(params["max_depth"]),
                     learning_rate=abs(float(params["learning_rate"])),
-                    random_state=0,
+                    random_state=rs,
                 )
 
             meta_space = {
@@ -507,16 +536,18 @@ def main() -> None:
                     y_test,
                     hpo_on_validation=args.hpo_on_validation,
                     cv_folds=cv_folds,
+                    random_state=rs,
                 ),
                 meta_space,
                 max_evals=20,
                 label="Stacking meta",
+                random_state=rs,
             )
             meta = xgb.XGBClassifier(
                 n_estimators=int(best["n_estimators"]),
                 max_depth=int(best["max_depth"]),
                 learning_rate=abs(float(best["learning_rate"])),
-                random_state=0,
+                random_state=rs,
             )
 
         meta.fit(x_train_meta, y_train)
@@ -534,7 +565,7 @@ def main() -> None:
         if stk_for_cv is not None:
             cv_models.append(("Stacking (XGB meta)", stk_for_cv, x_train_meta, y_train))
         cv_models.append((meta_label, meta, x_train_meta, y_train))
-        cv_reports = _run_cv_reports(cv_models, n_splits=cv_folds, random_state=0)
+        cv_reports = _run_cv_reports(cv_models, n_splits=cv_folds, random_state=rs)
 
     out_metrics = output_dir / "06_supervised_metrics.json"
     out_metrics.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
@@ -575,6 +606,7 @@ def main() -> None:
         "meta_learner": args.meta_learner,
         "stacking_meta_model": meta_label,
         "cv_reports": cv_reports,
+        "random_state": rs,
     }
     report_path = write_report(paths.reports, "phase06_supervised_models", report)
     print(f"Relatorio salvo em: {report_path}")

@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data"
+RESULTS_DIR = REPO_ROOT / "results"
 INTERMEDIATE_DIR = DATA_DIR / "pipeline_mth_ids"
 ANOMALY_DIR = INTERMEDIATE_DIR / "anomaly"
 REPORTS_DIR = INTERMEDIATE_DIR / "phase_reports"

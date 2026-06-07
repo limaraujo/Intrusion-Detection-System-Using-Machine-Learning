@@ -25,7 +25,8 @@ Default: `--protocol paper` (Yang et al., IEEE IoT Journal 2022).
 python -m mth_ids_pipeline.utils.merge_cicids --profile merged
 python -m mth_ids_pipeline.run_supervised --protocol paper
 python -m mth_ids_pipeline.report_paper_tables --table vii `
-  --intermediate-dir data/pipeline_mth_ids_merged
+  --merged-dir data/pipeline_mth_ids_merged
+# → results/paper_comparison.json + results/tables_report.txt
 ```
 
 `run_supervised` usa por padrão `--label-profile merged` e `--intermediate-dir data/pipeline_mth_ids_merged`.
@@ -104,6 +105,17 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
 ```
 
 **Não confundir com LOAO:** Tabela IX usa **fine** e `anomaly/loao/attack_*` (14 modelos). Tabela X usa **merged** e `anomaly/global` (1 modelo + cascata com stacking).
+
+## Exportação das tabelas (`results/`)
+
+O `report_paper_tables` grava por padrão em **`results/`** na raiz do repositório (fora de `data/`):
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| `results/paper_comparison.json` | Métricas estruturadas (VII, IX, X) |
+| `results/tables_report.txt` | Tabelas formatadas vs artigo |
+
+Flags: `--results-dir`, `--save-json`, `--no-save`. Detalhes: [COMO_RODAR_TABELAS.md — Pasta results/](COMO_RODAR_TABELAS.md#pasta-results-tabelas-exportadas).
 
 ## Notebook (`--protocol notebook`)
 

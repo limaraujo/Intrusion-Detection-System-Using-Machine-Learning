@@ -436,7 +436,7 @@ Execução manual **não** acrescenta saída ao `loao_run.log` (só a fase 12 gr
 | Métricas por ataque LOAO | `anomaly/loao/attack_<N>/reports/phase11_anomaly_biased.json` |
 | Resumo Tabela IX | `anomaly/loao/loao_summary.json` |
 | Tabela VII | `06_supervised_metrics.json` |
-| Relatório no terminal | `python -m mth_ids_pipeline.report_paper_tables --table all` |
+| Relatório no terminal + `results/` | `python -m mth_ids_pipeline.report_paper_tables --table all` |
 
 ---
 
@@ -740,7 +740,7 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
   --merged-dir data/pipeline_mth_ids_merged
 ```
 
-**Saída:** `phase_reports/phase13_full_system_eval.json`, `figures/fig_multiclass_cm.png`, `figures/fig_binary_cm.png`.
+**Saída:** `phase_reports/phase13_full_system_eval.json`, `figures/fig_multiclass_cm.png`, `figures/fig_binary_cm.png`. Tabelas formatadas vs artigo: `report_paper_tables` → `results/`.
 
 ---
 
@@ -775,7 +775,7 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
 | `run_log.py` | `supervised_run.log` (fases 1–6 via runner) e `attack_<N>/loao_run.log` (fase 12) |
 | `evaluation.py` | DR, FAR, F1, comparação com artigo |
 | `experiment_runner.py` | Orquestração reprodutível, bootstrap |
-| `report_paper_tables.py` | Tabela VII / IX / X no terminal |
+| `report_paper_tables.py` | Tabela VII / IX / X → terminal + `results/` |
 | `run_global_anomaly.py` | Orquestra fases 7–11 modo global (merged) |
 | `run_eval.py` | Atalho fase 13 |
 | `core/inference.py` | Cascata tiers 1→4 (fase 13) |

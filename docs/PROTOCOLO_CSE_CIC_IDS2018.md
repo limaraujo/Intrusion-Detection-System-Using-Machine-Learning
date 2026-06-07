@@ -116,7 +116,7 @@ Relatório (métricas 2018; comparação **Diff** é vs artigo CICIDS2017):
 ```powershell
 python -m mth_ids_pipeline.report_paper_tables --table vii `
   --merged-dir $MERGED18 `
-  --save-json $MERGED18/phase_reports/table_vii_ids2018.json
+  --results-dir results/ids2018
 ```
 
 ---
@@ -135,7 +135,7 @@ python -m mth_ids_pipeline.run_eval `
 
 python -m mth_ids_pipeline.report_paper_tables --table x `
   --merged-dir $MERGED18 `
-  --save-json $MERGED18/phase_reports/table_x_ids2018.json
+  --results-dir results/ids2018
 ```
 
 Retomar sem refazer KPCA:
@@ -184,7 +184,7 @@ python -m mth_ids_pipeline.run_anomaly --protocol paper --loao `
 ```powershell
 python -m mth_ids_pipeline.report_paper_tables --table ix `
   --loao-root $LOAO18 `
-  --save-json $FINE18/phase_reports/table_ix_ids2018.json
+  --results-dir results/ids2018
 ```
 
 ---
@@ -192,6 +192,11 @@ python -m mth_ids_pipeline.report_paper_tables --table ix `
 ## Mapa de pastas
 
 ```text
+results/
+├── paper_comparison.json             # CICIDS2017 (default)
+├── tables_report.txt
+└── ids2018/                          # use --results-dir results/ids2018
+
 data/
 ├── CSE-CIC-IDS2018.csv
 ├── pipeline_mth_ids_merged/          # CICIDS2017 — NÃO TOCAR
@@ -251,9 +256,9 @@ python -m mth_ids_pipeline.phases.phase02_sample_kmeans --intermediate-dir $FINE
 Copy-Item "$MERGED18/06_supervised_metrics.json" "$FINE18/06_supervised_metrics.json"
 python -m mth_ids_pipeline.run_anomaly --protocol paper --loao --skip-bootstrap --intermediate-dir $FINE18 --raw-csv $RAW2018
 
-# Relatórios
+# Relatórios (fora de data/)
 python -m mth_ids_pipeline.report_paper_tables --table all `
   --merged-dir $MERGED18 `
   --loao-root $LOAO18 `
-  --save-json $MERGED18/phase_reports/paper_comparison_ids2018.json
+  --results-dir results/ids2018
 ```
