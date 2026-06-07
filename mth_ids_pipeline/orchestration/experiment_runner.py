@@ -21,10 +21,10 @@ from mth_ids_pipeline.config import (
     INTERMEDIATE_DIR_MERGED,
     P02_SAMPLED_KMEANS,
     REPORTS_DIR,
-    SUPERVISED_RUN_LOG,
     ensure_pipeline_dirs,
     get_pipeline_paths,
 )
+from mth_ids_pipeline.io.results_io import make_run_log_path
 from mth_ids_pipeline.io.reproducibility import DEFAULT_RANDOM_STATE, log_run_config, set_global_seeds
 from mth_ids_pipeline.io.run_log import RunLog
 from mth_ids_pipeline.label_profiles import LabelProfile, LabelProfileKind, get_label_profile
@@ -55,6 +55,17 @@ SUPERVISED_PHASE_LABELS: dict[int, str] = {
     4: "Engenharia de features (IG, FCBF)",
     5: "SMOTE",
     6: "Modelos supervisionados + stacking",
+}
+
+PHASE_LABELS: dict[int, str] = {
+    **SUPERVISED_PHASE_LABELS,
+    7: "Datasets anomaly (LOAO/global)",
+    8: "Features anomaly (IG, FCBF, KPCA)",
+    9: "CL-k-means",
+    10: "HPO CL-k-means",
+    11: "Biased classifiers B1/B2",
+    12: "LOAO (orquestração)",
+    13: "Avaliação sistema completo",
 }
 
 
@@ -445,48 +456,39 @@ def _phases_to_run(cfg: ExperimentConfig, start: int, end: int) -> list[int]:
     return phases
 
 
+def _run_log_stem(cfg: ExperimentConfig, start: int, end: int) -> str:
+    profile = cfg.profile.kind.value if cfg.profile else "custom"
+    return f"{cfg.branch}_{profile}_{cfg.protocol}_phases{start}-{end}"
+
+
 def _run_phase_range(cfg: ExperimentConfig, start: int, end: int) -> None:
     root = Path(__file__).resolve().parents[2]
     phases = _phases_to_run(cfg, start, end)
-    use_supervised_log = (
-        cfg.intermediate_dir is not None and any(p in SUPERVISED for p in phases)
-    )
-
-    def _run_one(phase: int, phase_idx: int, n_phases: int, log: RunLog | None) -> None:
-        if phase == 12:
-            print(
-                "\n>>> Iniciando fase 12 — LOAO (leave-one-attack-out; pode levar muitas horas)\n",
-                flush=True,
-            )
-        cmd = [sys.executable, "-m", PHASES[phase], *_phase_args(phase, cfg)]
-        if log is not None and phase in SUPERVISED:
-            desc = SUPERVISED_PHASE_LABELS.get(phase, f"fase {phase}")
-            log.emit(f"-> [fase {phase} - {phase_idx}/{n_phases}] {desc} ...")
-            elapsed = log.run_subprocess(cmd, cwd=root)
-            log.emit(f"OK fase {phase} concluida em {_format_duration(elapsed)}")
-        else:
-            print("\n>>", " ".join(cmd), flush=True)
-            subprocess.check_call(cmd, cwd=root, env=utf8_subprocess_env())
-
-    if use_supervised_log:
-        assert cfg.intermediate_dir is not None
-        log_path = cfg.intermediate_dir / SUPERVISED_RUN_LOG
-        profile_kind = cfg.profile.kind.value if cfg.profile else "?"
-        with RunLog(log_path) as log:
-            log.emit(f"intermediate-dir: {cfg.intermediate_dir}")
-            log.emit(
-                f"protocolo: {cfg.protocol} | ramo: {cfg.branch} | perfil: {profile_kind}"
-            )
-            log.emit(f"fases: {start}-{end} ({', '.join(str(p) for p in phases)})")
-            n_phases = len(phases)
-            for phase_idx, phase in enumerate(phases, start=1):
-                _run_one(phase, phase_idx, n_phases, log)
-        print(f"Log supervisionado: {log_path}", flush=True)
+    if not phases:
         return
 
-    n_phases = len(phases)
-    for phase_idx, phase in enumerate(phases, start=1):
-        _run_one(phase, phase_idx, n_phases, None)
+    log_path = make_run_log_path(_run_log_stem(cfg, start, end))
+    profile_kind = cfg.profile.kind.value if cfg.profile else "?"
+
+    def _run_one(phase: int, phase_idx: int, n_phases: int, log: RunLog) -> None:
+        if phase == 12:
+            log.emit(
+                ">>> Fase 12 — LOAO (leave-one-attack-out; pode levar muitas horas)"
+            )
+        cmd = [sys.executable, "-m", PHASES[phase], *_phase_args(phase, cfg)]
+        desc = PHASE_LABELS.get(phase, f"fase {phase}")
+        log.emit(f"-> [fase {phase} - {phase_idx}/{n_phases}] {desc} ...")
+        elapsed = log.run_subprocess(cmd, cwd=root)
+        log.emit(f"OK fase {phase} concluida em {_format_duration(elapsed)}")
+
+    with RunLog(log_path) as log:
+        log.emit(f"intermediate-dir: {cfg.intermediate_dir}")
+        log.emit(f"protocolo: {cfg.protocol} | ramo: {cfg.branch} | perfil: {profile_kind}")
+        log.emit(f"fases: {start}-{end} ({', '.join(str(p) for p in phases)})")
+        n_phases = len(phases)
+        for phase_idx, phase in enumerate(phases, start=1):
+            _run_one(phase, phase_idx, n_phases, log)
+    print(f"Log da execução: {log_path}", flush=True)
 
 
 def run_experiment(cfg: ExperimentConfig) -> None:

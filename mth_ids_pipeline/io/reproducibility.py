@@ -88,5 +88,12 @@ def log_run_config(
     if extra:
         payload.update(_json_safe(extra))
     out = report_dir / f"{run_name}_config.json"
-    out.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
+    text = json.dumps(payload, indent=2, ensure_ascii=True)
+    out.write_text(text, encoding="utf-8")
+    try:
+        from mth_ids_pipeline.io.results_io import write_results_config
+
+        write_results_config(text, out.name)
+    except ImportError:
+        pass
     return out

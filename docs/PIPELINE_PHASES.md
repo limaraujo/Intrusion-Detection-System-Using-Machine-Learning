@@ -772,7 +772,7 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
 | `biased_classifiers.py` | B₁/B₂, modo auto, p* |
 | `anomaly_io.py` | Splits LOAO, SMOTE anomaly, descoberta de labels |
 | `loao_reporting.py` | `loao_summary.json`, agregação Tabela IX |
-| `run_log.py` | `supervised_run.log` (fases 1–6 via runner) e `attack_<N>/loao_run.log` (fase 12) |
+| `run_log.py` | Logs de execução (`RunLog`) → `results/logs/`; LOAO também espelha em `results/logs/loao/` |
 | `evaluation.py` | DR, FAR, F1, comparação com artigo |
 | `experiment_runner.py` | Orquestração reprodutível, bootstrap |
 | `report_paper_tables.py` | Tabela VII / IX / X → terminal + `results/` |

@@ -19,7 +19,6 @@ Exemplo (CICIDS2017 / Tabela X):
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
@@ -28,7 +27,9 @@ from mth_ids_pipeline.config import (
     DEFAULT_TEST_SIZE,
     INTERMEDIATE_DIR_MERGED,
 )
-from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8, utf8_subprocess_env
+from mth_ids_pipeline.io.results_io import make_run_log_path
+from mth_ids_pipeline.io.run_log import RunLog
+from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8
 from mth_ids_pipeline.protocol import get_protocol_settings
 
 
@@ -36,10 +37,9 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def _run_phase(module: str, extra: list[str]) -> None:
+def _run_phase(log: RunLog, module: str, extra: list[str]) -> None:
     cmd = [sys.executable, "-m", module, *extra]
-    print("\n>>", " ".join(cmd), flush=True)
-    subprocess.check_call(cmd, cwd=_repo_root(), env=utf8_subprocess_env())
+    log.run_subprocess(cmd, cwd=_repo_root())
 
 
 def main() -> None:
@@ -132,12 +132,19 @@ def main() -> None:
         print(f"Aviso: {metrics_path} ausente — execute run_supervised antes (Tabela VII).")
 
     print(f"Anomaly global (Tabela X): intermediate={intermediate} work={work}")
-    for phase_num, module, extra in phases:
-        if phase_num < args.from_phase or phase_num > args.to_phase:
-            continue
-        _run_phase(module, extra)
+    log_path = make_run_log_path(f"global_anomaly_{args.protocol}")
+    with RunLog(log_path) as log:
+        log.emit(f"intermediate-dir: {intermediate}")
+        log.emit(f"work-dir: {work}")
+        log.emit(f"protocol: {args.protocol} | fases: {args.from_phase}-{args.to_phase}")
+        for phase_num, module, extra in phases:
+            if phase_num < args.from_phase or phase_num > args.to_phase:
+                continue
+            log.emit(f"-> fase {phase_num} ({module}) ...")
+            _run_phase(log, module, extra)
 
     print(f"\nConcluído. Modelos em: {work / 'models' / 'anomaly'}")
+    print(f"Log da execução: {log_path}")
 
 
 if __name__ == "__main__":

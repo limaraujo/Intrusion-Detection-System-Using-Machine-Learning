@@ -8,6 +8,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data"
 RESULTS_DIR = REPO_ROOT / "results"
+RESULTS_LOGS_DIR = RESULTS_DIR / "logs"
+RESULTS_CONFIG_DIR = RESULTS_DIR / "config"
 INTERMEDIATE_DIR = DATA_DIR / "pipeline_mth_ids"
 ANOMALY_DIR = INTERMEDIATE_DIR / "anomaly"
 REPORTS_DIR = INTERMEDIATE_DIR / "phase_reports"
@@ -121,7 +123,14 @@ INTERMEDIATE_DIR_MERGED = DATA_DIR / "pipeline_mth_ids_merged"
 INTERMEDIATE_DIR_FINE = DATA_DIR / "pipeline_mth_ids_fine"
 
 # Log de sessão do ramo supervisionado (experiment_runner / run_supervised)
-SUPERVISED_RUN_LOG = "supervised_run.log"
+SUPERVISED_RUN_LOG = "supervised_run.log"  # legado; logs novos vão em results/logs/
+
+
+def ensure_results_dirs() -> None:
+    """Garante pastas de saída: tabelas, logs de execução e configs."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    RESULTS_LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    RESULTS_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Fase supervisionada (known attacks)
 P01_PREPROCESSED = "01_preprocessed.csv"

@@ -6,7 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from mth_ids_pipeline.config import A06_TEST_SLICE_INFO
+import sys
+from pathlib import Path
+
+from mth_ids_pipeline.config import A06_TEST_SLICE_INFO, RESULTS_LOGS_DIR
 from mth_ids_pipeline.core.biased_classifiers import load_best_n_clusters
 
 PAPER_REFERENCE_CICIDS2017 = {
@@ -14,6 +17,17 @@ PAPER_REFERENCE_CICIDS2017 = {
     "mean_dr_pct": 75.943,
     "mean_far_pct": 13.882,
 }
+
+
+def resolve_attack_log(subdir: Path, attack: int) -> Path | None:
+    """Prefer ``results/logs/loao/attack_<N>.log``; fallback para cópia local em ``data/``."""
+    mirrored = RESULTS_LOGS_DIR / "loao" / f"attack_{attack}.log"
+    local = subdir / "loao_run.log"
+    if mirrored.is_file():
+        return mirrored
+    if local.is_file():
+        return local
+    return None
 
 
 def load_attack_row(subdir: Path, attack: int, attack_name: str) -> dict[str, Any] | None:
@@ -48,7 +62,7 @@ def load_attack_row(subdir: Path, attack: int, attack_name: str) -> dict[str, An
         "false_alarm_rate": m.get("false_alarm_rate"),
         "f1": m.get("f1"),
         "output_dir": str(subdir),
-        "log_file": str(subdir / "loao_run.log") if (subdir / "loao_run.log").is_file() else None,
+        "log_file": str(log) if (log := resolve_attack_log(subdir, attack)) else None,
     }
 
 
@@ -109,7 +123,7 @@ def build_loao_summary(
         "mean_false_alarm_rate": far_mean,
         "mean_f1": f1_mean,
         "per_attack": per_attack,
-        "log_pattern": str(output_root / "attack_<N>" / "loao_run.log"),
+        "log_pattern": str(RESULTS_LOGS_DIR / "loao" / "attack_<N>.log"),
         "paper_reference_cicids2017": dict(PAPER_REFERENCE_CICIDS2017),
     }
 

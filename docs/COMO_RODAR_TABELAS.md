@@ -48,14 +48,25 @@ Use `--protocol notebook` apenas se quiser reproduzir o notebook IoTJ publicado.
 
 ---
 
-## Pasta `results/` (tabelas exportadas)
+## Pasta `results/` (tabelas, logs e configs)
 
-O `report_paper_tables` **lê** métricas em `data/pipeline_*` e **grava as tabelas formatadas** na raiz do repositório, **fora de `data/`**:
+O `report_paper_tables` **lê** métricas em `data/pipeline_*` e **grava as tabelas formatadas** na raiz do repositório, **fora de `data/`**. Execuções do pipeline (`run_supervised`, `run_anomaly`, LOAO, `run_global_anomaly`, `run_eval`) gravam **logs** e **configs** na mesma árvore:
 
 ```text
 results/
-├── paper_comparison.json   # métricas estruturadas (VII, IX, X)
-└── tables_report.txt       # tabelas legíveis (terminal)
+├── paper_comparison.json       # métricas estruturadas (VII, IX, X)
+├── tables_report.txt           # tabelas legíveis (terminal)
+├── logs/
+│   ├── merged_paper_phases1-6_YYYYMMDD_HHMMSS.log   # run_supervised / experiment_runner
+│   ├── fine_paper_phases7-12_YYYYMMDD_HHMMSS.log    # run_anomaly
+│   ├── global_anomaly_paper_YYYYMMDD_HHMMSS.log     # run_global_anomaly
+│   ├── eval_phase13_YYYYMMDD_HHMMSS.log             # run_eval
+│   ├── report_tables_all_YYYYMMDD_HHMMSS.log        # report_paper_tables
+│   └── loao/
+│       ├── attack_1.log       # espelho de cada rodada LOAO (fase 12)
+│       └── attack_14.log
+└── config/
+    └── *_config.json          # espelho dos JSONs de config em phase_reports/
 ```
 
 Comando (salva automaticamente em `results/`):
@@ -72,7 +83,7 @@ python -m mth_ids_pipeline.report_paper_tables --table all `
 | `--save-json results/custom.json` | JSON em caminho específico (sobrescreve o JSON de `--results-dir`) |
 | `--no-save` | Só imprime no terminal, sem gravar arquivos |
 
-> **Artefatos de treino** (parquets, modelos, `phase_reports/`) continuam em `data/`. A pasta `results/` contém apenas o **relatório comparativo** vs artigo.
+> **Artefatos de treino** (parquets, modelos, `phase_reports/`) continuam em `data/`. A pasta `results/` concentra **relatórios comparativos**, **logs de execução** e **configs espelhados**. Cópias locais de LOAO (`attack_<N>/loao_run.log`) permanecem em `data/` para depuração.
 
 Para **IDS2018**, use pastas separadas: `--results-dir results/ids2018` (ver [IDS2018_TABELAS_VII_IX_X.md](IDS2018_TABELAS_VII_IX_X.md)).
 
@@ -179,7 +190,7 @@ Ver [PIPELINE_PHASES.md — Retomar LOAO](PIPELINE_PHASES.md#retomar-um-ataque-l
 |----------|-----------|
 | `anomaly/loao/attack_<N>/` | Artefatos de uma rodada |
 | `anomaly/loao/loao_summary.json` | Médias agregadas (Tabela IX) |
-| `anomaly/loao/attack_<N>/loao_run.log` | Log da rodada |
+| `anomaly/loao/attack_<N>/loao_run.log` | Cópia local da rodada (espelho em `results/logs/loao/attack_<N>.log`) |
 
 ---
 

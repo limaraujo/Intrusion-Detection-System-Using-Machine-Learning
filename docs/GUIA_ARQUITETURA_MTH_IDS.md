@@ -86,11 +86,11 @@ Motivação completa (artigo × bootstrap antigo × implementação atual): [PAS
 
 **Orquestradores:** `run_supervised` (1–6 merged), `run_anomaly` (7–12 fine LOAO), `run_global_anomaly` (7–11 merged global), `run_eval` (13), `run_all` / `experiment_runner` (qualquer intervalo `--from` / `--to`).
 
-**Supervisionado (fases 1–6):** `experiment_runner` grava `supervised_run.log` na pasta `intermediate-dir` via `RunLog` (comandos + stdout de cada fase).
+**Supervisionado e anomaly:** `experiment_runner` grava logs timestampados em `results/logs/` via `RunLog` (comandos + stdout de cada fase).
 
-**LOAO (fase 12):** para cada ataque `N`, executa subprocessos das fases 7–11 em `anomaly/loao/attack_N/` e grava `loao_run.log` via `RunLog`. Fases rodadas manualmente **não** entram nesses logs.
+**LOAO (fase 12):** para cada ataque `N`, executa subprocessos das fases 7–11 em `anomaly/loao/attack_N/`, grava `loao_run.log` localmente e espelha em `results/logs/loao/attack_<N>.log`. Fases rodadas manualmente **não** entram nesses logs.
 
-**Relatórios:** `report_paper_tables` (Tabela VII / IX / X) grava tabelas em `results/` (`paper_comparison.json`, `tables_report.txt`); métricas brutas por fase em `data/…/phase_reports/`, `anomaly/global/reports/` ou `attack_N/reports/`.
+**Relatórios:** `report_paper_tables` (Tabela VII / IX / X) grava tabelas em `results/` (`paper_comparison.json`, `tables_report.txt`) e cópia do relatório em `results/logs/`; métricas brutas por fase em `data/…/phase_reports/`, `anomaly/global/reports/` ou `attack_N/reports/`.
 
 ## Documentação histórica
 

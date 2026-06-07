@@ -29,6 +29,7 @@ try:
         P02_SAMPLED_KMEANS,
     )
     from mth_ids_pipeline.io.reporting import write_report
+    from mth_ids_pipeline.io.results_io import mirror_log
     from mth_ids_pipeline.io.run_log import RunLog
     from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8
 except ImportError:
@@ -45,6 +46,7 @@ except ImportError:
         P02_SAMPLED_KMEANS,
     )
     from mth_ids_pipeline.io.reporting import write_report
+    from mth_ids_pipeline.io.results_io import mirror_log
     from mth_ids_pipeline.io.run_log import RunLog
     from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8
 
@@ -171,7 +173,7 @@ def main() -> None:
         f"(7->8->9->10->11) -> {output_root}",
         flush=True,
     )
-    print(f"Log por ataque: <output-root>/attack_<N>/loao_run.log", flush=True)
+    print(f"Log por ataque: results/logs/loao/attack_<N>.log (cópia local em attack_<N>/loao_run.log)", flush=True)
     for attack in attacks:
         name = label_names.get(attack, f"Label={attack}")
         print(f"  - [{attack:2d}] {name}", flush=True)
@@ -335,6 +337,10 @@ def main() -> None:
                     f"falhou (ver {attack_log_path})",
                     flush=True,
                 )
+
+        results_log = mirror_log(attack_log_path, "loao", f"attack_{attack}.log")
+        if results_log:
+            print(f"  log centralizado: {results_log}", flush=True)
 
     summary = build_loao_summary(
         output_root,

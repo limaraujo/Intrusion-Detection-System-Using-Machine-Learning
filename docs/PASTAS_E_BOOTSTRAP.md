@@ -339,9 +339,10 @@ python -m mth_ids_pipeline.run_all --label-profile fine `
 
 | Artefato | Quem grava | Conteúdo |
 |----------|------------|----------|
-| `supervised_run.log` | `experiment_runner` (`RunLog`) | Comandos e stdout das fases 1, 2, 4, 5, 6 |
+| `results/logs/<branch>_<profile>_<protocol>_phases*.log` | `experiment_runner` (`RunLog`) | Comandos e stdout das fases orquestradas |
+| `supervised_run.log` (legado) | — | Não é mais gravado; logs novos vão em `results/logs/` |
 
-Gravado em `run_supervised`, `run_all --from 1 --to 6` e no bootstrap automático (ex.: fases 1–2 fine, Tabela VII merged). Execução manual de uma fase **não** acrescenta linhas a esse arquivo.
+Gravado em `run_supervised`, `run_all --from 1 --to 6` e no bootstrap automático. Execução manual de uma fase **não** acrescenta linhas ao log centralizado.
 
 ---
 
@@ -349,7 +350,8 @@ Gravado em `run_supervised`, `run_all --from 1 --to 6` e no bootstrap automátic
 
 | Artefato | Quem grava | Conteúdo |
 |----------|------------|----------|
-| `attack_<N>/loao_run.log` | Fase 12 (`RunLog`) | Comandos e stdout das subfases 7–11 |
+| `attack_<N>/loao_run.log` | Fase 12 (`RunLog`, cópia local) | Comandos e stdout das subfases 7–11 |
+| `results/logs/loao/attack_<N>.log` | Fase 12 (`mirror_log`) | Espelho centralizado do log LOAO |
 | `attack_<N>/reports/phase11_*.json` | Fases 10–11 (manual ou via 12) | DR, FAR, F1 por ataque |
 | `loao_summary.json` | Fim da fase 12 **ou** script manual | Médias e `per_attack` |
 

@@ -23,6 +23,7 @@ from mth_ids_pipeline.config import (
     INTERMEDIATE_DIR_MERGED,
     PAPER_TABLE_X_REFERENCE,
     RESULTS_DIR,
+    ensure_results_dirs,
 )
 from mth_ids_pipeline.core.evaluation import (
     NOTEBOOK_REFERENCE_SUPERVISED,
@@ -30,6 +31,7 @@ from mth_ids_pipeline.core.evaluation import (
     compare_metrics,
 )
 from mth_ids_pipeline.io.loao_reporting import PAPER_REFERENCE_CICIDS2017
+from mth_ids_pipeline.io.results_io import make_run_log_path
 
 # Modelo do artigo na Tabela VII (tier multi-class / stacking)
 PAPER_TABLE_VII_MODEL = "MTH-IDS (Multi-Class Model)"
@@ -357,16 +359,20 @@ def main() -> None:
     if args.no_save:
         return
 
+    ensure_results_dirs()
+    args.results_dir.mkdir(parents=True, exist_ok=True)
     json_path = args.save_json or (args.results_dir / "paper_comparison.json")
     txt_path = args.results_dir / "tables_report.txt"
-    args.results_dir.mkdir(parents=True, exist_ok=True)
+    log_path = make_run_log_path(f"report_tables_{args.table}")
     json_path.write_text(
         json.dumps(comparison, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
     txt_path.write_text(report_text, encoding="utf-8")
+    log_path.write_text(report_text, encoding="utf-8")
     print(f"\nComparativo JSON: {json_path}")
     print(f"Relatório texto:  {txt_path}")
+    print(f"Log do relatório: {log_path}")
 
 
 if __name__ == "__main__":
