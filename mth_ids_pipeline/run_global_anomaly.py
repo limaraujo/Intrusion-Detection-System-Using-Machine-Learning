@@ -14,8 +14,8 @@ Exemplo (CAN / Tabela X):
   python -m mth_ids_pipeline.run_supervised --protocol can_paper
   python -m mth_ids_pipeline.run_global_anomaly --protocol can_paper
   python -m mth_ids_pipeline.run_eval \\
-    --intermediate-dir data/pipeline_can_merged \\
-    --work-dir data/pipeline_can_merged/anomaly/global
+    --intermediate-dir data/pipeline_can_otids_merged \\
+    --work-dir data/pipeline_can_otids_merged/anomaly/global
 """
 
 from __future__ import annotations
@@ -27,12 +27,12 @@ from pathlib import Path
 from mth_ids_pipeline.config import (
     ANOMALY_GLOBAL_WORK_SUBDIR,
     DEFAULT_TEST_SIZE,
-    INTERMEDIATE_DIR_CAN_MERGED,
     INTERMEDIATE_DIR_MERGED,
 )
 from mth_ids_pipeline.io.results_io import make_run_log_path
 from mth_ids_pipeline.io.run_log import RunLog
 from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8
+from mth_ids_pipeline.label_profiles import get_label_profile
 from mth_ids_pipeline.protocol import PROTOCOL_CHOICES, get_protocol_settings, is_can_protocol
 
 
@@ -53,7 +53,7 @@ def main() -> None:
         "--intermediate-dir",
         type=Path,
         default=None,
-        help="Default: pipeline_can_merged (CAN) ou pipeline_mth_ids_merged",
+        help="Default: pipeline do perfil CAN (intrusion ou OTIDS) ou pipeline_mth_ids_merged",
     )
     parser.add_argument(
         "--work-dir",
@@ -72,7 +72,7 @@ def main() -> None:
     if args.intermediate_dir is not None:
         intermediate = Path(args.intermediate_dir)
     elif is_can_protocol(args.protocol):
-        intermediate = INTERMEDIATE_DIR_CAN_MERGED
+        intermediate = get_label_profile(ps.supervised_profile).intermediate_dir
     else:
         intermediate = INTERMEDIATE_DIR_MERGED
     work = Path(args.work_dir) if args.work_dir else intermediate / ANOMALY_GLOBAL_WORK_SUBDIR

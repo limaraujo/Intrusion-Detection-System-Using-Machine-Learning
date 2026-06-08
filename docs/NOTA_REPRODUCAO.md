@@ -8,7 +8,7 @@ Documentos relacionados: [REPRODUCAO_CICIDS2017_VALIDACAO.md](REPRODUCAO_CICIDS2
 
 ## Escopo declarado
 
-Esta reprodução segue o preset **`--protocol paper`** (CICIDS2017) e **`--protocol can`** (CAN-intrusion), implementados em `mth_ids_pipeline/protocol.py`. O objetivo é reproduzir o **método descrito no artigo** (Yang et al., IEEE IoT Journal 2022): BO-GP nos tiers 3–4, 10-fold CV no supervisionado, LOAO multi-ataque, biased B₁/B₂, cascata Tabela X.
+Esta reprodução segue o preset **`--protocol paper`** (CICIDS2017) e **`--protocol can`** (CAN-OTIDS), implementados em `mth_ids_pipeline/protocol.py`. O objetivo é reproduzir o **método descrito no artigo** (Yang et al., IEEE IoT Journal 2022): BO-GP nos tiers 3–4, 10-fold CV no supervisionado, LOAO multi-ataque, biased B₁/B₂, cascata Tabela X.
 
 **Não** se trata de reexecutar linha a linha o notebook [`MTH_IDS_IoTJ.ipynb`](../paper_and_notebooks/MTH_IDS_IoTJ.ipynb). Esse notebook é um artefato **paralelo** ao texto do artigo, com escolhas diferentes em vários pontos.
 
@@ -103,7 +103,7 @@ Estas limitações **persistem mesmo com o pipeline correto** — não são falh
 
 **Efeito:** gap Acc ~98,25% vs ~99,88% no artigo explica-se sobretudo por **split 80/20** + detalhes de SMOTE/BO-GP acima, não por ausência de cascata.
 
-### 8. CAN-intrusion (Tabelas VI/VIII)
+### 8. CAN-OTIDS (Tabelas VI/VIII)
 
 | Limitação | Detalhe |
 |-----------|---------|

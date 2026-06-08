@@ -1,0 +1,129 @@
+﻿{
+  "train_input": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_merged\\05_train_after_smote.parquet",
+  "test_input": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_merged\\05_test_unchanged.parquet",
+  "metrics_output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_merged\\06_supervised_metrics.json",
+  "train_shape": {
+    "rows": 28735,
+    "cols": 8
+  },
+  "test_shape": {
+    "rows": 7184,
+    "cols": 8
+  },
+  "train_label_counts": {
+    "0": 14569,
+    "3": 6339,
+    "1": 4092,
+    "2": 3735
+  },
+  "test_label_counts": {
+    "0": 3642,
+    "3": 1585,
+    "1": 1023,
+    "2": 934
+  },
+  "no_hpo": false,
+  "no_plots": true,
+  "binary": false,
+  "cv_folds": 10,
+  "cv_folds_requested": 10,
+  "hpo_on_validation": true,
+  "hpo_objective": "cv_train",
+  "meta_learner": "best-base",
+  "stacking_meta_model": "Stacking meta (RandomForest (HPO))",
+  "cv_reports": {
+    "XGBoost (base)": {
+      "n_splits": 10,
+      "scoring": "accuracy",
+      "scores": [
+        0.8451635351426583,
+        0.8434237995824635,
+        0.8618649965205288,
+        0.8462073764787752,
+        0.8496868475991649,
+        0.8398886181691612,
+        0.8478941872607031,
+        0.8527671423599026,
+        0.851374869474417,
+        0.8332753219631047
+      ],
+      "mean": 0.8471546694550879,
+      "std": 0.007327179766822507
+    },
+    "RandomForest (HPO)": {
+      "n_splits": 10,
+      "scoring": "accuracy",
+      "scores": [
+        0.848295059151009,
+        0.8434237995824635,
+        0.8594293667362561,
+        0.8472512178148921,
+        0.8503827418232429,
+        0.8374521406195614,
+        0.8475461190393317,
+        0.8510268012530456,
+        0.8492864601461887,
+        0.8346675948485903
+      ],
+      "mean": 0.8468761301014581,
+      "std": 0.006673074779401503
+    },
+    "DecisionTree (HPO)": {
+      "n_splits": 10,
+      "scoring": "accuracy",
+      "scores": [
+        0.8413361169102297,
+        0.8364648573416841,
+        0.8524704244954767,
+        0.8413361169102297,
+        0.8458594293667363,
+        0.8301427079707623,
+        0.845109641489732,
+        0.8478941872607031,
+        0.8423250957187609,
+        0.8304907761921336
+      ],
+      "mean": 0.8413429353656448,
+      "std": 0.006850558651586115
+    },
+    "ExtraTrees (HPO)": {
+      "n_splits": 10,
+      "scoring": "accuracy",
+      "scores": [
+        0.848990953375087,
+        0.8437717466945024,
+        0.8622129436325678,
+        0.8469032707028532,
+        0.8493389004871259,
+        0.838844413505047,
+        0.84963452836756,
+        0.8531152105812739,
+        0.8482422554820744,
+        0.8353637312913331
+      ],
+      "mean": 0.8476417954119425,
+      "std": 0.007035453408587961
+    },
+    "Stacking meta (RandomForest (HPO))": {
+      "n_splits": 10,
+      "scoring": "accuracy",
+      "scores": [
+        0.8656924147529576,
+        0.8663883089770354,
+        0.872999304105776,
+        0.8632567849686847,
+        0.8663883089770354,
+        0.8548555516881309,
+        0.8628611207796728,
+        0.8708666898712147,
+        0.8687782805429864,
+        0.8524190741385311
+      ],
+      "mean": 0.8644505838802026,
+      "std": 0.006187092299508178
+    }
+  },
+  "random_state": 0,
+  "phase": "phase06_supervised_models",
+  "timestamp": 1780889826
+}

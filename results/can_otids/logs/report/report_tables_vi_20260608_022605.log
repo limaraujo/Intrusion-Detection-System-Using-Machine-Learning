@@ -1,0 +1,24 @@
+﻿
+========================================================================
+TABELA VI — Supervisionado (CAN-OTIDS, multi-class, hold-out 80/20)
+========================================================================
+Modelo                          Acc      F1(w)
+------------------------------------------------------------------------
+XGBoost (base)             0.848413   0.842399
+RandomForest (HPO)         0.850640   0.844908
+DecisionTree (HPO)         0.845072   0.838604
+ExtraTrees (HPO)           0.850780   0.844905
+Stacking meta (RandomForest (HPO))   0.850780   0.844905
+
+Comparação vs artigo (tier multi-class / stacking):
+Métrica            Reprod       Artigo         Diff
+------------------------------------------------------------------------
+Acc              0.850780     0.999990    -0.149210
+F1(w)            0.844905     0.999990    -0.155085
+
+10-fold CV no treino (reprodução):
+  XGBoost (base): 0.8472 ± 0.0073
+  RandomForest (HPO): 0.8469 ± 0.0067
+  DecisionTree (HPO): 0.8413 ± 0.0069
+  ExtraTrees (HPO): 0.8476 ± 0.0070
+  Stacking meta (RandomForest (HPO)): 0.8645 ± 0.0062

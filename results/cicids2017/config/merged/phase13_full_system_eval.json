@@ -1,4 +1,4 @@
-{
+﻿{
   "intermediate_dir": "data\\pipeline_mth_ids_merged",
   "anomaly_work_dir": "data\\pipeline_mth_ids_merged\\anomaly\\global",
   "test_size": 0.2,

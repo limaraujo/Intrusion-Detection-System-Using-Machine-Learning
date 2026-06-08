@@ -1,0 +1,95 @@
+﻿{
+  "ig_feature_count": 7,
+  "ig_cumulative": 0.8114706951148829,
+  "post_fcbf_feature_count": 7,
+  "test_size": 0.2,
+  "fcbf_scope": "train",
+  "scale_mode": "split",
+  "optimize_ig": true,
+  "fixed_ig_features": null,
+  "train_output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_merged\\04_train_after_fcbf.parquet",
+  "test_output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_merged\\04_test_after_fcbf.parquet",
+  "ig_hpo": {
+    "best_alpha": 0.8114706951148829,
+    "best_cv_accuracy": 0.8423871279188259,
+    "trials": [
+      {
+        "alpha": 0.8719249392852553,
+        "score": 0.8413430806968437,
+        "loss": 0.15865691930315629
+      },
+      {
+        "alpha": 0.9448370670884951,
+        "score": 0.8413430806968437,
+        "loss": 0.15865691930315629
+      },
+      {
+        "alpha": 0.9488042291105996,
+        "score": 0.8413430806968437,
+        "loss": 0.15865691930315629
+      },
+      {
+        "alpha": 0.9457030042473964,
+        "score": 0.8413430806968437,
+        "loss": 0.15865691930315629
+      },
+      {
+        "alpha": 0.880833472067932,
+        "score": 0.8413430806968437,
+        "loss": 0.15865691930315629
+      },
+      {
+        "alpha": 0.8114706951148829,
+        "score": 0.8423871279188259,
+        "loss": 0.15761287208117414
+      },
+      {
+        "alpha": 0.786285035897897,
+        "score": 0.8423871279188259,
+        "loss": 0.15761287208117414
+      },
+      {
+        "alpha": 0.7164467634220585,
+        "score": 0.8388026671181622,
+        "loss": 0.1611973328818378
+      },
+      {
+        "alpha": 0.7790703254282328,
+        "score": 0.8423871279188259,
+        "loss": 0.15761287208117414
+      },
+      {
+        "alpha": 0.8385228840231915,
+        "score": 0.8423871279188259,
+        "loss": 0.15761287208117414
+      },
+      {
+        "alpha": 0.9899915744124212,
+        "score": 0.8392898899624829,
+        "loss": 0.16071011003751712
+      },
+      {
+        "alpha": 0.8260617272811652,
+        "score": 0.8423871279188259,
+        "loss": 0.15761287208117414
+      },
+      {
+        "alpha": 0.745476241568677,
+        "score": 0.8388026671181622,
+        "loss": 0.1611973328818378
+      },
+      {
+        "alpha": 0.910301193528729,
+        "score": 0.8413430806968437,
+        "loss": 0.15865691930315629
+      },
+      {
+        "alpha": 0.7000406150452945,
+        "score": 0.8388026671181622,
+        "loss": 0.1611973328818378
+      }
+    ]
+  },
+  "phase": "phase04_feature_engineering",
+  "timestamp": 1780889529
+}

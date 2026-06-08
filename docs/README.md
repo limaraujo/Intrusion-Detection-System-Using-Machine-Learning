@@ -1,4 +1,4 @@
-# Documentação MTH-IDS
+﻿# Documentação MTH-IDS
 
 Índice do pacote `mth_ids_pipeline` — reprodução Yang et al. (IEEE IoT Journal 2022).
 
@@ -10,7 +10,9 @@
 | [EXECUCAO.md](EXECUCAO.md) | Comandos por tabela, pastas, bootstrap, troubleshooting |
 | [PIPELINE_PHASES.md](PIPELINE_PHASES.md) | Referência das fases 1–13 + [CLI manual](PIPELINE_PHASES.md#rodar-cada-fase-manualmente) |
 | [PROTOCOLO_CICIDS.md](PROTOCOLO_CICIDS.md) | CICIDS2017 (Tabelas VII/IX/X) |
-| [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) | CAN-intrusion (Tabelas VI/VIII) |
+| [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) | CAN — índice pipeline (Tabelas VI/VIII/X) |
+| [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) | Car-Hacking original (artigo, `merge_can --source original`) |
+| [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md) | Repack OTIDS (`merge_can --source otids`) |
 | [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) | Comparativo `paper` vs `notebook` |
 | [NOTA_REPRODUCAO.md](NOTA_REPRODUCAO.md) | **Limitações artigo × notebook** (texto para relatório) |
 | [REPRODUCAO_CICIDS2017_VALIDACAO.md](REPRODUCAO_CICIDS2017_VALIDACAO.md) | Validação vs artigo e notebook |
@@ -39,14 +41,18 @@ python -m mth_ids_pipeline.report_paper_tables --table all `
 
 ## Início rápido (CAN)
 
+Escolha **uma** fonte de dados (não misturar):
+
 ```powershell
-python -m mth_ids_pipeline.utils.merge_can
+# Car-Hacking (artigo) — pastas pipeline_can_intrusion_*
+python -m mth_ids_pipeline.utils.merge_can --source original
 python -m mth_ids_pipeline.run_supervised --protocol can
 python -m mth_ids_pipeline.run_anomaly --protocol can --loao
-python -m mth_ids_pipeline.report_paper_tables --table all `
-  --merged-dir data/pipeline_can_merged `
-  --loao-root data/pipeline_can_fine/anomaly/loao `
-  --results-dir results/can
+
+# OTIDS — pastas pipeline_can_otids_* (não sobrescreve intrusion)
+python -m mth_ids_pipeline.utils.merge_can --source otids
+python -m mth_ids_pipeline.run_supervised --protocol can_otids
+python -m mth_ids_pipeline.run_anomaly --protocol can_otids --loao
 ```
 
-Detalhes: [PROTOCOLO_CICIDS.md](PROTOCOLO_CICIDS.md) · [EXECUCAO.md](EXECUCAO.md) · CAN: [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md).
+Detalhes: [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) · [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) · [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md) · [EXECUCAO.md](EXECUCAO.md).

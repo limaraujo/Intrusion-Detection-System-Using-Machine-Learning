@@ -1,4 +1,4 @@
-{
+﻿{
   "input": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_mth_ids_merged\\02_sampled_kmeans.parquet",
   "mode": "global",
   "test_size": 0.2,

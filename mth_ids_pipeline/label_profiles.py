@@ -20,9 +20,12 @@ from mth_ids_pipeline.config import (
     CICIDS2017_FINE_LABEL_NAMES,
     DATA_DIR,
     DEFAULT_MINORITY_LABELS,
-    DEFAULT_RAW_CSV_CAN,
-    INTERMEDIATE_DIR_CAN_FINE,
-    INTERMEDIATE_DIR_CAN_MERGED,
+    DEFAULT_RAW_CSV_CAN_INTRUSION,
+    DEFAULT_RAW_CSV_CAN_OTIDS,
+    INTERMEDIATE_DIR_CAN_INTRUSION_FINE,
+    INTERMEDIATE_DIR_CAN_INTRUSION_MERGED,
+    INTERMEDIATE_DIR_CAN_OTIDS_FINE,
+    INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
 )
 
 # Separador corrompido quando UTF-8 (U+FFFD) é lido com encoding="latin1"
@@ -164,12 +167,30 @@ def get_label_profile(name: str) -> LabelProfile:
         return MERGED_PROFILE
     if key in (LabelProfileKind.FINE.value, "fine-grained", "finegrained", "14"):
         return FINE_PROFILE
-    if key in ("can_merged", "can-merged", "can_sup", "can"):
-        return CAN_MERGED_PROFILE
-    if key in ("can_fine", "can-fine", "can_loao"):
-        return CAN_FINE_PROFILE
+    if key in (
+        "can_intrusion_merged",
+        "can-intrusion-merged",
+        "can_merged",
+        "can-merged",
+        "can_sup",
+        "can",
+    ):
+        return CAN_INTRUSION_MERGED_PROFILE
+    if key in (
+        "can_intrusion_fine",
+        "can-intrusion-fine",
+        "can_fine",
+        "can-fine",
+        "can_loao",
+    ):
+        return CAN_INTRUSION_FINE_PROFILE
+    if key in ("can_otids_merged", "can-otids-merged"):
+        return CAN_OTIDS_MERGED_PROFILE
+    if key in ("can_otids_fine", "can-otids-fine", "can_otids_loao"):
+        return CAN_OTIDS_FINE_PROFILE
     raise ValueError(
-        f"Perfil desconhecido: {name!r}. Use 'merged', 'fine', 'can_merged' ou 'can_fine'."
+        f"Perfil desconhecido: {name!r}. "
+        "Use merged/fine, can_intrusion_merged/fine ou can_otids_merged/fine."
     )
 
 
@@ -194,37 +215,65 @@ FINE_PROFILE = LabelProfile(
     ),
 )
 
-CAN_MERGED_PROFILE = LabelProfile(
+CAN_INTRUSION_MERGED_PROFILE = LabelProfile(
     kind=LabelProfileKind.MERGED,
-    raw_csv=DEFAULT_RAW_CSV_CAN,
-    intermediate_dir=INTERMEDIATE_DIR_CAN_MERGED,
+    raw_csv=DEFAULT_RAW_CSV_CAN_INTRUSION,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_INTRUSION_MERGED,
     minority_labels=None,
     kmeans_sample_all_classes=True,
     description=(
-        "CAN intra-veicular (Tabela VI): k-means 0,8% em todas as classes "
-        "(BENIGN + DoS/Fuzzy/Impersonation); split 80/20; sem SMOTE."
+        "Car-Hacking (Tabela VI): 5 classes (BENIGN, DoS, Fuzzy, Gear, RPM); "
+        "k-means 0,8% em todas; split 80/20; sem SMOTE."
     ),
 )
 
-CAN_FINE_PROFILE = LabelProfile(
+CAN_INTRUSION_FINE_PROFILE = LabelProfile(
     kind=LabelProfileKind.FINE,
-    raw_csv=DEFAULT_RAW_CSV_CAN,
-    intermediate_dir=INTERMEDIATE_DIR_CAN_FINE,
+    raw_csv=DEFAULT_RAW_CSV_CAN_INTRUSION,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_INTRUSION_FINE,
     minority_labels=None,
     kmeans_sample_all_classes=True,
-    paired_supervised_dir=INTERMEDIATE_DIR_CAN_MERGED,
-    table_vii_profile="can_merged",
+    paired_supervised_dir=INTERMEDIATE_DIR_CAN_INTRUSION_MERGED,
+    table_vii_profile="can_intrusion_merged",
+    description="Car-Hacking LOAO (Tabela VIII): 4 zero-days (DoS, Fuzzy, Gear, RPM).",
+)
+
+CAN_OTIDS_MERGED_PROFILE = LabelProfile(
+    kind=LabelProfileKind.MERGED,
+    raw_csv=DEFAULT_RAW_CSV_CAN_OTIDS,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
+    minority_labels=None,
+    kmeans_sample_all_classes=True,
     description=(
-        "CAN LOAO (Tabela VIII): k-means 0,8% em todas as classes; "
-        "cada ataque como zero-day (3 rodadas)."
+        "CAN-OTIDS repack (Tabela VI): 4 classes; k-means 0,8% em todas; "
+        "split 80/20; sem SMOTE."
     ),
 )
+
+CAN_OTIDS_FINE_PROFILE = LabelProfile(
+    kind=LabelProfileKind.FINE,
+    raw_csv=DEFAULT_RAW_CSV_CAN_OTIDS,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_OTIDS_FINE,
+    minority_labels=None,
+    kmeans_sample_all_classes=True,
+    paired_supervised_dir=INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
+    table_vii_profile="can_otids_merged",
+    description="CAN-OTIDS LOAO (Tabela VIII): 3 zero-days (DoS, Fuzzy, Impersonation).",
+)
+
+# Aliases legados
+CAN_MERGED_PROFILE = CAN_INTRUSION_MERGED_PROFILE
+CAN_FINE_PROFILE = CAN_INTRUSION_FINE_PROFILE
 
 ALL_PROFILES: dict[str, LabelProfile] = {
     LabelProfileKind.MERGED.value: MERGED_PROFILE,
     LabelProfileKind.FINE.value: FINE_PROFILE,
-    "can_merged": CAN_MERGED_PROFILE,
-    "can_fine": CAN_FINE_PROFILE,
+    "can_intrusion_merged": CAN_INTRUSION_MERGED_PROFILE,
+    "can_intrusion_fine": CAN_INTRUSION_FINE_PROFILE,
+    "can_otids_merged": CAN_OTIDS_MERGED_PROFILE,
+    "can_otids_fine": CAN_OTIDS_FINE_PROFILE,
+    "can_merged": CAN_INTRUSION_MERGED_PROFILE,
+    "can_fine": CAN_INTRUSION_FINE_PROFILE,
 }
 
 

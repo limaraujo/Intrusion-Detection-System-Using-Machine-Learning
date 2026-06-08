@@ -1,4 +1,4 @@
-# Protocolo CICIDS2017 — Tabelas VII, IX e X (MTH-IDS)
+﻿# Protocolo CICIDS2017 — Tabelas VII, IX e X (MTH-IDS)
 
 Guia do pipeline MTH-IDS no **CICIDS2017** (rede externa / IoV) com **`--protocol paper`** (artigo) ou **`--protocol notebook`** (IoTJ).
 
@@ -8,17 +8,17 @@ Documentos relacionados: [EXECUCAO.md](EXECUCAO.md) · [PAPER_PROTOCOL.md](PAPER
 
 ## Princípio
 
-| CICIDS2017 (externo) | CAN-intrusion (intra-veicular) |
-|----------------------|--------------------------------|
-| `data/CICIDS2017.csv` / `CICIDS2017_fine.csv` | `data/CAN_Intrusion_Dataset.csv` |
-| `data/pipeline_mth_ids_merged/` | `data/pipeline_can_merged/` |
-| `data/pipeline_mth_ids_fine/` | `data/pipeline_can_fine/` |
+| CICIDS2017 (externo) | CAN (intra-veicular) |
+|----------------------|----------------------|
+| `data/CICIDS2017.csv` / `CICIDS2017_fine.csv` | `data/CAN_OTIDS_Dataset.csv` (Car-Hacking ou OTIDS — ver [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md)) |
+| `data/pipeline_mth_ids_merged/` | `data/pipeline_can_otids_merged/` |
+| `data/pipeline_mth_ids_fine/` | `data/pipeline_can_otids_fine/` |
 | **`--protocol paper`** / `notebook` | **`--protocol can`** |
 | Tabela **VII** (7 famílias) | Tabela **VI** (4 classes) |
 | Tabela **IX** (~14 LOAO) | Tabela **VIII** (3 LOAO) |
 | Tabela **X** | Tabela **X** (CAN) |
 
-**Regra:** CICIDS2017 é o **preset padrão** do pipeline (`--protocol paper`). Não misture pastas `pipeline_mth_ids_*` com `pipeline_can_*`.
+**Regra:** CICIDS2017 é o **preset padrão** do pipeline (`--protocol paper`). Não misture pastas `pipeline_mth_ids_*` com `pipeline_can_otids_*`.
 
 Constantes em `mth_ids_pipeline/config.py`:
 
@@ -247,5 +247,5 @@ Mais: [EXECUCAO.md — Solução de problemas](EXECUCAO.md#solução-de-problema
 
 - [EXECUCAO.md](EXECUCAO.md) — comandos e bootstrap (CICIDS + CAN)
 - [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) — tabela comparativa `paper` vs `notebook`
-- [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) — equivalente CAN
+- [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) — CAN (índice) · [INTRUSION](PROTOCOLO_CAN_INTRUSION.md) · [OTIDS](PROTOCOLO_CAN_OTIDS.md)
 - [PIPELINE_PHASES.md](PIPELINE_PHASES.md) — referência de cada fase

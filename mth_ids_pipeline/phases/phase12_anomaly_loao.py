@@ -24,10 +24,10 @@ try:
     )
     from mth_ids_pipeline.cli import init_paths, phase_parser, supervised_path
     from mth_ids_pipeline.config import (
-        CAN_LABEL_NAMES,
         CICIDS2017_FINE_LABEL_NAMES,
         CICIDS2017_MERGED_LABEL_NAMES,
         P02_SAMPLED_KMEANS,
+        resolve_can_label_names,
     )
     from mth_ids_pipeline.io.reporting import write_report
     from mth_ids_pipeline.io.results_io import mirror_log
@@ -42,10 +42,10 @@ except ImportError:
     )
     from mth_ids_pipeline.cli import init_paths, phase_parser, supervised_path
     from mth_ids_pipeline.config import (
-        CAN_LABEL_NAMES,
         CICIDS2017_FINE_LABEL_NAMES,
         CICIDS2017_MERGED_LABEL_NAMES,
         P02_SAMPLED_KMEANS,
+        resolve_can_label_names,
     )
     from mth_ids_pipeline.io.reporting import write_report
     from mth_ids_pipeline.io.results_io import mirror_log
@@ -63,8 +63,11 @@ def _format_duration(seconds: float) -> str:
 
 def _resolve_label_names(attacks: list[int], intermediate_dir: Path | None = None) -> dict[int, str]:
     """Nomes legíveis por ID (CAN, CICIDS merged ou fine)."""
-    if intermediate_dir and "pipeline_can" in intermediate_dir.as_posix():
-        table = CAN_LABEL_NAMES
+    if intermediate_dir and "pipeline_can_otids" in intermediate_dir.as_posix():
+        table = resolve_can_label_names(
+            attack_labels=attacks,
+            pipeline_path=intermediate_dir,
+        )
     elif max(attacks, default=0) > 6:
         table = CICIDS2017_FINE_LABEL_NAMES
     else:

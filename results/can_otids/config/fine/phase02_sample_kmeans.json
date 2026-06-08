@@ -1,0 +1,24 @@
+﻿{
+  "shape": {
+    "rows": 35919,
+    "cols": 10
+  },
+  "label_col": "Label",
+  "label_value_counts": {
+    "0": 18211,
+    "3": 7924,
+    "1": 5115,
+    "2": 4669
+  },
+  "input": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\01_preprocessed.parquet",
+  "output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\02_sampled_kmeans.parquet",
+  "n_clusters": 1000,
+  "frac": 0.008,
+  "minority_labels": [],
+  "auto_minority": false,
+  "sample_all_classes": true,
+  "skip_sampling": false,
+  "duration_s": 4.78,
+  "phase": "phase02_sample_kmeans",
+  "timestamp": 1780890603
+}

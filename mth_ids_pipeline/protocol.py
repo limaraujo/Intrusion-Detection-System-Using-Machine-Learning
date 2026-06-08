@@ -1,5 +1,5 @@
 """
-Presets paper (artigo Yang et al. 2022) vs notebook (IoTJ) vs CAN-intrusion.
+Presets paper (artigo Yang et al. 2022) vs notebook (IoTJ) vs CAN-OTIDS.
 
 CICIDS2017 — ``paper`` (inalterado):
   - Supervisionado: merged, k-means frac=0.008, 80/20, 10-fold CV, SMOTE notebook,
@@ -8,7 +8,7 @@ CICIDS2017 — ``paper`` (inalterado):
 
 CICIDS2017 — ``notebook``: IoTJ publicado (α fixo, FCBF full, hold-out, meta XGBoost).
 
-CAN-intrusion (pastas ``pipeline_can_*``):
+CAN-OTIDS (pastas ``pipeline_can_otids_*``):
   - ``can_paper`` (alias ``can``): Tabela VI — k-means 0,8%, 80/20, sem SMOTE;
     BO-GP α IG + FCBF treino + 10-fold CV + meta best-base (run validada 20260607)
   - ``can_notebook``: fluxo IoTJ adaptado (IG dinâmico α=0,9, FCBF full, meta XGBoost)
@@ -44,19 +44,32 @@ from mth_ids_pipeline.config import (
     NOTEBOOK_ANOMALY_ZSCORE,
 )
 
-# Aliases aceitos em ``get_protocol_settings`` / ``--protocol``
-CAN_PAPER_ALIASES = frozenset(
-    {"can", "can_paper", "can-paper", "can_artigo", "can-intrusion", "can_intrusion"}
+# Aliases — Car-Hacking (intrusion) vs repack OTIDS
+CAN_INTRUSION_PAPER_ALIASES = frozenset(
+    {"can", "can_paper", "can-paper", "can_artigo", "can_intrusion", "can-intrusion"}
 )
+CAN_OTIDS_PAPER_ALIASES = frozenset({"can_otids", "can-otids"})
+CAN_PAPER_ALIASES = CAN_INTRUSION_PAPER_ALIASES  # alias legado
 CAN_NOTEBOOK_ALIASES = frozenset({"can_notebook", "can-notebook", "can_nb", "can-nb"})
-CAN_PROTOCOL_ALIASES = CAN_PAPER_ALIASES | CAN_NOTEBOOK_ALIASES
+CAN_OTIDS_NOTEBOOK_ALIASES = frozenset(
+    {"can_otids_notebook", "can-otids-notebook", "can_otids_nb"}
+)
+CAN_PROTOCOL_ALIASES = (
+    CAN_INTRUSION_PAPER_ALIASES
+    | CAN_OTIDS_PAPER_ALIASES
+    | CAN_NOTEBOOK_ALIASES
+    | CAN_OTIDS_NOTEBOOK_ALIASES
+)
 
 PROTOCOL_CHOICES: tuple[str, ...] = (
     "paper",
     "notebook",
     "can",
     "can_paper",
+    "can_intrusion",
+    "can_otids",
     "can_notebook",
+    "can_otids_notebook",
 )
 
 
@@ -64,8 +77,11 @@ class MthIdsProtocol(str, Enum):
     PAPER = "paper"
     NOTEBOOK = "notebook"
     CAN_PAPER = "can_paper"
+    CAN_INTRUSION = "can_intrusion"
+    CAN_OTIDS = "can_otids"
     CAN_NOTEBOOK = "can_notebook"
-    CAN = "can"  # alias legado → can_paper
+    CAN_OTIDS_NOTEBOOK = "can_otids_notebook"
+    CAN = "can"  # alias legado → can_paper (intrusion)
 
 
 @dataclass(frozen=True)
@@ -181,12 +197,49 @@ NOTEBOOK = ProtocolSettings(
 CAN_PAPER = ProtocolSettings(
     name="can_paper",
     description=(
-        "CAN Tabela VI: k-means 0,8% (notebook), 80/20, sem SMOTE; "
-        "BO-GP α IG (ig-hpo-calls=15); FCBF só treino; 10-fold CV; "
-        "meta best-base; BO-GP KPCA/p* (anomaly)."
+        "Car-Hacking (Tabela VI): k-means 0,8%, 80/20, sem SMOTE; "
+        "BO-GP α IG; FCBF só treino; 10-fold CV; meta best-base; BO-GP KPCA/p*."
     ),
-    supervised_profile="can_merged",
-    anomaly_profile="can_fine",
+    supervised_profile="can_intrusion_merged",
+    anomaly_profile="can_intrusion_fine",
+    test_size=DEFAULT_TEST_SIZE,
+    cv_folds=PAPER_CV_FOLDS,
+    hpo_on_validation=PAPER_HPO_ON_VALIDATION,
+    smote_targets={},
+    skip_smote=True,
+    skip_anomaly_smote=True,
+    kmeans_frac=CAN_KMEANS_FRAC,
+    skip_kmeans_sampling=False,
+    anomaly_benign_target=None,
+    anomaly_smote_target=None,
+    biased_mode="both",
+    force_biased=True,
+    optimize_p_star=True,
+    cl_hpo_metric="f1",
+    cl_hpo_n_calls=PAPER_HPO_N_CALLS,
+    optimize_ig=True,
+    optimize_kpca=True,
+    ig_cumulative=PAPER_IG_CUMULATIVE,
+    fcbf_k=PAPER_FCBF_K,
+    fcbf_scope=PAPER_FCBF_SCOPE,
+    supervised_scale_mode=PAPER_SUPERVISED_SCALE,
+    feature_fit_scope=PAPER_FEATURE_FIT_SCOPE,
+    anomaly_zscore_scope=PAPER_ANOMALY_ZSCORE,
+    kpca_components=PAPER_KPCA_COMPONENTS,
+    kpca_kernel=PAPER_KPCA_KERNEL,
+    hpo_n_calls=PAPER_HPO_N_CALLS,
+    meta_learner=PAPER_META_LEARNER,
+    fixed_supervised_features=None,
+)
+
+CAN_OTIDS = ProtocolSettings(
+    name="can_otids",
+    description=(
+        "CAN-OTIDS repack (Tabela VI): mesmo preset que can_paper; "
+        "pastas pipeline_can_otids_* e CSV CAN_OTIDS_Dataset.csv."
+    ),
+    supervised_profile="can_otids_merged",
+    anomaly_profile="can_otids_fine",
     test_size=DEFAULT_TEST_SIZE,
     cv_folds=PAPER_CV_FOLDS,
     hpo_on_validation=PAPER_HPO_ON_VALIDATION,
@@ -220,11 +273,11 @@ CAN_PAPER = ProtocolSettings(
 CAN_NOTEBOOK = ProtocolSettings(
     name="can_notebook",
     description=(
-        "CAN notebook IoTJ: k-means 0,8%, 80/20, sem SMOTE; α IG=0,9 dinâmico; "
-        "FCBF no dataset completo; HPO no hold-out; meta XGBoost; KPCA fixo (anomaly)."
+        "Car-Hacking notebook IoTJ: k-means 0,8%, 80/20, sem SMOTE; α IG=0,9; "
+        "FCBF full; HPO hold-out; meta XGBoost; KPCA fixo (anomaly)."
     ),
-    supervised_profile="can_merged",
-    anomaly_profile="can_fine",
+    supervised_profile="can_intrusion_merged",
+    anomaly_profile="can_intrusion_fine",
     test_size=DEFAULT_TEST_SIZE,
     cv_folds=0,
     hpo_on_validation=False,
@@ -256,7 +309,43 @@ CAN_NOTEBOOK = ProtocolSettings(
     fixed_supervised_features=None,
 )
 
-# Alias legado: ``--protocol can`` → preset artigo
+CAN_OTIDS_NOTEBOOK = ProtocolSettings(
+    name="can_otids_notebook",
+    description="CAN-OTIDS repack + preset can_notebook; pastas pipeline_can_otids_*.",
+    supervised_profile="can_otids_merged",
+    anomaly_profile="can_otids_fine",
+    test_size=DEFAULT_TEST_SIZE,
+    cv_folds=0,
+    hpo_on_validation=False,
+    smote_targets={},
+    skip_smote=True,
+    skip_anomaly_smote=True,
+    kmeans_frac=CAN_KMEANS_FRAC,
+    skip_kmeans_sampling=False,
+    anomaly_benign_target=None,
+    anomaly_smote_target=None,
+    biased_mode=DEFAULT_BIASED_MODE,
+    force_biased=False,
+    optimize_p_star=False,
+    cl_hpo_metric="accuracy",
+    cl_hpo_n_calls=20,
+    optimize_ig=False,
+    optimize_kpca=False,
+    ig_cumulative=0.9,
+    fcbf_k=20,
+    fcbf_scope="full",
+    supervised_scale_mode=NOTEBOOK_SUPERVISED_SCALE,
+    feature_fit_scope="combined",
+    anomaly_zscore_scope=NOTEBOOK_ANOMALY_ZSCORE,
+    kpca_components=10,
+    kpca_kernel="rbf",
+    hpo_n_calls=20,
+    meta_learner=DEFAULT_META_LEARNER,
+    cl_kmeans_metrics=("euclidean", "manhattan", "cosine"),
+    fixed_supervised_features=None,
+)
+
+# Alias legado: ``--protocol can`` → Car-Hacking (artigo)
 CAN = CAN_PAPER
 
 
@@ -265,10 +354,15 @@ def _normalize_protocol_key(name: str) -> str:
 
 
 def is_can_protocol(name: str) -> bool:
-    """True para ``can``, ``can_paper``, ``can_notebook`` e aliases."""
+    """True para presets CAN (intrusion ou OTIDS)."""
     return _normalize_protocol_key(name) in {
         a.replace("-", "_") for a in CAN_PROTOCOL_ALIASES
     }
+
+
+def is_can_otids_protocol(name: str) -> bool:
+    key = _normalize_protocol_key(name)
+    return key in {a.replace("-", "_") for a in CAN_OTIDS_PAPER_ALIASES | CAN_OTIDS_NOTEBOOK_ALIASES}
 
 
 def get_protocol_settings(name: str) -> ProtocolSettings:
@@ -277,7 +371,11 @@ def get_protocol_settings(name: str) -> ProtocolSettings:
         return PAPER
     if key in ("notebook", "nb", "ioj"):
         return NOTEBOOK
-    if key in {a.replace("-", "_") for a in CAN_PAPER_ALIASES}:
+    if key in {a.replace("-", "_") for a in CAN_OTIDS_PAPER_ALIASES}:
+        return CAN_OTIDS
+    if key in {a.replace("-", "_") for a in CAN_OTIDS_NOTEBOOK_ALIASES}:
+        return CAN_OTIDS_NOTEBOOK
+    if key in {a.replace("-", "_") for a in CAN_INTRUSION_PAPER_ALIASES}:
         return CAN_PAPER
     if key in {a.replace("-", "_") for a in CAN_NOTEBOOK_ALIASES}:
         return CAN_NOTEBOOK

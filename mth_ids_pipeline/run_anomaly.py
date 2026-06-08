@@ -1,18 +1,18 @@
 """Ramo anomaly — fases 7–12.
 
 Paper/CICIDS: ``data/pipeline_mth_ids_fine`` + LOAO
-CAN: ``--protocol can_paper`` / ``can_notebook`` → ``data/pipeline_can_fine``
+CAN intrusion: ``--protocol can`` → ``data/pipeline_can_intrusion_fine``
+CAN OTIDS: ``--protocol can_otids`` → ``data/pipeline_can_otids_fine``
 """
 
 from __future__ import annotations
 
-from mth_ids_pipeline.config import INTERMEDIATE_DIR_CAN_FINE, INTERMEDIATE_DIR_FINE
 from mth_ids_pipeline.orchestration.experiment_runner import (
     build_arg_parser,
     config_from_args,
     run_experiment,
 )
-from mth_ids_pipeline.protocol import is_can_protocol
+from mth_ids_pipeline.protocol import get_protocol_settings, is_can_protocol
 
 
 def main() -> None:
@@ -23,12 +23,10 @@ def main() -> None:
     args = parser.parse_args()
     if args.loao:
         args.to = 12
-    if args.intermediate_dir is None:
-        args.intermediate_dir = (
-            INTERMEDIATE_DIR_CAN_FINE if is_can_protocol(args.protocol) else INTERMEDIATE_DIR_FINE
-        )
-    if is_can_protocol(args.protocol) and args.label_profile == "fine":
-        args.label_profile = "can_fine"
+    if is_can_protocol(args.protocol):
+        ps = get_protocol_settings(args.protocol)
+        if args.label_profile in (None, "fine"):
+            args.label_profile = ps.anomaly_profile
     run_experiment(config_from_args(args, branch="anomaly"))
 
 

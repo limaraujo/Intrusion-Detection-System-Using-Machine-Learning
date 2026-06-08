@@ -1,0 +1,42 @@
+﻿{
+  "input": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\02_sampled_kmeans.parquet",
+  "mode": "loao",
+  "attack_label": 5,
+  "without_portscan_output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\a01_without_portscan.parquet",
+  "portscan_output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\a02_portscan_only.parquet",
+  "without_portscan": {
+    "shape": {
+      "rows": 35919,
+      "cols": 10
+    },
+    "label_col": "Label",
+    "label_value_counts": {
+      "0": 18211,
+      "1": 17708
+    }
+  },
+  "portscan": {
+    "shape": {
+      "rows": 0,
+      "cols": 10
+    },
+    "label_col": "Label",
+    "label_value_counts": {}
+  },
+  "zero_day_label": 5,
+  "zero_day_samples": 0,
+  "train_original_label_counts": {
+    "0": 18211,
+    "3": 7924,
+    "1": 5115,
+    "2": 4669
+  },
+  "train_attack_labels_present": [
+    1,
+    2,
+    3
+  ],
+  "zero_day_fully_excluded_from_train": true,
+  "phase": "phase07_anomaly_datasets",
+  "timestamp": 1780890605
+}

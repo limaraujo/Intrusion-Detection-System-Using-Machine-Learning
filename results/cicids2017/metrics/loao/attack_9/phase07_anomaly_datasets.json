@@ -1,4 +1,4 @@
-{
+﻿{
   "input": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_mth_ids_fine\\02_sampled_kmeans.parquet",
   "attack_label": 9,
   "without_portscan_output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_mth_ids_fine\\anomaly\\loao\\attack_9\\a01_without_portscan.parquet",

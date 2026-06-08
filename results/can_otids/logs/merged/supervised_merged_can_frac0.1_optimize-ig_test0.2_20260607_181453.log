@@ -1,0 +1,174 @@
+﻿[2026-06-07 18:14:53] === sessão iniciada — log: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\results\logs\supervised_merged_can_phases1-6_20260607_181453.log ===
+[2026-06-07 18:14:53] intermediate-dir: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged
+[2026-06-07 18:14:53] protocolo: can | ramo: supervised | perfil: merged
+[2026-06-07 18:14:53] fases: 1-6 (1, 2, 4, 6)
+[2026-06-07 18:14:53] -> [fase 1 - 1/4] Carregamento e pré-processamento ...
+[2026-06-07 18:14:53] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase01_load_preprocess --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged --input C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\CAN_OTIDS_Dataset.csv
+Carregando dataset: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\CAN_OTIDS_Dataset.csv
+Label
+BENIGN           2268519
+Impersonation     995472
+DoS               645785
+Fuzzy             579909
+Name: count, dtype: int64
+Dataset carregado em 3.72s
+Shape original: (4489685, 10)
+Pré-processamento concluído. Shape final: (4489685, 10)
+Salvando arquivo parquet...
+Arquivo salvo em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\01_preprocessed.parquet
+Tempo de salvamento: 1.67s
+Tempo total do pipeline: 6.71s
+Relatorio salvo em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports\phase01_load_preprocess.json
+[2026-06-07 18:15:01] OK fase 1 concluida em 8.2s
+[2026-06-07 18:15:01] -> [fase 2 - 2/4] Amostragem k-means ...
+[2026-06-07 18:15:01] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase02_sample_kmeans --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged --n-clusters 1000 --frac 0.1 --random-state 0 --sample-all-classes
+Label
+0    227123
+3     99344
+1     64697
+2     57792
+Name: count, dtype: int64
+Salvo: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\02_sampled_kmeans.parquet shape=(448956, 10)
+[2026-06-07 18:15:11] OK fase 2 concluida em 9.6s
+[2026-06-07 18:15:11] -> [fase 4 - 3/4] Engenharia de features (IG, FCBF) ...
+[2026-06-07 18:15:11] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase04_feature_engineering --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged --fcbf-k 20 --random-state 0 --test-size 0.2 --fcbf-scope train --scale-mode split --ig-cumulative 0.9 --cv-folds 10 --ig-hpo-calls 15 --optimize-ig
+BO-GP IG: alpha=0.8115, CV acc=0.8533
+Salvo: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\04_train_after_fcbf.parquet (359164, 8)
+Salvo: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\04_test_after_fcbf.parquet (89792, 8)
+Preprocessores supervisionados salvos: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\models\supervised\manifest.json
+[2026-06-07 18:30:45] Sem SMOTE: parquets FCBF copiados para caminhos da fase 5 em C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged
+[2026-06-07 18:30:45] OK fase 4 concluida em 15m34s
+[2026-06-07 18:30:45] -> [fase 6 - 4/4] Modelos supervisionados + stacking ...
+[2026-06-07 18:30:45] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase06_supervised_models --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged --no-plots --cv-folds 10 --meta-learner best-base --random-state 0 --hpo-on-validation
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+C:\Users\Araújo Notebook\AppData\Local\Programs\Python\Python313\Lib\multiprocessing\queues.py:120: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  return _ForkingPickler.loads(res)
+HPO objetivo: acurácia média em 10-fold CV (treino)
+XGBoost HPO best: {'learning_rate': np.float64(-0.21527866197237538), 'max_depth': np.float64(34.0), 'n_estimators': np.float64(30.0)}
+
+=== XGBoost (base) ===
+Accuracy: 0.8501648253741981
+Precision: 0.864317559440394
+Recall: 0.8501648253741981
+F1: 0.8436941623938112
+              precision    recall  f1-score   support
+
+           0       0.81      0.99      0.89     45425
+           1       0.88      0.78      0.83     12940
+           2       0.92      0.79      0.85     11558
+           3       0.95      0.61      0.75     19869
+
+    accuracy                           0.85     89792
+   macro avg       0.89      0.79      0.83     89792
+weighted avg       0.86      0.85      0.84     89792
+
+RandomForest HPO best: {'criterion': np.int64(1), 'max_depth': np.float64(27.0), 'max_features': np.float64(4.0), 'min_samples_leaf': np.float64(6.0), 'min_samples_split': np.float64(10.0), 'n_estimators': np.float64(172.0)}
+
+=== RandomForest (HPO) ===
+Accuracy: 0.8507550784034212
+Precision: 0.8654539340220877
+Recall: 0.8507550784034212
+F1: 0.8442090618635688
+              precision    recall  f1-score   support
+
+           0       0.81      0.99      0.89     45425
+           1       0.89      0.77      0.83     12940
+           2       0.92      0.80      0.85     11558
+           3       0.95      0.61      0.75     19869
+
+    accuracy                           0.85     89792
+   macro avg       0.89      0.79      0.83     89792
+weighted avg       0.87      0.85      0.84     89792
+
+DecisionTree HPO best: {'criterion': np.int64(0), 'max_depth': np.float64(31.0), 'max_features': np.float64(14.0), 'min_samples_leaf': np.float64(1.0), 'min_samples_split': np.float64(9.0)}
+
+=== DecisionTree (HPO) ===
+Accuracy: 0.8495522986457591
+Precision: 0.8639041921799271
+Recall: 0.8495522986457591
+F1: 0.8430172464679005
+              precision    recall  f1-score   support
+
+           0       0.81      0.99      0.89     45425
+           1       0.88      0.78      0.83     12940
+           2       0.92      0.79      0.85     11558
+           3       0.95      0.61      0.75     19869
+
+    accuracy                           0.85     89792
+   macro avg       0.89      0.79      0.83     89792
+weighted avg       0.86      0.85      0.84     89792
+
+ExtraTrees HPO best: {'criterion': np.int64(0), 'max_depth': np.float64(46.0), 'max_features': np.float64(7.0), 'min_samples_leaf': np.float64(1.0), 'min_samples_split': np.float64(11.0), 'n_estimators': np.float64(127.0)}
+
+=== ExtraTrees (HPO) ===
+Accuracy: 0.8504432466143977
+Precision: 0.864733727788308
+Recall: 0.8504432466143977
+F1: 0.843976605086553
+              precision    recall  f1-score   support
+
+           0       0.81      0.99      0.89     45425
+           1       0.89      0.78      0.83     12940
+           2       0.92      0.79      0.85     11558
+           3       0.95      0.61      0.75     19869
+
+    accuracy                           0.85     89792
+   macro avg       0.89      0.79      0.83     89792
+weighted avg       0.86      0.85      0.84     89792
+
+
+Stacking meta-learner (best-base): reutilizando 'RandomForest (HPO)'
+
+=== Stacking meta (RandomForest (HPO)) ===
+Accuracy: 0.8500089094796864
+Precision: 0.8641619148824046
+Recall: 0.8500089094796864
+F1: 0.8435335484267589
+              precision    recall  f1-score   support
+
+           0       0.81      0.99      0.89     45425
+           1       0.88      0.78      0.83     12940
+           2       0.92      0.79      0.85     11558
+           3       0.95      0.61      0.75     19869
+
+    accuracy                           0.85     89792
+   macro avg       0.89      0.79      0.83     89792
+weighted avg       0.86      0.85      0.84     89792
+
+
+10-fold CV (XGBoost (base)): mean=0.8539 ± 0.0015
+
+10-fold CV (RandomForest (HPO)): mean=0.8542 ± 0.0016
+
+10-fold CV (DecisionTree (HPO)): mean=0.8532 ± 0.0014
+
+10-fold CV (ExtraTrees (HPO)): mean=0.8541 ± 0.0014
+
+10-fold CV (Stacking meta (RandomForest (HPO))): mean=0.8599 ± 0.0015
+
+Métricas salvas em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\06_supervised_metrics.json
+Modelos supervisionados salvos em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\models\supervised
+Relatorio salvo em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports\phase06_supervised_models.json
+[2026-06-07 20:03:34] OK fase 6 concluida em 1h32m
+[2026-06-07 20:03:34] === sessão concluída ===

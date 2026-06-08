@@ -1,4 +1,4 @@
-=== LOAO [fase 7 (split binário)] ===
+﻿=== LOAO [fase 7 (split binário)] ===
   treino: rows=24825 labels={'0': 18184, '1': 6641}
   teste:  rows=1966 labels={'1': 1966}
   zero-day=1966 benign_test=0 regra=fase7_zero_day_only

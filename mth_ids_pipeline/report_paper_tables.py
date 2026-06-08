@@ -19,19 +19,22 @@ import json
 from pathlib import Path
 
 from mth_ids_pipeline.config import (
-    CAN_LABEL_NAMES,
+    resolve_can_label_names,
     CICIDS2017_FINE_LABEL_NAMES,
-    INTERMEDIATE_DIR_CAN_FINE,
-    INTERMEDIATE_DIR_CAN_MERGED,
+    INTERMEDIATE_DIR_CAN_INTRUSION_FINE,
+    INTERMEDIATE_DIR_CAN_INTRUSION_MERGED,
+    INTERMEDIATE_DIR_CAN_OTIDS_FINE,
+    INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
     INTERMEDIATE_DIR_FINE,
     INTERMEDIATE_DIR_MERGED,
     PAPER_REFERENCE_LOAO_CAN,
     PAPER_REFERENCE_SUPERVISED_CAN,
     PAPER_TABLE_X_REFERENCE,
     RESULTS_DIR,
-    RESULTS_DIR_CAN,
     ensure_results_dirs,
+    is_can_otids_pipeline_path,
     is_can_pipeline_path,
+    results_dir_for_can_pipeline,
 )
 from mth_ids_pipeline.core.evaluation import (
     NOTEBOOK_REFERENCE_SUPERVISED,
@@ -50,45 +53,58 @@ PAPER_STACKING_PREFIX = "Stacking meta ("
 
 
 def _dataset_key(merged_dir: Path, loao_root: Path) -> str:
+    for path in (merged_dir, loao_root):
+        if is_can_otids_pipeline_path(path):
+            return "can_otids"
     if is_can_pipeline_path(merged_dir) or is_can_pipeline_path(loao_root):
         return "can"
     return "cicids2017"
 
 
 def _supervised_table_label(dataset: str) -> str:
-    return "VI" if dataset == "can" else "VII"
+    return "VI" if dataset in ("can", "can_otids") else "VII"
 
 
 def _loao_table_label(dataset: str) -> str:
-    return "VIII" if dataset == "can" else "IX"
+    return "VIII" if dataset in ("can", "can_otids") else "IX"
 
 
 def _supervised_paper_reference(dataset: str) -> dict:
     key = PAPER_TABLE_VII_MODEL
-    if dataset == "can":
+    if dataset in ("can", "can_otids"):
         return PAPER_REFERENCE_SUPERVISED_CAN[key]
     return PAPER_REFERENCE_SUPERVISED[key]
 
 
 def _loao_paper_reference(summary: dict, dataset: str) -> dict:
-    if dataset == "can":
+    if dataset in ("can", "can_otids"):
         return summary.get("paper_reference_can", PAPER_REFERENCE_LOAO_CAN)
     return summary.get("paper_reference_cicids2017", PAPER_REFERENCE_CICIDS2017)
 
 
 def _loao_attack_label_names(loao_root: Path) -> dict[int, str]:
     if is_can_pipeline_path(loao_root):
-        return {k: v for k, v in CAN_LABEL_NAMES.items() if k > 0}
+        table = resolve_can_label_names(pipeline_path=loao_root)
+        return {k: v for k, v in table.items() if k > 0}
     return {k: v for k, v in CICIDS2017_FINE_LABEL_NAMES.items() if k > 0}
 
 
 def _default_loao_root(merged_dir: Path) -> Path:
-    base = INTERMEDIATE_DIR_CAN_FINE if is_can_pipeline_path(merged_dir) else INTERMEDIATE_DIR_FINE
+    if is_can_otids_pipeline_path(merged_dir):
+        base = INTERMEDIATE_DIR_CAN_OTIDS_FINE
+    elif is_can_pipeline_path(merged_dir):
+        base = INTERMEDIATE_DIR_CAN_INTRUSION_FINE
+    else:
+        base = INTERMEDIATE_DIR_FINE
     return base / "anomaly" / "loao"
 
 
 def _default_merged_dir(dataset: str) -> Path:
-    return INTERMEDIATE_DIR_CAN_MERGED if dataset == "can" else INTERMEDIATE_DIR_MERGED
+    if dataset == "can_otids":
+        return INTERMEDIATE_DIR_CAN_OTIDS_MERGED
+    if dataset == "can":
+        return INTERMEDIATE_DIR_CAN_INTRUSION_MERGED
+    return INTERMEDIATE_DIR_MERGED
 
 
 def _find_stacking_row(metrics: list[dict]) -> dict | None:
@@ -173,7 +189,7 @@ def report_table_vii(intermediate_dir: Path, *, dataset: str = "cicids2017") -> 
     ref_acc = _paper_ref_pct(paper, "accuracy_pct")
     ref_f1 = float(paper.get("f1", 0))
 
-    dataset_name = "CAN-intrusion" if dataset == "can" else "CICIDS2017"
+    dataset_name = "CAN-OTIDS" if dataset == "can" else "CICIDS2017"
     print("\n" + "=" * 72)
     print(f"TABELA {table_no} — Supervisionado ({dataset_name}, multi-class, hold-out 80/20)")
     print("=" * 72)
@@ -252,7 +268,7 @@ def report_table_ix(loao_root: Path, *, dataset: str = "cicids2017") -> dict | N
     default_planned = 3 if dataset == "can" else 14
     n_planned = int(summary.get("attacks_in_dataset", default_planned))
 
-    dataset_name = "CAN-intrusion" if dataset == "can" else "CICIDS2017"
+    dataset_name = "CAN-OTIDS" if dataset == "can" else "CICIDS2017"
     print("\n" + "=" * 72)
     print(f"TABELA {table_no} — Anomaly LOAO ({dataset_name}, média sobre ataques concluídos)")
     print("=" * 72)
@@ -311,7 +327,7 @@ def report_table_x(intermediate_dir: Path, *, dataset: str = "cicids2017") -> di
     f1 = float(binary.get("f1", 0))
     split_note = data.get("test_split") or "hold-out 80/20 (artigo: 70/30)"
 
-    dataset_name = "CAN-intrusion" if dataset == "can" else "CICIDS2017"
+    dataset_name = "CAN-OTIDS" if dataset == "can" else "CICIDS2017"
     print("\n" + "=" * 72)
     print(f"TABELA X — Sistema completo no hold-out ({dataset_name})")
     print("=" * 72)
@@ -357,7 +373,7 @@ def _run_reports(
             print("=" * 72)
             sup_label = _supervised_table_label(dataset)
             loao_label = _loao_table_label(dataset)
-            title = "CAN-intrusion" if dataset == "can" else "CICIDS2017"
+            title = "CAN-OTIDS" if dataset == "can" else "CICIDS2017"
             print(f"COMPARATIVO MTH-IDS vs artigo ({title})")
             print("=" * 72)
             print(f"Supervisionado / Tabela {sup_label} / X: {merged_dir}")
@@ -395,7 +411,7 @@ def main() -> None:
         "--loao-root",
         type=Path,
         default=None,
-        help="Raiz LOAO (default: pipeline_can_fine ou pipeline_mth_ids_fine conforme --merged-dir)",
+        help="Raiz LOAO (default: pipeline_can_otids_fine ou pipeline_mth_ids_fine conforme --merged-dir)",
     )
     parser.add_argument(
         "--table",
@@ -424,7 +440,10 @@ def main() -> None:
     merged_dir = args.intermediate_dir or args.merged_dir
     loao_root = args.loao_root or _default_loao_root(merged_dir)
     dataset = _dataset_key(merged_dir, loao_root)
-    results_dir = RESULTS_DIR_CAN if (args.results_dir == RESULTS_DIR and dataset == "can") else args.results_dir
+    if args.results_dir == RESULTS_DIR and dataset in ("can", "can_otids"):
+        results_dir = results_dir_for_can_pipeline(merged_dir)
+    else:
+        results_dir = args.results_dir
 
     comparison, report_text = _run_reports(
         merged_dir=merged_dir,

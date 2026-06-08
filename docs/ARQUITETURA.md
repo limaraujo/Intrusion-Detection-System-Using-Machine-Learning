@@ -1,4 +1,4 @@
-# Arquitetura MTH-IDS
+﻿# Arquitetura MTH-IDS
 
 Referência: Yang et al., *MTH-IDS*, IEEE IoT Journal 2022.
 
@@ -45,8 +45,8 @@ Diagramas Mermaid: [`docs/figures/`](figures/) (`01_quatro_tiers.txt` … `04_ex
 |--------|------------|---------|-------|----------|
 | `merged` | `CICIDS2017.csv` | 7 famílias | `pipeline_mth_ids_merged/` | VII, X |
 | `fine` | `CICIDS2017_fine.csv` | ~15 subtipos | `pipeline_mth_ids_fine/` | IX (LOAO) |
-| `can_merged` | `CAN_Intrusion_Dataset.csv` | 4 | `pipeline_can_merged/` | VI, X |
-| `can_fine` | mesmo CSV | 3 LOAO | `pipeline_can_fine/` | VIII |
+| `can_merged` | `CAN_OTIDS_Dataset.csv` (Car-Hacking ou OTIDS) | 4 | `pipeline_can_otids_merged/` | VI, X |
+| `can_fine` | mesmo CSV | 4 LOAO (intrusion) / 3 (OTIDS) | `pipeline_can_otids_fine/` | VIII |
 
 **Regra:** VII/VI e X → **merged** (`can_merged`). IX/VIII → **fine** (`can_fine`).
 
@@ -78,8 +78,8 @@ mth_ids_pipeline/
 | Supervisionado CICIDS | 1–6 | `merged` | `pipeline_mth_ids_merged/` |
 | LOAO CICIDS | 7–12 | `fine` | `pipeline_mth_ids_fine/` |
 | Global + eval CICIDS | 7–11, 13 | `merged` | `…/anomaly/global/` |
-| Supervisionado CAN | 1–6 | `can_merged` | `pipeline_can_merged/` |
-| LOAO CAN | 7–12 | `can_fine` | `pipeline_can_fine/` |
+| Supervisionado CAN | 1–6 | `can_merged` | `pipeline_can_otids_merged/` |
+| LOAO CAN | 7–12 | `can_fine` | `pipeline_can_otids_fine/` |
 
 Logs timestampados: `results/logs/`. LOAO: espelho em `results/logs/loao/attack_<N>.log`.
 

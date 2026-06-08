@@ -1,4 +1,4 @@
-[2026-06-08 02:44:52] === sessão iniciada — log: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\results\logs\eval_phase13_20260608_024452.log ===
+﻿[2026-06-08 02:44:52] === sessão iniciada — log: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\results\logs\eval_phase13_20260608_024452.log ===
 [2026-06-08 02:44:52] C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase13_full_system_eval --intermediate-dir data/pipeline_mth_ids_merged --work-dir data/pipeline_mth_ids_merged/anomaly/global
 [2026-06-08 02:44:52] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase13_full_system_eval --intermediate-dir data/pipeline_mth_ids_merged --work-dir data/pipeline_mth_ids_merged/anomaly/global
 Avaliação end-to-end: supervised=data\pipeline_mth_ids_merged | anomaly=data\pipeline_mth_ids_merged\anomaly\global

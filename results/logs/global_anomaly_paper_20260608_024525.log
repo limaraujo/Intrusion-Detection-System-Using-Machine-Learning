@@ -1,4 +1,4 @@
-[2026-06-08 02:45:25] === sessão iniciada — log: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\results\logs\global_anomaly_paper_20260608_024525.log ===
+﻿[2026-06-08 02:45:25] === sessão iniciada — log: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\results\logs\global_anomaly_paper_20260608_024525.log ===
 [2026-06-08 02:45:25] intermediate-dir: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_mth_ids_merged
 [2026-06-08 02:45:25] work-dir: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_mth_ids_merged\anomaly\global
 [2026-06-08 02:45:25] protocol: paper | fases: 7-11

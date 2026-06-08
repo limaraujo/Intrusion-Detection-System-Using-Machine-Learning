@@ -1,4 +1,4 @@
-# Execução — tabelas, pastas e comandos
+﻿# Execução — tabelas, pastas e comandos
 
 Guia único para rodar Tabelas **VII / IX / X** (CICIDS2017) e **VI / VIII / X** (CAN).
 
@@ -22,7 +22,7 @@ Cada tabela é um **experimento distinto** — não há um script que treine as 
 
 **CICIDS2017:** `merge_cicids` → `run_supervised` (VII) → `run_anomaly --loao` (IX, paralelo) → `run_global_anomaly` + `run_eval` (X) → `report_paper_tables`
 
-**CAN:** `merge_can` → `run_supervised --protocol can` (VI) → `run_anomaly --protocol can --loao` (VIII) → global + eval (X opcional) → `report_paper_tables --results-dir results/can`
+**CAN:** `merge_can` → `run_supervised --protocol can` (VI) → `run_anomaly --protocol can --loao` (VIII) → global + eval (X opcional) → `report_paper_tables --results-dir results/can_otids`
 
 A Tabela **X depende da VII/VI** (stacking + hold-out). A **IX/VIII é independente**.
 
@@ -44,13 +44,19 @@ python -m mth_ids_pipeline.utils.merge_cicids --profile merged
 python -m mth_ids_pipeline.utils.merge_cicids --profile fine
 ```
 
-**CAN** (arquivos `CAN_*.txt` em `data/CAN_DATA/`):
+**CAN** — dois estudos em pastas separadas (podem coexistir):
 
 ```powershell
-python -m mth_ids_pipeline.utils.merge_can
+# Car-Hacking → pipeline_can_intrusion_* / results/can_intrusion/
+python -m mth_ids_pipeline.utils.merge_can --source original
+python -m mth_ids_pipeline.run_supervised --protocol can
+
+# OTIDS → pipeline_can_otids_* / results/can_otids/
+python -m mth_ids_pipeline.utils.merge_can --source otids
+python -m mth_ids_pipeline.run_supervised --protocol can_otids
 ```
 
-Detalhes de preset e dataset: [PROTOCOLO_CICIDS.md](PROTOCOLO_CICIDS.md) · CAN: [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md).
+Detalhes: [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) · [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) · [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md) · CICIDS: [PROTOCOLO_CICIDS.md](PROTOCOLO_CICIDS.md).
 
 Use `--protocol paper` (CICIDS) ou `--protocol can` (CAN) em todos os orquestradores.
 
@@ -111,24 +117,25 @@ python -m mth_ids_pipeline.report_paper_tables --table all `
 
 ---
 
-## CAN-intrusion
+## CAN (intra-veicular)
 
-Detalhes de preset, features e diferenças metodológicas: [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md).
+Dois datasets: [Car-Hacking original](PROTOCOLO_CAN_INTRUSION.md) (`--source original`) e [repack OTIDS](PROTOCOLO_CAN_OTIDS.md) (`--source otids`). Pipeline compartilhado: [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md).
 
 ```powershell
-python -m mth_ids_pipeline.run_supervised --protocol can
+python -m mth_ids_pipeline.run_supervised --protocol can          # intrusion
+# python -m mth_ids_pipeline.run_supervised --protocol can_otids  # OTIDS
 python -m mth_ids_pipeline.run_anomaly --protocol can --loao
 python -m mth_ids_pipeline.run_global_anomaly --protocol can
 python -m mth_ids_pipeline.run_eval `
-  --intermediate-dir data/pipeline_can_merged `
-  --work-dir data/pipeline_can_merged/anomaly/global
+  --intermediate-dir data/pipeline_can_otids_merged `
+  --work-dir data/pipeline_can_otids_merged/anomaly/global
 python -m mth_ids_pipeline.report_paper_tables --table all `
-  --merged-dir data/pipeline_can_merged `
-  --loao-root data/pipeline_can_fine/anomaly/loao `
-  --results-dir results/can
+  --merged-dir data/pipeline_can_otids_merged `
+  --loao-root data/pipeline_can_otids_fine/anomaly/loao `
+  --results-dir results/can_otids
 ```
 
-Labels LOAO: `1`=DoS, `2`=Fuzzy, `3`=Impersonation.
+Labels LOAO — Car-Hacking: `1`=DoS, `2`=Fuzzy, `3`=Gear, `4`=RPM. OTIDS: `1`=DoS, `2`=Fuzzy, `3`=Impersonation.
 
 ---
 
@@ -148,8 +155,8 @@ data/
 │   └── phase_reports/phase13_full_system_eval.json
 ├── pipeline_mth_ids_fine/            # IX
 │   └── anomaly/loao/attack_1 … attack_14/
-├── pipeline_can_merged/              # VI + X
-└── pipeline_can_fine/                # VIII (attack_1 … attack_3)
+├── pipeline_can_otids_merged/              # VI + X
+└── pipeline_can_otids_fine/                # VIII (attack_1 … attack_3)
 ```
 
 | Script | Default perfil | Fases | Tabela |
@@ -173,7 +180,7 @@ data/
 
 A fase 11 **não** carrega o modelo da Tabela VII — só escolhe a **família** vencedora. Por isso o JSON vem do merged, não de um re-treino fine.
 
-CAN: mesma lógica com `pipeline_can_merged` / `pipeline_can_fine`. Use sempre `--protocol can`.
+CAN: mesma lógica com `pipeline_can_otids_merged` / `pipeline_can_otids_fine`. Use sempre `--protocol can`.
 
 Desativar: `--skip-bootstrap` (quando `02_` e `06_` já existem no fine).
 
@@ -188,7 +195,7 @@ Preserva inteiros os rótulos fine equivalentes ao `df_minor` merged (Bot, Infil
 | Flag | Efeito |
 |------|--------|
 | (padrão) | Grava `paper_comparison.json` + `tables_report.txt` em `results/` |
-| `--results-dir results/can` | Outra pasta de saída |
+| `--results-dir results/can_otids` | Outra pasta de saída |
 | `--no-save` | Só imprime no terminal |
 
 Artefatos de treino (parquets, modelos) ficam em `data/`.

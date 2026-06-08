@@ -8,7 +8,7 @@ Documentação atual:
 - [ARQUITETURA.md](../ARQUITETURA.md) — tiers, experimentos, código
 - [EXECUCAO.md](../EXECUCAO.md) — comandos, pastas, bootstrap
 - [PROTOCOLO_CICIDS.md](../PROTOCOLO_CICIDS.md) — CICIDS2017
-- [PROTOCOLO_CAN.md](../PROTOCOLO_CAN.md) — CAN-intrusion
+- [PROTOCOLO_CAN.md](../PROTOCOLO_CAN.md) — CAN-OTIDS
 
 Arquivos nesta pasta:
 

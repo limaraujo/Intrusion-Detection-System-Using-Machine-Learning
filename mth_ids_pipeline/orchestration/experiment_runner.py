@@ -17,8 +17,6 @@ from pathlib import Path
 
 from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8, utf8_subprocess_env
 from mth_ids_pipeline.config import (
-    INTERMEDIATE_DIR_CAN_FINE,
-    INTERMEDIATE_DIR_CAN_MERGED,
     INTERMEDIATE_DIR_FINE,
     INTERMEDIATE_DIR_MERGED,
     P02_SAMPLED_KMEANS,
@@ -613,7 +611,16 @@ def build_arg_parser(description: str) -> argparse.ArgumentParser:
     p.add_argument("--protocol", choices=list(PROTOCOL_CHOICES), default="paper")
     p.add_argument(
         "--label-profile",
-        choices=["merged", "fine", "can_merged", "can_fine"],
+        choices=[
+            "merged",
+            "fine",
+            "can_merged",
+            "can_fine",
+            "can_intrusion_merged",
+            "can_intrusion_fine",
+            "can_otids_merged",
+            "can_otids_fine",
+        ],
         default=None,
     )
     p.add_argument("--from", dest="from_phase", type=int, default=1)
@@ -679,14 +686,6 @@ def config_from_args(args: argparse.Namespace, *, branch: str) -> ExperimentConf
         cfg.loao_attack_labels = str(args.attack_label)
     elif args.attack_labels:
         cfg.loao_attack_labels = args.attack_labels
-    if branch == "anomaly" and args.intermediate_dir is None:
-        cfg.intermediate_dir = (
-            INTERMEDIATE_DIR_CAN_FINE if is_can_protocol(args.protocol) else INTERMEDIATE_DIR_FINE
-        )
-    elif branch == "supervised" and args.intermediate_dir is None:
-        cfg.intermediate_dir = (
-            INTERMEDIATE_DIR_CAN_MERGED if is_can_protocol(args.protocol) else INTERMEDIATE_DIR_MERGED
-        )
     elif branch == "eval" and args.intermediate_dir is None:
         cfg.intermediate_dir = INTERMEDIATE_DIR_FINE
     return cfg
