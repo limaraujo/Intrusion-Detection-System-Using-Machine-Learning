@@ -61,8 +61,11 @@ PAPER_SMOTE_TARGETS: dict[int, int] = {
     6: 100_000,  # WebAttack
 }
 
-DEFAULT_TEST_SIZE = 0.2  # notebook e protocolo paper: split 80/20 na engenharia de features
-PAPER_TEST_SIZE = 0.3  # artigo original: 70% treino / 30% teste (legado)
+DEFAULT_TEST_SIZE = 0.2  # notebook IoTJ: split 80/20 na engenharia de features
+PAPER_TEST_SIZE = 0.3  # artigo Sec. IV-F: 70% treino / 30% teste
+DEFAULT_KMEANS_FRAC = 0.008  # notebook IoTJ / CICIDS2017 (fase 2)
+NOTEBOOK_KMEANS_FRAC = DEFAULT_KMEANS_FRAC
+PAPER_KMEANS_FRAC = DEFAULT_KMEANS_FRAC  # CICIDS2017 paper; CAN usa CAN_PAPER_KMEANS_FRAC
 DEFAULT_CV_FOLDS = 0  # notebook: HPO por acurácia no hold-out
 PAPER_CV_FOLDS = 10
 DEFAULT_META_LEARNER = "xgb"  # notebook: stacking meta XGBoost + HPO
@@ -72,6 +75,7 @@ DEFAULT_HPO_ON_VALIDATION = False  # notebook: accuracy_score(y_test, y_pred)
 PAPER_HPO_ON_VALIDATION = True  # artigo Sec. IV-F: HPO por acurácia em validação
 PAPER_IG_CUMULATIVE = 0.9
 PAPER_FCBF_K = 20
+PAPER_FCBF_ALPHA = 0.01  # FCBF (th) — classe FCBF do módulo; preset paper usa k=20
 PAPER_KPCA_COMPONENTS = 10
 PAPER_KPCA_KERNEL = "rbf"
 PAPER_FEATURE_FIT_SCOPE = "combined"  # anomaly tier 3: IG/FCBF/KPCA no conjunto combinado
@@ -146,8 +150,11 @@ INTERMEDIATE_DIR_CAN_MERGED = INTERMEDIATE_DIR_CAN_INTRUSION_MERGED
 INTERMEDIATE_DIR_CAN_FINE = INTERMEDIATE_DIR_CAN_INTRUSION_FINE
 RESULTS_DIR_CAN = RESULTS_DIR_CAN_INTRUSION
 CAN_DATASET_META = CAN_INTRUSION_DATASET_META
-CAN_KMEANS_FRAC = 0.008  # k-means 0,8% em todas as classes (igual notebook/CICIDS2017)
-CAN_TEST_SIZE = DEFAULT_TEST_SIZE  # alias legado; can_paper usa 80/20
+CAN_KMEANS_FRAC = 0.008  # notebook / CICIDS2017 (can_notebook)
+CAN_TEST_SIZE = DEFAULT_TEST_SIZE  # alias legado (80/20)
+# CAN paper: 1% (0,01); notebook/legado 0,8%; artigo Tabela VI cita 10%
+CAN_PAPER_KMEANS_FRAC = 0.01
+CAN_PAPER_TEST_SIZE = 0.3
 
 # UNSW-NB15 — rede externa (ver docs/PROTOCOLO_UNSW_NB15.md)
 DEFAULT_RAW_CSV_UNSW_NB15 = DATA_DIR / "UNSW-NB15_merged.csv"
@@ -330,6 +337,45 @@ def is_can_pipeline_path(path: Path | str) -> bool:
     """True para ``pipeline_can_intrusion_*`` ou ``pipeline_can_otids_*``."""
     p = Path(path).as_posix()
     return "pipeline_can_intrusion" in p or "pipeline_can_otids" in p
+
+
+def is_can_raw_input(path: Path | str) -> bool:
+    """True se o CSV de entrada é um dataset CAN automotivo."""
+    s = Path(path).as_posix().lower()
+    markers = (
+        "can_intrusion",
+        "can_otids",
+        "can_intrusion_dataset",
+        "can_otids_dataset",
+        "pipeline_can",
+    )
+    return any(m in s for m in markers)
+
+
+def is_can_feature_columns(columns) -> bool:
+    """True se as colunas indicam features de barramento CAN."""
+    upper = {str(c).strip().upper() for c in columns}
+    return "CAN_ID" in upper and ("DATA_0" in upper or "DATA_1" in upper)
+
+
+def is_can_automotive_context(
+    *,
+    intermediate_dir: Path | str | None = None,
+    input_path: Path | str | None = None,
+    columns: list | None = None,
+) -> bool:
+    """Detecta contexto CAN (pasta pipeline, CSV ou colunas)."""
+    if intermediate_dir is not None and is_can_pipeline_path(intermediate_dir):
+        return True
+    if input_path is not None and is_can_raw_input(input_path):
+        return True
+    if columns is not None and is_can_feature_columns(columns):
+        return True
+    return False
+
+
+def is_unsw_pipeline_path(path: Path | str) -> bool:
+    return "pipeline_unsw_nb15" in Path(path).as_posix()
 
 
 def can_dataset_meta_for_pipeline(path: Path | str) -> Path:

@@ -109,6 +109,7 @@ class ExperimentConfig:
     force_biased: bool = False
     optimize_p_star: bool = False
     cl_hpo_metric: str = "accuracy"
+    cl_hpo_metric_source: str = "notebook"
     cl_hpo_n_calls: int = 20
     cl_kmeans_metrics: tuple[str, ...] = ("euclidean", "manhattan", "cosine")
     meta_learner: str = "xgb"
@@ -126,6 +127,8 @@ class ExperimentConfig:
     hpo_n_calls: int = 15
     loao_attack_labels: str | None = None
     fixed_supervised_features: tuple[str, ...] | None = None
+    phase1_zscore: bool = True
+    post_sample_zscore: bool = False
 
     @classmethod
     def from_protocol(
@@ -158,6 +161,7 @@ class ExperimentConfig:
             force_biased=ps.force_biased,
             optimize_p_star=ps.optimize_p_star,
             cl_hpo_metric=ps.cl_hpo_metric,
+            cl_hpo_metric_source=ps.cl_hpo_metric_source,
             cl_hpo_n_calls=ps.cl_hpo_n_calls,
             cl_kmeans_metrics=ps.cl_kmeans_metrics,
             meta_learner=ps.meta_learner,
@@ -174,6 +178,8 @@ class ExperimentConfig:
             kpca_kernel=ps.kpca_kernel,
             hpo_n_calls=ps.hpo_n_calls,
             fixed_supervised_features=ps.fixed_supervised_features,
+            phase1_zscore=ps.phase1_zscore,
+            post_sample_zscore=ps.post_sample_zscore,
             intermediate_dir=profile.intermediate_dir,
             raw_csv=profile.raw_csv,
             profile=profile,
@@ -213,6 +219,8 @@ def _phase_args(phase: int, cfg: ExperimentConfig) -> list[str]:
     ]
     if phase == 1 and cfg.raw_csv:
         extra += ["--input", str(cfg.raw_csv)]
+        if not cfg.phase1_zscore:
+            extra.append("--no-zscore")
     if phase == 2:
         extra += [
             "--n-clusters", "1000",
@@ -227,6 +235,10 @@ def _phase_args(phase: int, cfg: ExperimentConfig) -> list[str]:
             extra.append("--auto-minority")
         elif p.minority_labels:
             extra += ["--minority-labels", p.minority_labels_csv() or ""]
+        if cfg.post_sample_zscore:
+            extra.append("--zscore-after-sample")
+        else:
+            extra.append("--no-zscore-after-sample")
     if phase == 4:
         extra += [
             "--fcbf-k", str(cfg.fcbf_k),
@@ -295,6 +307,7 @@ def _phase_args(phase: int, cfg: ExperimentConfig) -> list[str]:
             "--random-state", str(cfg.random_state),
             "--n-calls", str(cfg.cl_hpo_n_calls),
             "--hpo-metric", cfg.cl_hpo_metric,
+            "--hpo-metric-source", cfg.cl_hpo_metric_source,
             "--metrics", ",".join(cfg.cl_kmeans_metrics),
         ]
         if cfg.skip_anomaly_smote:

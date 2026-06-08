@@ -1,17 +1,17 @@
 """
 Presets paper (artigo Yang et al. 2022) vs notebook (IoTJ) vs CAN-OTIDS.
 
-CICIDS2017 — ``paper`` (inalterado):
-  - Supervisionado: merged, k-means frac=0.008, 80/20, 10-fold CV, SMOTE notebook,
-    FCBF no treino, BO-GP α IG
+CICIDS2017 — ``paper``:
+  - Supervisionado: merged, k-means frac=0.008, 70/30, 10-fold CV, SMOTE notebook,
+    sem Z-score fase 1; StandardScaler pós-split (fase 4); FCBF no treino, BO-GP α IG
   - Anomaly LOAO: fine, IG/FCBF/KPCA no conjunto combinado, BO-GP α/KPCA, tier 3–4
 
 CICIDS2017 — ``notebook``: IoTJ publicado (α fixo, FCBF full, hold-out, meta XGBoost).
 
 CAN-OTIDS (pastas ``pipeline_can_otids_*``):
-  - ``can_paper`` (alias ``can``): Tabela VI — k-means 0,8%, 80/20, sem SMOTE;
-    BO-GP α IG + FCBF treino + 10-fold CV + meta best-base (run validada 20260607)
-  - ``can_notebook``: fluxo IoTJ adaptado (IG dinâmico α=0,9, FCBF full, meta XGBoost)
+  - ``can_paper`` (alias ``can``): Tabela VI — k-means 1%, split 70/30, sem SMOTE;
+    IG α=0,9 dinâmico; Z-score pós k-means; FCBF full; 10-fold CV; meta best-base
+  - ``can_notebook``: fluxo IoTJ adaptado (k-means 0,8%, 80/20, IG dinâmico α=0,9, FCBF full, meta XGBoost)
 """
 
 from __future__ import annotations
@@ -22,12 +22,15 @@ from enum import Enum
 from mth_ids_pipeline.core.clustering import CL_KMEANS_METRICS
 from mth_ids_pipeline.config import (
     CAN_KMEANS_FRAC,
+    CAN_PAPER_KMEANS_FRAC,
+    CAN_PAPER_TEST_SIZE,
     DEFAULT_ANOMALY_SMOTE_TARGET,
     DEFAULT_BIASED_MODE,
     DEFAULT_CL_P_STAR,
     DEFAULT_META_LEARNER,
     PAPER_META_LEARNER,
     DEFAULT_TEST_SIZE,
+    NOTEBOOK_KMEANS_FRAC,
     NOTEBOOK_SMOTE_TARGETS,
     UNSW_NB15_KMEANS_FRAC,
     UNSW_NB15_SMOTE_TARGETS,
@@ -38,10 +41,12 @@ from mth_ids_pipeline.config import (
     PAPER_HPO_N_CALLS,
     PAPER_HPO_ON_VALIDATION,
     PAPER_IG_CUMULATIVE,
+    PAPER_KMEANS_FRAC,
     PAPER_KPCA_COMPONENTS,
     PAPER_KPCA_KERNEL,
     PAPER_SUPERVISED_SCALE,
     PAPER_ANOMALY_ZSCORE,
+    PAPER_TEST_SIZE,
     NOTEBOOK_SUPERVISED_SCALE,
     NOTEBOOK_ANOMALY_ZSCORE,
 )
@@ -111,6 +116,7 @@ class ProtocolSettings:
     force_biased: bool
     optimize_p_star: bool
     cl_hpo_metric: str
+    cl_hpo_metric_source: str
     cl_hpo_n_calls: int
     optimize_ig: bool
     optimize_kpca: bool
@@ -127,23 +133,26 @@ class ProtocolSettings:
     cl_p_star: float = DEFAULT_CL_P_STAR
     cl_kmeans_metrics: tuple[str, ...] = CL_KMEANS_METRICS
     fixed_supervised_features: tuple[str, ...] | None = None
+    phase1_zscore: bool = True
+    post_sample_zscore: bool = False
 
 
 PAPER = ProtocolSettings(
     name="paper",
     description=(
-        "Artigo MTH-IDS: sup k-means 0.8% + 80/20 + 10-fold CV + SMOTE notebook; "
-        "HPO em validação; stacking meta best-base; anomaly LOAO fine + BO-GP tier 3–4."
+        "Artigo MTH-IDS: sup k-means 0.8% + 70/30 + 10-fold CV + SMOTE notebook; "
+        "normalização pós-split (fase 4); HPO em validação; stacking meta best-base; "
+        "anomaly LOAO fine + BO-GP tier 3–4."
     ),
     supervised_profile="merged",
     anomaly_profile="fine",
-    test_size=DEFAULT_TEST_SIZE,
+    test_size=PAPER_TEST_SIZE,
     cv_folds=PAPER_CV_FOLDS,
     hpo_on_validation=PAPER_HPO_ON_VALIDATION,
     smote_targets=dict(NOTEBOOK_SMOTE_TARGETS),
     skip_smote=False,
     skip_anomaly_smote=False,
-    kmeans_frac=0.008,
+    kmeans_frac=PAPER_KMEANS_FRAC,
     skip_kmeans_sampling=False,
     anomaly_benign_target=None,
     anomaly_smote_target=DEFAULT_ANOMALY_SMOTE_TARGET,
@@ -151,6 +160,7 @@ PAPER = ProtocolSettings(
     force_biased=True,
     optimize_p_star=True,
     cl_hpo_metric="f1",
+    cl_hpo_metric_source="article",
     cl_hpo_n_calls=PAPER_HPO_N_CALLS,
     optimize_ig=True,
     optimize_kpca=True,
@@ -164,6 +174,7 @@ PAPER = ProtocolSettings(
     kpca_kernel=PAPER_KPCA_KERNEL,
     hpo_n_calls=PAPER_HPO_N_CALLS,
     meta_learner=PAPER_META_LEARNER,
+    phase1_zscore=False,
 )
 
 NOTEBOOK = ProtocolSettings(
@@ -177,7 +188,7 @@ NOTEBOOK = ProtocolSettings(
     smote_targets=dict(NOTEBOOK_SMOTE_TARGETS),
     skip_smote=False,
     skip_anomaly_smote=False,
-    kmeans_frac=0.008,
+    kmeans_frac=NOTEBOOK_KMEANS_FRAC,
     skip_kmeans_sampling=False,
     anomaly_benign_target=1255,
     anomaly_smote_target=DEFAULT_ANOMALY_SMOTE_TARGET,
@@ -185,6 +196,7 @@ NOTEBOOK = ProtocolSettings(
     force_biased=False,
     optimize_p_star=False,
     cl_hpo_metric="accuracy",
+    cl_hpo_metric_source="notebook",
     cl_hpo_n_calls=20,
     optimize_ig=False,
     optimize_kpca=False,
@@ -204,18 +216,19 @@ NOTEBOOK = ProtocolSettings(
 CAN_PAPER = ProtocolSettings(
     name="can_paper",
     description=(
-        "Car-Hacking (Tabela VI): k-means 0,8%, 80/20, sem SMOTE; "
-        "BO-GP α IG; FCBF só treino; 10-fold CV; meta best-base; BO-GP KPCA/p*."
+        "Car-Hacking (Tabela VI artigo): k-means 1%, split 70/30, sem SMOTE; "
+        "IG α=0,9 dinâmico; Z-score pós k-means; FCBF full; "
+        "10-fold CV; meta best-base; BO-GP KPCA/p* (anomaly)."
     ),
     supervised_profile="can_intrusion_merged",
     anomaly_profile="can_intrusion_fine",
-    test_size=DEFAULT_TEST_SIZE,
+    test_size=CAN_PAPER_TEST_SIZE,
     cv_folds=PAPER_CV_FOLDS,
     hpo_on_validation=PAPER_HPO_ON_VALIDATION,
     smote_targets={},
     skip_smote=True,
     skip_anomaly_smote=True,
-    kmeans_frac=CAN_KMEANS_FRAC,
+    kmeans_frac=CAN_PAPER_KMEANS_FRAC,
     skip_kmeans_sampling=False,
     anomaly_benign_target=None,
     anomaly_smote_target=None,
@@ -223,13 +236,14 @@ CAN_PAPER = ProtocolSettings(
     force_biased=True,
     optimize_p_star=True,
     cl_hpo_metric="f1",
+    cl_hpo_metric_source="article",
     cl_hpo_n_calls=PAPER_HPO_N_CALLS,
-    optimize_ig=True,
+    optimize_ig=False,
     optimize_kpca=True,
     ig_cumulative=PAPER_IG_CUMULATIVE,
     fcbf_k=PAPER_FCBF_K,
-    fcbf_scope=PAPER_FCBF_SCOPE,
-    supervised_scale_mode=PAPER_SUPERVISED_SCALE,
+    fcbf_scope="full",
+    supervised_scale_mode=NOTEBOOK_SUPERVISED_SCALE,
     feature_fit_scope=PAPER_FEATURE_FIT_SCOPE,
     anomaly_zscore_scope=PAPER_ANOMALY_ZSCORE,
     kpca_components=PAPER_KPCA_COMPONENTS,
@@ -237,23 +251,25 @@ CAN_PAPER = ProtocolSettings(
     hpo_n_calls=PAPER_HPO_N_CALLS,
     meta_learner=PAPER_META_LEARNER,
     fixed_supervised_features=None,
+    phase1_zscore=False,
+    post_sample_zscore=True,
 )
 
 CAN_OTIDS = ProtocolSettings(
     name="can_otids",
     description=(
-        "CAN-OTIDS repack (Tabela VI): mesmo preset que can_paper; "
+        "CAN-OTIDS repack (Tabela VI): mesmo preset que can_paper (artigo); "
         "pastas pipeline_can_otids_* e CSV CAN_OTIDS_Dataset.csv."
     ),
     supervised_profile="can_otids_merged",
     anomaly_profile="can_otids_fine",
-    test_size=DEFAULT_TEST_SIZE,
+    test_size=CAN_PAPER_TEST_SIZE,
     cv_folds=PAPER_CV_FOLDS,
     hpo_on_validation=PAPER_HPO_ON_VALIDATION,
     smote_targets={},
     skip_smote=True,
     skip_anomaly_smote=True,
-    kmeans_frac=CAN_KMEANS_FRAC,
+    kmeans_frac=CAN_PAPER_KMEANS_FRAC,
     skip_kmeans_sampling=False,
     anomaly_benign_target=None,
     anomaly_smote_target=None,
@@ -261,13 +277,14 @@ CAN_OTIDS = ProtocolSettings(
     force_biased=True,
     optimize_p_star=True,
     cl_hpo_metric="f1",
+    cl_hpo_metric_source="article",
     cl_hpo_n_calls=PAPER_HPO_N_CALLS,
-    optimize_ig=True,
+    optimize_ig=False,
     optimize_kpca=True,
     ig_cumulative=PAPER_IG_CUMULATIVE,
     fcbf_k=PAPER_FCBF_K,
-    fcbf_scope=PAPER_FCBF_SCOPE,
-    supervised_scale_mode=PAPER_SUPERVISED_SCALE,
+    fcbf_scope="full",
+    supervised_scale_mode=NOTEBOOK_SUPERVISED_SCALE,
     feature_fit_scope=PAPER_FEATURE_FIT_SCOPE,
     anomaly_zscore_scope=PAPER_ANOMALY_ZSCORE,
     kpca_components=PAPER_KPCA_COMPONENTS,
@@ -275,6 +292,8 @@ CAN_OTIDS = ProtocolSettings(
     hpo_n_calls=PAPER_HPO_N_CALLS,
     meta_learner=PAPER_META_LEARNER,
     fixed_supervised_features=None,
+    phase1_zscore=False,
+    post_sample_zscore=True,
 )
 
 CAN_NOTEBOOK = ProtocolSettings(
@@ -299,6 +318,7 @@ CAN_NOTEBOOK = ProtocolSettings(
     force_biased=False,
     optimize_p_star=False,
     cl_hpo_metric="accuracy",
+    cl_hpo_metric_source="notebook",
     cl_hpo_n_calls=20,
     optimize_ig=False,
     optimize_kpca=False,
@@ -335,6 +355,7 @@ CAN_OTIDS_NOTEBOOK = ProtocolSettings(
     force_biased=False,
     optimize_p_star=False,
     cl_hpo_metric="accuracy",
+    cl_hpo_metric_source="notebook",
     cl_hpo_n_calls=20,
     optimize_ig=False,
     optimize_kpca=False,
@@ -377,6 +398,7 @@ UNSW = ProtocolSettings(
     force_biased=True,
     optimize_p_star=True,
     cl_hpo_metric="f1",
+    cl_hpo_metric_source="article",
     cl_hpo_n_calls=PAPER_HPO_N_CALLS,
     optimize_ig=True,
     optimize_kpca=True,
@@ -390,6 +412,7 @@ UNSW = ProtocolSettings(
     kpca_kernel=PAPER_KPCA_KERNEL,
     hpo_n_calls=PAPER_HPO_N_CALLS,
     meta_learner=PAPER_META_LEARNER,
+    phase1_zscore=False,
 )
 
 

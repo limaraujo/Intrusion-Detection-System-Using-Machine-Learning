@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 import warnings
 from collections.abc import Callable
 from pathlib import Path
@@ -89,6 +90,20 @@ def _resolve_cv_folds(cv_folds: int, hpo_on_validation: bool) -> int:
     return max(0, cv_folds)
 
 
+def _format_duration(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.0f}s"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}m{int(seconds % 60):02d}s"
+    return f"{int(seconds // 3600)}h{int((seconds % 3600) // 60):02d}m"
+
+
+def _phase_banner(step: int, total: int, title: str) -> None:
+    print(f"\n{'=' * 60}", flush=True)
+    print(f"[fase 6 — {step}/{total}] {title}", flush=True)
+    print(f"{'=' * 60}", flush=True)
+
+
 def _hyperopt_objective(
     build_estimator: Callable[[dict[str, Any]], Any],
     X_train: np.ndarray,
@@ -134,22 +149,48 @@ def _fmin_best(
     label: str,
     random_state: int = 0,
 ) -> dict:
-    from hyperopt import fmin, tpe
+    from hyperopt import Trials, fmin, tpe
 
     try:
         from mth_ids_pipeline.io.reproducibility import numpy_random_state
     except ImportError:
         from mth_ids_pipeline.io.reproducibility import numpy_random_state
 
+    trials = Trials()
+    hpo_start = time.time()
+    best_acc = [-float("inf")]
+
+    def _objective_with_progress(params: dict[str, Any]) -> dict[str, Any]:
+        trial_idx = len(trials.trials) + 1
+        trial_start = time.time()
+        result = objective(params)
+        acc = float(-result["loss"])
+        if acc > best_acc[0]:
+            best_acc[0] = acc
+        elapsed_total = time.time() - hpo_start
+        print(
+            f"  [{label}] trial {trial_idx}/{max_evals} "
+            f"acc={acc:.4f} (melhor={best_acc[0]:.4f}) "
+            f"+{_format_duration(time.time() - trial_start)} "
+            f"| total {_format_duration(elapsed_total)}",
+            flush=True,
+        )
+        return result
+
+    print(f"  [{label}] HPO iniciando ({max_evals} trials)...", flush=True)
     best = fmin(
-        fn=objective,
+        fn=_objective_with_progress,
         space=space,
         algo=tpe.suggest,
         max_evals=max_evals,
+        trials=trials,
         verbose=False,
         rstate=numpy_random_state(random_state),
     )
-    print(f"{label} HPO best:", best)
+    print(
+        f"  [{label}] HPO concluído em {_format_duration(time.time() - hpo_start)} — best: {best}",
+        flush=True,
+    )
     return best
 
 
@@ -183,6 +224,9 @@ def _pick_best_base_name(metrics: list[dict], base_names: set[str]) -> str:
 
 
 def main() -> None:
+    from mth_ids_pipeline.io.subprocess_env import suppress_worker_warnings
+
+    suppress_worker_warnings()
     warnings.filterwarnings("ignore")
     parser = phase_parser("Fase 6 — treino supervisionado + stacking")
     parser.add_argument("--no-hpo", action="store_true", help="Hiperparâmetros fixos (sem BO-TPE)")
@@ -215,12 +259,23 @@ def main() -> None:
         y_test = (y_test > 0).astype(np.int64)
 
     cv_folds = _resolve_cv_folds(args.cv_folds, args.hpo_on_validation)
+    n_features = int(X_train.shape[1])
+    max_features_hpo = min(20, n_features)
+    print(
+        f"Fase 6 — treino: {X_train.shape[0]:,} × {n_features} features | "
+        f"teste: {X_test.shape[0]:,} | max_features HPO ≤ {max_features_hpo}",
+        flush=True,
+    )
     if args.hpo_on_validation:
-        print(f"HPO objetivo: acurácia média em {cv_folds}-fold CV (treino)")
+        print(f"HPO objetivo: acurácia média em {cv_folds}-fold CV (treino)", flush=True)
     elif not args.no_hpo:
-        print("HPO objetivo: acurácia no conjunto de teste (hold-out)")
+        print("HPO objetivo: acurácia no conjunto de teste (hold-out)", flush=True)
+    if args.no_hpo:
+        print("HPO desligado (--no-hpo): hiperparâmetros fixos", flush=True)
 
     metrics: list[dict] = []
+    phase6_start = time.time()
+    total_steps = 5 + (1 if cv_folds > 0 else 0)  # 4 bases + stacking + CV opcional
     cv_reports: dict[str, dict] | None = None  # preenchido se cv_folds > 0
 
     if not args.no_plots:
@@ -241,6 +296,7 @@ def main() -> None:
             pass
 
     # ----- XGBoost -----
+    _phase_banner(1, total_steps, "XGBoost" + (" — HPO" if not args.no_hpo else " — fit"))
     if args.no_hpo:
         xg = xgb.XGBClassifier(learning_rate=0.7340229699980686, n_estimators=70, max_depth=14, random_state=rs)
     else:
@@ -282,6 +338,7 @@ def main() -> None:
             random_state=rs,
         )
 
+    print("  [XGBoost] treinando modelo final no treino completo...", flush=True)
     xg.fit(X_train, y_train)
     metrics.append(_evaluate("XGBoost (base)", xg, X_test, y_test))
     heatmap(y_test, xg.predict(X_test), "XGBoost")
@@ -289,13 +346,14 @@ def main() -> None:
     xg_test_p = xg.predict(X_test).reshape(-1, 1)
 
     # ----- Random Forest -----
+    _phase_banner(2, total_steps, "Random Forest" + (" — HPO" if not args.no_hpo else " — fit"))
     if args.no_hpo:
         rf_hpo = RandomForestClassifier(
             n_estimators=71,
             min_samples_leaf=1,
             max_depth=46,
             min_samples_split=9,
-            max_features=20,
+            max_features=max_features_hpo,
             criterion="entropy",
             random_state=rs,
         )
@@ -316,7 +374,7 @@ def main() -> None:
         rf_space = {
             "n_estimators": hp.quniform("n_estimators", 10, 200, 1),
             "max_depth": hp.quniform("max_depth", 5, 50, 1),
-            "max_features": hp.quniform("max_features", 1, 20, 1),
+            "max_features": hp.quniform("max_features", 1, max_features_hpo, 1),
             "min_samples_split": hp.quniform("min_samples_split", 2, 11, 1),
             "min_samples_leaf": hp.quniform("min_samples_leaf", 1, 11, 1),
             "criterion": hp.choice("criterion", ["gini", "entropy"]),
@@ -348,6 +406,7 @@ def main() -> None:
             random_state=rs,
         )
 
+    print("  [RandomForest] treinando modelo final no treino completo...", flush=True)
     rf_hpo.fit(X_train, y_train)
     metrics.append(_evaluate("RandomForest (HPO)", rf_hpo, X_test, y_test))
     heatmap(y_test, rf_hpo.predict(X_test), "RF")
@@ -355,9 +414,15 @@ def main() -> None:
     rf_test_p = rf_hpo.predict(X_test).reshape(-1, 1)
 
     # ----- Decision Tree -----
+    _phase_banner(3, total_steps, "Decision Tree" + (" — HPO (50 trials)" if not args.no_hpo else " — fit"))
     if args.no_hpo:
         dt_hpo = DecisionTreeClassifier(
-            min_samples_leaf=2, max_depth=47, min_samples_split=3, max_features=19, criterion="gini", random_state=rs
+            min_samples_leaf=2,
+            max_depth=47,
+            min_samples_split=3,
+            max_features=max_features_hpo,
+            criterion="gini",
+            random_state=rs,
         )
     else:
         from hyperopt import hp
@@ -374,7 +439,7 @@ def main() -> None:
 
         dt_space = {
             "max_depth": hp.quniform("max_depth", 5, 50, 1),
-            "max_features": hp.quniform("max_features", 1, 20, 1),
+            "max_features": hp.quniform("max_features", 1, max_features_hpo, 1),
             "min_samples_split": hp.quniform("min_samples_split", 2, 11, 1),
             "min_samples_leaf": hp.quniform("min_samples_leaf", 1, 11, 1),
             "criterion": hp.choice("criterion", ["gini", "entropy"]),
@@ -405,6 +470,7 @@ def main() -> None:
             random_state=rs,
         )
 
+    print("  [DecisionTree] treinando modelo final no treino completo...", flush=True)
     dt_hpo.fit(X_train, y_train)
     metrics.append(_evaluate("DecisionTree (HPO)", dt_hpo, X_test, y_test))
     heatmap(y_test, dt_hpo.predict(X_test), "DT")
@@ -412,13 +478,14 @@ def main() -> None:
     dt_test_p = dt_hpo.predict(X_test).reshape(-1, 1)
 
     # ----- Extra Trees -----
+    _phase_banner(4, total_steps, "Extra Trees" + (" — HPO" if not args.no_hpo else " — fit"))
     if args.no_hpo:
         et_hpo = ExtraTreesClassifier(
             n_estimators=53,
             min_samples_leaf=1,
             max_depth=31,
             min_samples_split=5,
-            max_features=20,
+            max_features=max_features_hpo,
             criterion="entropy",
             random_state=rs,
         )
@@ -439,7 +506,7 @@ def main() -> None:
         et_space = {
             "n_estimators": hp.quniform("n_estimators", 10, 200, 1),
             "max_depth": hp.quniform("max_depth", 5, 50, 1),
-            "max_features": hp.quniform("max_features", 1, 20, 1),
+            "max_features": hp.quniform("max_features", 1, max_features_hpo, 1),
             "min_samples_split": hp.quniform("min_samples_split", 2, 11, 1),
             "min_samples_leaf": hp.quniform("min_samples_leaf", 1, 11, 1),
             "criterion": hp.choice("criterion", ["gini", "entropy"]),
@@ -471,6 +538,7 @@ def main() -> None:
             random_state=rs,
         )
 
+    print("  [ExtraTrees] treinando modelo final no treino completo...", flush=True)
     et_hpo.fit(X_train, y_train)
     metrics.append(_evaluate("ExtraTrees (HPO)", et_hpo, X_test, y_test))
     heatmap(y_test, et_hpo.predict(X_test), "ET")
@@ -478,6 +546,7 @@ def main() -> None:
     et_test_p = et_hpo.predict(X_test).reshape(-1, 1)
 
     # ----- Stacking (meta features = predições dos 4 modelos) -----
+    _phase_banner(5, total_steps, f"Stacking (meta-learner={args.meta_learner})")
     x_train_meta = np.concatenate((dt_train_p, et_train_p, rf_train_p, xg_train_p), axis=1)
     x_test_meta = np.concatenate((dt_test_p, et_test_p, rf_test_p, xg_test_p), axis=1)
 
@@ -556,6 +625,7 @@ def main() -> None:
         heatmap(y_test, meta.predict(x_test_meta), "Stacking HPO")
 
     if cv_folds > 0:
+        _phase_banner(6, total_steps, f"Relatório {cv_folds}-fold CV (modelos finais)")
         cv_models: list[tuple[str, Any, np.ndarray, np.ndarray]] = [
             ("XGBoost (base)", xg, X_train, y_train),
             ("RandomForest (HPO)", rf_hpo, X_train, y_train),
@@ -610,6 +680,7 @@ def main() -> None:
     }
     report_path = write_report(paths.reports, "phase06_supervised_models", report)
     print(f"Relatorio salvo em: {report_path}")
+    print(f"Fase 6 concluída em {_format_duration(time.time() - phase6_start)}", flush=True)
 
 
 if __name__ == "__main__":

@@ -27,13 +27,18 @@ from mth_ids_pipeline.config import (
     INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
     INTERMEDIATE_DIR_FINE,
     INTERMEDIATE_DIR_MERGED,
+    INTERMEDIATE_DIR_UNSW_NB15_FINE,
+    INTERMEDIATE_DIR_UNSW_NB15_MERGED,
     PAPER_REFERENCE_LOAO_CAN,
     PAPER_REFERENCE_SUPERVISED_CAN,
     PAPER_TABLE_X_REFERENCE,
     RESULTS_DIR,
+    RESULTS_DIR_UNSW_NB15,
+    UNSW_NB15_LABEL_NAMES,
     ensure_results_dirs,
     is_can_otids_pipeline_path,
     is_can_pipeline_path,
+    is_unsw_pipeline_path,
     results_dir_for_can_pipeline,
 )
 from mth_ids_pipeline.core.evaluation import (
@@ -54,6 +59,9 @@ PAPER_STACKING_PREFIX = "Stacking meta ("
 
 def _dataset_key(merged_dir: Path, loao_root: Path) -> str:
     for path in (merged_dir, loao_root):
+        if is_unsw_pipeline_path(path):
+            return "unsw_nb15"
+    for path in (merged_dir, loao_root):
         if is_can_otids_pipeline_path(path):
             return "can_otids"
     if is_can_pipeline_path(merged_dir) or is_can_pipeline_path(loao_root):
@@ -61,11 +69,27 @@ def _dataset_key(merged_dir: Path, loao_root: Path) -> str:
     return "cicids2017"
 
 
+def _dataset_display_name(dataset: str) -> str:
+    return {
+        "can": "CAN-intrusion",
+        "can_otids": "CAN-OTIDS",
+        "unsw_nb15": "UNSW-NB15",
+    }.get(dataset, "CICIDS2017")
+
+
+def _has_paper_reference(dataset: str) -> bool:
+    return dataset != "unsw_nb15"
+
+
 def _supervised_table_label(dataset: str) -> str:
+    if dataset == "unsw_nb15":
+        return "Supervisionado"
     return "VI" if dataset in ("can", "can_otids") else "VII"
 
 
 def _loao_table_label(dataset: str) -> str:
+    if dataset == "unsw_nb15":
+        return "LOAO"
     return "VIII" if dataset in ("can", "can_otids") else "IX"
 
 
@@ -83,6 +107,8 @@ def _loao_paper_reference(summary: dict, dataset: str) -> dict:
 
 
 def _loao_attack_label_names(loao_root: Path) -> dict[int, str]:
+    if is_unsw_pipeline_path(loao_root):
+        return {k: v for k, v in UNSW_NB15_LABEL_NAMES.items() if v != "Benign"}
     if is_can_pipeline_path(loao_root):
         table = resolve_can_label_names(pipeline_path=loao_root)
         return {k: v for k, v in table.items() if k > 0}
@@ -90,7 +116,9 @@ def _loao_attack_label_names(loao_root: Path) -> dict[int, str]:
 
 
 def _default_loao_root(merged_dir: Path) -> Path:
-    if is_can_otids_pipeline_path(merged_dir):
+    if is_unsw_pipeline_path(merged_dir):
+        base = INTERMEDIATE_DIR_UNSW_NB15_FINE
+    elif is_can_otids_pipeline_path(merged_dir):
         base = INTERMEDIATE_DIR_CAN_OTIDS_FINE
     elif is_can_pipeline_path(merged_dir):
         base = INTERMEDIATE_DIR_CAN_INTRUSION_FINE
@@ -100,6 +128,8 @@ def _default_loao_root(merged_dir: Path) -> Path:
 
 
 def _default_merged_dir(dataset: str) -> Path:
+    if dataset == "unsw_nb15":
+        return INTERMEDIATE_DIR_UNSW_NB15_MERGED
     if dataset == "can_otids":
         return INTERMEDIATE_DIR_CAN_OTIDS_MERGED
     if dataset == "can":
@@ -189,7 +219,7 @@ def report_table_vii(intermediate_dir: Path, *, dataset: str = "cicids2017") -> 
     ref_acc = _paper_ref_pct(paper, "accuracy_pct")
     ref_f1 = float(paper.get("f1", 0))
 
-    dataset_name = "CAN-OTIDS" if dataset == "can" else "CICIDS2017"
+    dataset_name = _dataset_display_name(dataset)
     print("\n" + "=" * 72)
     print(f"TABELA {table_no} — Supervisionado ({dataset_name}, multi-class, hold-out 80/20)")
     print("=" * 72)
@@ -202,9 +232,6 @@ def report_table_vii(intermediate_dir: Path, *, dataset: str = "cicids2017") -> 
         f1 = float(row.get("f1_weighted", 0))
         print(f"{name:<24} {acc:>10.6f} {f1:>10.6f}")
 
-    print("\nComparação vs artigo (tier multi-class / stacking):")
-    print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
-    print("-" * 72)
     repro_model = stacking_row.get("model") if stacking_row else NOTEBOOK_STACKING_MODEL
     out: dict = {
         "dataset": dataset,
@@ -212,16 +239,33 @@ def report_table_vii(intermediate_dir: Path, *, dataset: str = "cicids2017") -> 
         "paper_model": PAPER_TABLE_VII_MODEL,
         "repro_model": repro_model,
     }
-    if stacking_row:
+    if _has_paper_reference(dataset):
+        print("\nComparação vs artigo (tier multi-class / stacking):")
+        print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
+        print("-" * 72)
+        if stacking_row:
+            acc = float(stacking_row.get("accuracy", 0))
+            f1 = float(stacking_row.get("f1_weighted", 0))
+            print(f"{'Acc':<12} {acc:>12.6f} {ref_acc:>12.6f} {acc - ref_acc:>+12.6f}")
+            print(f"{'F1(w)':<12} {f1:>12.6f} {ref_f1:>12.6f} {f1 - ref_f1:>+12.6f}")
+            out["accuracy"] = {"reproduced": acc, "reference": ref_acc, "delta": acc - ref_acc}
+            out["f1_weighted"] = {"reproduced": f1, "reference": ref_f1, "delta": f1 - ref_f1}
+        else:
+            print(
+                f"  (nenhum stacking encontrado em 06_supervised_metrics.json; "
+                f"esperado '{NOTEBOOK_STACKING_MODEL}' ou '{PAPER_STACKING_PREFIX}…)')"
+            )
+    elif stacking_row:
         acc = float(stacking_row.get("accuracy", 0))
         f1 = float(stacking_row.get("f1_weighted", 0))
-        print(f"{'Acc':<12} {acc:>12.6f} {ref_acc:>12.6f} {acc - ref_acc:>+12.6f}")
-        print(f"{'F1(w)':<12} {f1:>12.6f} {ref_f1:>12.6f} {f1 - ref_f1:>+12.6f}")
-        out["accuracy"] = {"reproduced": acc, "reference": ref_acc, "delta": acc - ref_acc}
-        out["f1_weighted"] = {"reproduced": f1, "reference": ref_f1, "delta": f1 - ref_f1}
+        print("\nMétricas do stacking (sem referência do artigo para UNSW-NB15):")
+        print(f"  Acc:   {acc:.6f}")
+        print(f"  F1(w): {f1:.6f}")
+        out["accuracy"] = {"reproduced": acc}
+        out["f1_weighted"] = {"reproduced": f1}
     else:
         print(
-            f"  (nenhum stacking encontrado em 06_supervised_metrics.json; "
+            f"\n  (nenhum stacking encontrado em 06_supervised_metrics.json; "
             f"esperado '{NOTEBOOK_STACKING_MODEL}' ou '{PAPER_STACKING_PREFIX}…)')"
         )
 
@@ -265,19 +309,30 @@ def report_table_ix(loao_root: Path, *, dataset: str = "cicids2017") -> dict | N
     ref_dr = float(ref.get("mean_dr_pct", 75.943 if dataset == "cicids2017" else 93.740)) / 100.0
     ref_far = float(ref.get("mean_far_pct", 13.882 if dataset == "cicids2017" else 0.128)) / 100.0
     n_done = len(summary.get("per_attack", []))
-    default_planned = 3 if dataset == "can" else 14
-    n_planned = int(summary.get("attacks_in_dataset", default_planned))
+    n_planned = int(
+        summary.get(
+            "attacks_in_dataset",
+            {"can": 3, "can_otids": 3, "unsw_nb15": 9}.get(dataset, 14),
+        )
+    )
 
-    dataset_name = "CAN-OTIDS" if dataset == "can" else "CICIDS2017"
+    dataset_name = _dataset_display_name(dataset)
     print("\n" + "=" * 72)
     print(f"TABELA {table_no} — Anomaly LOAO ({dataset_name}, média sobre ataques concluídos)")
     print("=" * 72)
     print(f"Ataques concluídos: {n_done}/{n_planned}")
-    print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
-    print("-" * 72)
-    print(f"{'F1':<12} {mean_f1:>12.5f} {ref_f1:>12.5f} {mean_f1 - ref_f1:>+12.5f}")
-    print(f"{'DR':<12} {mean_dr:>12.4f} {ref_dr:>12.4f} {mean_dr - ref_dr:>+12.4f}")
-    print(f"{'FAR':<12} {mean_far:>12.4f} {ref_far:>12.4f} {mean_far - ref_far:>+12.4f}")
+    if _has_paper_reference(dataset):
+        print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
+        print("-" * 72)
+        print(f"{'F1':<12} {mean_f1:>12.5f} {ref_f1:>12.5f} {mean_f1 - ref_f1:>+12.5f}")
+        print(f"{'DR':<12} {mean_dr:>12.4f} {ref_dr:>12.4f} {mean_dr - ref_dr:>+12.4f}")
+        print(f"{'FAR':<12} {mean_far:>12.4f} {ref_far:>12.4f} {mean_far - ref_far:>+12.4f}")
+    else:
+        print(f"{'Métrica':<12} {'Reprod':>12}")
+        print("-" * 72)
+        print(f"{'F1':<12} {mean_f1:>12.5f}")
+        print(f"{'DR':<12} {mean_dr:>12.4f}")
+        print(f"{'FAR':<12} {mean_far:>12.4f}")
     print(f"\n{'Ataque':<6} {'Nome':<22} {'F1':>8} {'DR':>8} {'FAR':>8} {'N test':>8}")
     print("-" * 72)
     for row in summary.get("per_attack", []):
@@ -290,24 +345,37 @@ def report_table_ix(loao_root: Path, *, dataset: str = "cicids2017") -> dict | N
             f"{(row.get('test_rows') or 0):>8}"
         )
     if n_done < n_planned:
-        print(f"\nNota: média parcial — execute LOAO completo para comparar com o artigo.")
-    return {
+        note = "execute LOAO completo"
+        if _has_paper_reference(dataset):
+            note += " para comparar com o artigo"
+        print(f"\nNota: média parcial — {note}.")
+    out = {
         "dataset": dataset,
         "table": table_no,
         "attacks_done": n_done,
         "attacks_planned": n_planned,
-        "mean_f1": {"reproduced": mean_f1, "reference": ref_f1, "delta": mean_f1 - ref_f1},
-        "mean_dr": {"reproduced": mean_dr, "reference": ref_dr, "delta": mean_dr - ref_dr},
-        "mean_far": {"reproduced": mean_far, "reference": ref_far, "delta": mean_far - ref_far},
         "per_attack": summary.get("per_attack", []),
     }
+    if _has_paper_reference(dataset):
+        out["mean_f1"] = {"reproduced": mean_f1, "reference": ref_f1, "delta": mean_f1 - ref_f1}
+        out["mean_dr"] = {"reproduced": mean_dr, "reference": ref_dr, "delta": mean_dr - ref_dr}
+        out["mean_far"] = {"reproduced": mean_far, "reference": ref_far, "delta": mean_far - ref_far}
+    else:
+        out["mean_f1"] = {"reproduced": mean_f1}
+        out["mean_dr"] = {"reproduced": mean_dr}
+        out["mean_far"] = {"reproduced": mean_far}
+    return out
 
 
 def report_table_x(intermediate_dir: Path, *, dataset: str = "cicids2017") -> dict | None:
     """Tabela X — sistema completo no hold-out (fase 13)."""
     report_path = intermediate_dir / "phase_reports" / "phase13_full_system_eval.json"
     data = _load_json(report_path)
-    protocol_flag = "can" if dataset == "can" else "paper"
+    protocol_flag = {
+        "can": "can",
+        "can_otids": "can_otids",
+        "unsw_nb15": "unsw",
+    }.get(dataset, "paper")
     if not data:
         print(
             f"Tabela X: relatório não encontrado em {report_path}\n"
@@ -320,36 +388,51 @@ def report_table_x(intermediate_dir: Path, *, dataset: str = "cicids2017") -> di
         return None
 
     binary = data.get("binary_metrics") or {}
-    ref = PAPER_TABLE_X_REFERENCE[dataset]
+    ref = PAPER_TABLE_X_REFERENCE.get(dataset)
     acc_pct = float(data.get("accuracy", 0)) * 100.0
     dr_pct = float(binary.get("detection_rate", 0)) * 100.0
     far_pct = float(binary.get("false_alarm_rate", 0)) * 100.0
     f1 = float(binary.get("f1", 0))
     split_note = data.get("test_split") or "hold-out 80/20 (artigo: 70/30)"
 
-    dataset_name = "CAN-OTIDS" if dataset == "can" else "CICIDS2017"
+    dataset_name = _dataset_display_name(dataset)
     print("\n" + "=" * 72)
     print(f"TABELA X — Sistema completo no hold-out ({dataset_name})")
     print("=" * 72)
     print(f"Protocolo: {split_note}")
-    print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
-    print("-" * 72)
-    print(f"{'Acc (%)':<12} {acc_pct:>12.2f} {ref['accuracy_pct']:>12.2f} {acc_pct - ref['accuracy_pct']:>+12.2f}")
-    print(f"{'DR (%)':<12} {dr_pct:>12.2f} {ref['detection_rate_pct']:>12.2f} {dr_pct - ref['detection_rate_pct']:>+12.2f}")
-    print(f"{'FAR (%)':<12} {far_pct:>12.4f} {ref['false_alarm_rate_pct']:>12.4f} {far_pct - ref['false_alarm_rate_pct']:>+12.4f}")
-    print(f"{'F1':<12} {f1:>12.4f} {ref['f1']:>12.4f} {f1 - ref['f1']:>+12.4f}")
+    if ref is not None:
+        print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
+        print("-" * 72)
+        print(f"{'Acc (%)':<12} {acc_pct:>12.2f} {ref['accuracy_pct']:>12.2f} {acc_pct - ref['accuracy_pct']:>+12.2f}")
+        print(f"{'DR (%)':<12} {dr_pct:>12.2f} {ref['detection_rate_pct']:>12.2f} {dr_pct - ref['detection_rate_pct']:>+12.2f}")
+        print(f"{'FAR (%)':<12} {far_pct:>12.4f} {ref['false_alarm_rate_pct']:>12.4f} {far_pct - ref['false_alarm_rate_pct']:>+12.4f}")
+        print(f"{'F1':<12} {f1:>12.4f} {ref['f1']:>12.4f} {f1 - ref['f1']:>+12.4f}")
+    else:
+        print(f"{'Métrica':<12} {'Reprod':>12}")
+        print("-" * 72)
+        print(f"{'Acc (%)':<12} {acc_pct:>12.2f}")
+        print(f"{'DR (%)':<12} {dr_pct:>12.2f}")
+        print(f"{'FAR (%)':<12} {far_pct:>12.4f}")
+        print(f"{'F1':<12} {f1:>12.4f}")
     if data.get("route_stats"):
         print(f"\nRoteamento: {data['route_stats']}")
     figures = intermediate_dir / "figures"
     print(f"CM: {figures / 'fig_multiclass_cm.png'} | {figures / 'fig_binary_cm.png'}")
-    return {
+    out = {
         "dataset": dataset,
         "protocol": split_note,
-        "accuracy_pct": {"reproduced": acc_pct, "reference": ref["accuracy_pct"], "delta": acc_pct - ref["accuracy_pct"]},
-        "detection_rate_pct": {"reproduced": dr_pct, "reference": ref["detection_rate_pct"], "delta": dr_pct - ref["detection_rate_pct"]},
-        "false_alarm_rate_pct": {"reproduced": far_pct, "reference": ref["false_alarm_rate_pct"], "delta": far_pct - ref["false_alarm_rate_pct"]},
-        "f1": {"reproduced": f1, "reference": ref["f1"], "delta": f1 - ref["f1"]},
     }
+    if ref is not None:
+        out["accuracy_pct"] = {"reproduced": acc_pct, "reference": ref["accuracy_pct"], "delta": acc_pct - ref["accuracy_pct"]}
+        out["detection_rate_pct"] = {"reproduced": dr_pct, "reference": ref["detection_rate_pct"], "delta": dr_pct - ref["detection_rate_pct"]}
+        out["false_alarm_rate_pct"] = {"reproduced": far_pct, "reference": ref["false_alarm_rate_pct"], "delta": far_pct - ref["false_alarm_rate_pct"]}
+        out["f1"] = {"reproduced": f1, "reference": ref["f1"], "delta": f1 - ref["f1"]}
+    else:
+        out["accuracy_pct"] = {"reproduced": acc_pct}
+        out["detection_rate_pct"] = {"reproduced": dr_pct}
+        out["false_alarm_rate_pct"] = {"reproduced": far_pct}
+        out["f1"] = {"reproduced": f1}
+    return out
 
 
 def _run_reports(
@@ -373,8 +456,11 @@ def _run_reports(
             print("=" * 72)
             sup_label = _supervised_table_label(dataset)
             loao_label = _loao_table_label(dataset)
-            title = "CAN-OTIDS" if dataset == "can" else "CICIDS2017"
-            print(f"COMPARATIVO MTH-IDS vs artigo ({title})")
+            title = _dataset_display_name(dataset)
+            header = f"COMPARATIVO MTH-IDS ({title})"
+            if _has_paper_reference(dataset):
+                header = f"COMPARATIVO MTH-IDS vs artigo ({title})"
+            print(header)
             print("=" * 72)
             print(f"Supervisionado / Tabela {sup_label} / X: {merged_dir}")
             print(f"LOAO / Tabela {loao_label}:          {loao_root}")
@@ -442,6 +528,8 @@ def main() -> None:
     dataset = _dataset_key(merged_dir, loao_root)
     if args.results_dir == RESULTS_DIR and dataset in ("can", "can_otids"):
         results_dir = results_dir_for_can_pipeline(merged_dir)
+    elif args.results_dir == RESULTS_DIR and dataset == "unsw_nb15":
+        results_dir = RESULTS_DIR_UNSW_NB15
     else:
         results_dir = args.results_dir
 

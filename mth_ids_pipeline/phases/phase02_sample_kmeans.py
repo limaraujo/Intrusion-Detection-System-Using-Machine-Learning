@@ -1,9 +1,12 @@
 """
 Fase 2: LabelEncoder + MiniBatchKMeans (k=1000) + amostragem 0.8% + minoritárias intactas.
+
+CAN (artigo): Z-score **após** amostragem k-means (padrão ``--zscore-after-sample``).
 """
 
 from __future__ import annotations
 
+import argparse
 import time
 import warnings
 
@@ -12,6 +15,7 @@ import pandas as pd
 try:
     from mth_ids_pipeline.cli import init_paths, phase_parser, supervised_path
     from mth_ids_pipeline.config import (
+        DEFAULT_KMEANS_FRAC,
         DEFAULT_MINORITY_LABELS,
         P01_PREPROCESSED,
         P02_SAMPLED_KMEANS,
@@ -23,6 +27,7 @@ try:
 except ImportError:
     from mth_ids_pipeline.cli import init_paths, phase_parser, supervised_path
     from mth_ids_pipeline.config import (
+        DEFAULT_KMEANS_FRAC,
         DEFAULT_MINORITY_LABELS,
         P01_PREPROCESSED,
         P02_SAMPLED_KMEANS,
@@ -39,7 +44,7 @@ def main() -> None:
 
     parser = phase_parser("Fase 2 — sampling k-means")
     parser.add_argument("--n-clusters", type=int, default=1000)
-    parser.add_argument("--frac", type=float, default=0.008)
+    parser.add_argument("--frac", type=float, default=DEFAULT_KMEANS_FRAC)
     parser.add_argument("--random-state", type=int, default=0)
     parser.add_argument(
         "--minority-labels",
@@ -57,7 +62,23 @@ def main() -> None:
         action="store_true",
         help="Pula amostragem k-means e usa o dataset completo da fase 1",
     )
+    parser.add_argument(
+        "--zscore-after-sample",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Z-score após amostragem k-means (padrão True; artigo CAN Tabela VI). "
+            "Use --no-zscore-after-sample para desativar (ex.: CICIDS artigo)."
+        ),
+    )
     args = parser.parse_args()
+
+    if not args.zscore_after_sample:
+        warnings.warn(
+            "Z-score pós-amostragem desativado. O protocolo CAN exige normalização "
+            "imediatamente após o k-means (Yang et al., 2022, Tabela VI).",
+            stacklevel=1,
+        )
 
     paths = init_paths(args)
     df = pd.read_parquet(supervised_path(paths, P01_PREPROCESSED))
@@ -87,6 +108,15 @@ def main() -> None:
             minority_labels=minority_labels,
         )
 
+    if args.zscore_after_sample:
+        try:
+            from mth_ids_pipeline.core.preprocessing import zscore_normalize
+        except ImportError:
+            from mth_ids_pipeline.core.preprocessing import zscore_normalize
+        label_col_pre = "Label" if "Label" in sampled.columns else sampled.columns[-1]
+        sampled = zscore_normalize(sampled, label_col=label_col_pre)
+        print("Z-score aplicado após amostragem k-means (protocolo CAN artigo).")
+
     out = supervised_path(paths, P02_SAMPLED_KMEANS)
     sampled.to_parquet(out, index=False)
     label_col = "Label" if "Label" in sampled.columns else sampled.columns[-1]
@@ -104,6 +134,7 @@ def main() -> None:
             "auto_minority": args.auto_minority,
             "sample_all_classes": args.sample_all_classes,
             "skip_sampling": args.skip_sampling,
+            "zscore_after_sample": args.zscore_after_sample,
             "duration_s": round(time.time() - total_start, 4),
         }
     )

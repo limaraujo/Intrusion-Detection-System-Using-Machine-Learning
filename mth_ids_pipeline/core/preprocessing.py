@@ -43,8 +43,14 @@ def encode_labels(df: pd.DataFrame, *, label_col: str = "Label") -> tuple[pd.Dat
     return out, encoder
 
 
-def load_and_preprocess(raw_csv: Path, *, label_col: str = "Label", verbose: bool = True) -> pd.DataFrame:
-    """Fase 1: load CSV + Z-score + fillna(0)."""
+def load_and_preprocess(
+    raw_csv: Path,
+    *,
+    label_col: str = "Label",
+    verbose: bool = True,
+    zscore: bool = True,
+) -> pd.DataFrame:
+    """Fase 1: load CSV; Z-score opcional (CAN artigo: Z-score após k-means, fase 2)."""
     warnings.filterwarnings("ignore")
     if verbose:
         print(f"Carregando dataset: {raw_csv}")
@@ -54,7 +60,12 @@ def load_and_preprocess(raw_csv: Path, *, label_col: str = "Label", verbose: boo
         print(df[label_col].value_counts())
         print(f"Dataset carregado em {time.time() - start:.2f}s")
         print(f"Shape original: {df.shape}")
-    df = zscore_normalize(df, label_col=label_col)
+    if zscore:
+        df = zscore_normalize(df, label_col=label_col)
+    else:
+        df = df.fillna(0)
     if verbose:
         print(f"Pré-processamento concluído. Shape final: {df.shape}")
+        if not zscore:
+            print("Z-score adiado (artigo CAN: normalização após amostragem k-means).")
     return df
