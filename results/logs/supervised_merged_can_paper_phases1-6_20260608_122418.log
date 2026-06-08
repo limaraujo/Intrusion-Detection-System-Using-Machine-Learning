@@ -1,0 +1,36 @@
+[2026-06-08 12:24:18] === sessão iniciada — log: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\results\logs\supervised_merged_can_paper_phases1-6_20260608_122418.log ===
+[2026-06-08 12:24:18] intermediate-dir: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged
+[2026-06-08 12:24:18] protocolo: can_paper | ramo: supervised | perfil: merged
+[2026-06-08 12:24:18] fases: 1-6 (1, 2, 4, 6)
+[2026-06-08 12:24:18] -> [fase 1 - 1/4] Carregamento e pré-processamento ...
+[2026-06-08 12:24:18] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase01_load_preprocess --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged --input C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\CAN_intrusion_Dataset.csv
+Carregando dataset: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\CAN_intrusion_Dataset.csv
+Label
+RPM       4621702
+Gear      4443142
+Fuzzy     3838860
+DoS       3665771
+BENIGN     988871
+Name: count, dtype: int64
+Dataset carregado em 11.54s
+Shape original: (17558346, 11)
+Pré-processamento concluído. Shape final: (17558346, 11)
+Salvando arquivo parquet...
+Arquivo salvo em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged\01_preprocessed.parquet
+Tempo de salvamento: 5.11s
+Tempo total do pipeline: 20.36s
+Relatorio salvo em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged\phase_reports\phase01_load_preprocess.json
+[2026-06-08 12:24:40] OK fase 1 concluida em 22.2s
+[2026-06-08 12:24:40] -> [fase 2 - 2/4] Amostragem k-means ...
+[2026-06-08 12:24:40] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase02_sample_kmeans --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged --n-clusters 1000 --frac 0.008 --random-state 0 --sample-all-classes
+Label
+4    37068
+3    35633
+2    30878
+1    28972
+0     7917
+Name: count, dtype: int64
+Salvo: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged\02_sampled_kmeans.parquet shape=(140468, 11)
+[2026-06-08 12:25:38] OK fase 2 concluida em 58.2s
+[2026-06-08 12:25:38] -> [fase 4 - 3/4] Engenharia de features (IG, FCBF) ...
+[2026-06-08 12:25:38] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase04_feature_engineering --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_intrusion_merged --fcbf-k 20 --random-state 0 --test-size 0.2 --fcbf-scope train --scale-mode split --ig-cumulative 0.9 --cv-folds 10 --ig-hpo-calls 15 --optimize-ig

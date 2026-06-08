@@ -33,7 +33,12 @@ from mth_ids_pipeline.io.results_io import make_run_log_path
 from mth_ids_pipeline.io.run_log import RunLog
 from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8
 from mth_ids_pipeline.label_profiles import get_label_profile
-from mth_ids_pipeline.protocol import PROTOCOL_CHOICES, get_protocol_settings, is_can_protocol
+from mth_ids_pipeline.protocol import (
+    PROTOCOL_CHOICES,
+    get_protocol_settings,
+    is_can_protocol,
+    is_unsw_protocol,
+)
 
 
 def _repo_root() -> Path:
@@ -71,7 +76,7 @@ def main() -> None:
     ps = get_protocol_settings(args.protocol)
     if args.intermediate_dir is not None:
         intermediate = Path(args.intermediate_dir)
-    elif is_can_protocol(args.protocol):
+    elif is_can_protocol(args.protocol) or is_unsw_protocol(args.protocol):
         intermediate = get_label_profile(ps.supervised_profile).intermediate_dir
     else:
         intermediate = INTERMEDIATE_DIR_MERGED

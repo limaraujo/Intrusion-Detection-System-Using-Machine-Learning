@@ -13,6 +13,7 @@
 | [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) | CAN — índice pipeline (Tabelas VI/VIII/X) |
 | [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) | Car-Hacking original (artigo, `merge_can --source original`) |
 | [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md) | Repack OTIDS (`merge_can --source otids`) |
+| [PROTOCOLO_UNSW_NB15.md](PROTOCOLO_UNSW_NB15.md) | UNSW-NB15 (`--protocol unsw`) |
 | [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) | Comparativo `paper` vs `notebook` |
 | [NOTA_REPRODUCAO.md](NOTA_REPRODUCAO.md) | **Limitações artigo × notebook** (texto para relatório) |
 | [REPRODUCAO_CICIDS2017_VALIDACAO.md](REPRODUCAO_CICIDS2017_VALIDACAO.md) | Validação vs artigo e notebook |
@@ -56,3 +57,13 @@ python -m mth_ids_pipeline.run_anomaly --protocol can_otids --loao
 ```
 
 Detalhes: [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) · [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) · [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md) · [EXECUCAO.md](EXECUCAO.md).
+
+## Início rápido (UNSW-NB15)
+
+```powershell
+# Pré-requisito: data/UNSW-NB15_merged.csv
+python -m mth_ids_pipeline.run_supervised --protocol unsw
+python -m mth_ids_pipeline.run_anomaly --protocol unsw --loao
+```
+
+Detalhes: [PROTOCOLO_UNSW_NB15.md](PROTOCOLO_UNSW_NB15.md).

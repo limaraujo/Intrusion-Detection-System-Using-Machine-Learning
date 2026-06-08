@@ -22,10 +22,14 @@ from mth_ids_pipeline.config import (
     DEFAULT_MINORITY_LABELS,
     DEFAULT_RAW_CSV_CAN_INTRUSION,
     DEFAULT_RAW_CSV_CAN_OTIDS,
+    DEFAULT_RAW_CSV_UNSW_NB15,
     INTERMEDIATE_DIR_CAN_INTRUSION_FINE,
     INTERMEDIATE_DIR_CAN_INTRUSION_MERGED,
     INTERMEDIATE_DIR_CAN_OTIDS_FINE,
     INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
+    INTERMEDIATE_DIR_UNSW_NB15_FINE,
+    INTERMEDIATE_DIR_UNSW_NB15_MERGED,
+    UNSW_NB15_PRESERVED_ATTACK_LABELS,
 )
 
 # Separador corrompido quando UTF-8 (U+FFFD) é lido com encoding="latin1"
@@ -188,9 +192,14 @@ def get_label_profile(name: str) -> LabelProfile:
         return CAN_OTIDS_MERGED_PROFILE
     if key in ("can_otids_fine", "can-otids-fine", "can_otids_loao"):
         return CAN_OTIDS_FINE_PROFILE
+    if key in ("unsw_nb15_merged", "unsw-nb15-merged", "unsw_merged", "unsw"):
+        return UNSW_NB15_MERGED_PROFILE
+    if key in ("unsw_nb15_fine", "unsw-nb15-fine", "unsw_fine", "unsw_loao"):
+        return UNSW_NB15_FINE_PROFILE
     raise ValueError(
         f"Perfil desconhecido: {name!r}. "
-        "Use merged/fine, can_intrusion_merged/fine ou can_otids_merged/fine."
+        "Use merged/fine, can_intrusion_merged/fine, can_otids_merged/fine "
+        "ou unsw_nb15_merged/fine."
     )
 
 
@@ -265,6 +274,27 @@ CAN_OTIDS_FINE_PROFILE = LabelProfile(
 CAN_MERGED_PROFILE = CAN_INTRUSION_MERGED_PROFILE
 CAN_FINE_PROFILE = CAN_INTRUSION_FINE_PROFILE
 
+UNSW_NB15_MERGED_PROFILE = LabelProfile(
+    kind=LabelProfileKind.MERGED,
+    raw_csv=DEFAULT_RAW_CSV_UNSW_NB15,
+    intermediate_dir=INTERMEDIATE_DIR_UNSW_NB15_MERGED,
+    minority_labels=UNSW_NB15_PRESERVED_ATTACK_LABELS,
+    description=(
+        "UNSW-NB15 merged: Benign k-means 10%; Generic/Exploits/Fuzzers/DoS/Reconnaissance "
+        "preservados; SMOTE Analysis/Backdoors/Shellcode→5000, Worms→2000."
+    ),
+)
+
+UNSW_NB15_FINE_PROFILE = LabelProfile(
+    kind=LabelProfileKind.FINE,
+    raw_csv=DEFAULT_RAW_CSV_UNSW_NB15,
+    intermediate_dir=INTERMEDIATE_DIR_UNSW_NB15_FINE,
+    minority_labels=UNSW_NB15_PRESERVED_ATTACK_LABELS,
+    paired_supervised_dir=INTERMEDIATE_DIR_UNSW_NB15_MERGED,
+    table_vii_profile="unsw_nb15_merged",
+    description="UNSW-NB15 LOAO: 9 zero-days (uma rodada por attack_cat).",
+)
+
 ALL_PROFILES: dict[str, LabelProfile] = {
     LabelProfileKind.MERGED.value: MERGED_PROFILE,
     LabelProfileKind.FINE.value: FINE_PROFILE,
@@ -274,6 +304,8 @@ ALL_PROFILES: dict[str, LabelProfile] = {
     "can_otids_fine": CAN_OTIDS_FINE_PROFILE,
     "can_merged": CAN_INTRUSION_MERGED_PROFILE,
     "can_fine": CAN_INTRUSION_FINE_PROFILE,
+    "unsw_nb15_merged": UNSW_NB15_MERGED_PROFILE,
+    "unsw_nb15_fine": UNSW_NB15_FINE_PROFILE,
 }
 
 

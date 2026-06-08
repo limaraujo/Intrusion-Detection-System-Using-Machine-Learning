@@ -5,6 +5,7 @@ Comparativo rápido dos presets. Detalhes por dataset:
 - **CICIDS2017:** [PROTOCOLO_CICIDS.md](PROTOCOLO_CICIDS.md)
 - **CAN (pipeline):** [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md)
 - **CAN Car-Hacking / OTIDS:** [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) · [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md)
+- **UNSW-NB15:** [PROTOCOLO_UNSW_NB15.md](PROTOCOLO_UNSW_NB15.md)
 
 Comandos: [EXECUCAO.md](EXECUCAO.md) · Arquitetura: [ARQUITETURA.md](ARQUITETURA.md)
 

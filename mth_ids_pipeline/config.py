@@ -148,6 +148,41 @@ RESULTS_DIR_CAN = RESULTS_DIR_CAN_INTRUSION
 CAN_DATASET_META = CAN_INTRUSION_DATASET_META
 CAN_KMEANS_FRAC = 0.008  # k-means 0,8% em todas as classes (igual notebook/CICIDS2017)
 CAN_TEST_SIZE = DEFAULT_TEST_SIZE  # alias legado; can_paper usa 80/20
+
+# UNSW-NB15 — rede externa (ver docs/PROTOCOLO_UNSW_NB15.md)
+DEFAULT_RAW_CSV_UNSW_NB15 = DATA_DIR / "UNSW-NB15_merged.csv"
+UNSW_NB15_DATASET_META = DATA_DIR / "unsw_nb15_meta.json"
+INTERMEDIATE_DIR_UNSW_NB15_MERGED = DATA_DIR / "pipeline_unsw_nb15_merged"
+INTERMEDIATE_DIR_UNSW_NB15_FINE = DATA_DIR / "pipeline_unsw_nb15_fine"
+RESULTS_DIR_UNSW_NB15 = RESULTS_DIR / "unsw_nb15"
+UNSW_NB15_KMEANS_FRAC = 0.10  # Benign: k-means 10%; ataques preservados intactos
+
+# LabelEncoder alfabético — UNSW-NB15 merged (Benign + 10 attack_cat)
+UNSW_NB15_LABEL_NAMES: dict[int, str] = {
+    0: "Analysis",
+    1: "Backdoors",
+    2: "Benign",
+    3: "DoS",
+    4: "Exploits",
+    5: "Fuzzers",
+    6: "Generic",
+    7: "Reconnaissance",
+    8: "Shellcode",
+    9: "Worms",
+}
+
+# Fase 2: todas as classes de ataque preservadas (só Benign passa pelo k-means)
+UNSW_NB15_PRESERVED_ATTACK_LABELS: tuple[int, ...] = tuple(
+    idx for idx, name in UNSW_NB15_LABEL_NAMES.items() if name != "Benign"
+)
+
+# Fase 5: SMOTE supervisionado (docs/PROTOCOLO_UNSW_NB15.md)
+UNSW_NB15_SMOTE_TARGETS: dict[int, int] = {
+    0: 5_000,  # Analysis
+    1: 5_000,  # Backdoors
+    8: 5_000,  # Shellcode
+    9: 2_000,  # Worms
+}
 # Tabela VI CAN — 4 features citadas no artigo (referência; preset can_paper usa BO-GP α IG)
 CAN_PAPER_IG_FEATURES: tuple[str, ...] = ("CAN_ID", "DATA_1", "DATA_3", "DATA_5")
 

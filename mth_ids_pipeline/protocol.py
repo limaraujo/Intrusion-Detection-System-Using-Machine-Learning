@@ -29,6 +29,8 @@ from mth_ids_pipeline.config import (
     PAPER_META_LEARNER,
     DEFAULT_TEST_SIZE,
     NOTEBOOK_SMOTE_TARGETS,
+    UNSW_NB15_KMEANS_FRAC,
+    UNSW_NB15_SMOTE_TARGETS,
     PAPER_CV_FOLDS,
     PAPER_FCBF_K,
     PAPER_FCBF_SCOPE,
@@ -61,6 +63,8 @@ CAN_PROTOCOL_ALIASES = (
     | CAN_OTIDS_NOTEBOOK_ALIASES
 )
 
+UNSW_NB15_ALIASES = frozenset({"unsw", "unsw_nb15", "unsw-nb15", "unsw_nb_15"})
+
 PROTOCOL_CHOICES: tuple[str, ...] = (
     "paper",
     "notebook",
@@ -70,6 +74,8 @@ PROTOCOL_CHOICES: tuple[str, ...] = (
     "can_otids",
     "can_notebook",
     "can_otids_notebook",
+    "unsw",
+    "unsw_nb15",
 )
 
 
@@ -82,6 +88,7 @@ class MthIdsProtocol(str, Enum):
     CAN_NOTEBOOK = "can_notebook"
     CAN_OTIDS_NOTEBOOK = "can_otids_notebook"
     CAN = "can"  # alias legado → can_paper (intrusion)
+    UNSW_NB15 = "unsw_nb15"
 
 
 @dataclass(frozen=True)
@@ -348,6 +355,43 @@ CAN_OTIDS_NOTEBOOK = ProtocolSettings(
 # Alias legado: ``--protocol can`` → Car-Hacking (artigo)
 CAN = CAN_PAPER
 
+UNSW = ProtocolSettings(
+    name="unsw_nb15",
+    description=(
+        "UNSW-NB15: Benign k-means 10%; ataques preservados; SMOTE Analysis/Backdoors/"
+        "Shellcode→5000, Worms→2000; BO-GP α IG; 10-fold CV; meta best-base."
+    ),
+    supervised_profile="unsw_nb15_merged",
+    anomaly_profile="unsw_nb15_fine",
+    test_size=DEFAULT_TEST_SIZE,
+    cv_folds=PAPER_CV_FOLDS,
+    hpo_on_validation=PAPER_HPO_ON_VALIDATION,
+    smote_targets=dict(UNSW_NB15_SMOTE_TARGETS),
+    skip_smote=False,
+    skip_anomaly_smote=False,
+    kmeans_frac=UNSW_NB15_KMEANS_FRAC,
+    skip_kmeans_sampling=False,
+    anomaly_benign_target=None,
+    anomaly_smote_target=DEFAULT_ANOMALY_SMOTE_TARGET,
+    biased_mode="both",
+    force_biased=True,
+    optimize_p_star=True,
+    cl_hpo_metric="f1",
+    cl_hpo_n_calls=PAPER_HPO_N_CALLS,
+    optimize_ig=True,
+    optimize_kpca=True,
+    ig_cumulative=PAPER_IG_CUMULATIVE,
+    fcbf_k=PAPER_FCBF_K,
+    fcbf_scope=PAPER_FCBF_SCOPE,
+    supervised_scale_mode=PAPER_SUPERVISED_SCALE,
+    feature_fit_scope=PAPER_FEATURE_FIT_SCOPE,
+    anomaly_zscore_scope=PAPER_ANOMALY_ZSCORE,
+    kpca_components=PAPER_KPCA_COMPONENTS,
+    kpca_kernel=PAPER_KPCA_KERNEL,
+    hpo_n_calls=PAPER_HPO_N_CALLS,
+    meta_learner=PAPER_META_LEARNER,
+)
+
 
 def _normalize_protocol_key(name: str) -> str:
     return name.strip().lower().replace("-", "_")
@@ -365,6 +409,10 @@ def is_can_otids_protocol(name: str) -> bool:
     return key in {a.replace("-", "_") for a in CAN_OTIDS_PAPER_ALIASES | CAN_OTIDS_NOTEBOOK_ALIASES}
 
 
+def is_unsw_protocol(name: str) -> bool:
+    return _normalize_protocol_key(name) in {a.replace("-", "_") for a in UNSW_NB15_ALIASES}
+
+
 def get_protocol_settings(name: str) -> ProtocolSettings:
     key = _normalize_protocol_key(name)
     if key in ("paper", "article", "artigo"):
@@ -379,6 +427,8 @@ def get_protocol_settings(name: str) -> ProtocolSettings:
         return CAN_PAPER
     if key in {a.replace("-", "_") for a in CAN_NOTEBOOK_ALIASES}:
         return CAN_NOTEBOOK
+    if key in {a.replace("-", "_") for a in UNSW_NB15_ALIASES}:
+        return UNSW
     raise ValueError(
         f"Protocolo desconhecido: {name!r}. "
         f"Use {', '.join(PROTOCOL_CHOICES)}."

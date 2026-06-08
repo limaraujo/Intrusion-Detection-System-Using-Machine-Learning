@@ -12,7 +12,7 @@ from mth_ids_pipeline.orchestration.experiment_runner import (
     config_from_args,
     run_experiment,
 )
-from mth_ids_pipeline.protocol import get_protocol_settings, is_can_protocol
+from mth_ids_pipeline.protocol import get_protocol_settings, is_can_protocol, is_unsw_protocol
 
 
 def main() -> None:
@@ -23,7 +23,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.loao:
         args.to = 12
-    if is_can_protocol(args.protocol):
+    if is_can_protocol(args.protocol) or is_unsw_protocol(args.protocol):
         ps = get_protocol_settings(args.protocol)
         if args.label_profile in (None, "fine"):
             args.label_profile = ps.anomaly_profile
