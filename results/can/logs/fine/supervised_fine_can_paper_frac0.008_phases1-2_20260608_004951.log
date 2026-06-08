@@ -1,0 +1,33 @@
+[2026-06-08 00:49:51] === sessão iniciada — log: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\results\logs\supervised_fine_can_paper_phases1-2_20260608_004951.log ===
+[2026-06-08 00:49:51] intermediate-dir: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_fine
+[2026-06-08 00:49:51] protocolo: can_paper | ramo: supervised | perfil: fine
+[2026-06-08 00:49:51] fases: 1-2 (1, 2)
+[2026-06-08 00:49:51] -> [fase 1 - 1/2] Carregamento e pré-processamento ...
+[2026-06-08 00:49:51] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase01_load_preprocess --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_fine\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_fine --input C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\CAN_Intrusion_Dataset.csv
+Carregando dataset: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\CAN_Intrusion_Dataset.csv
+Label
+BENIGN           2268519
+Impersonation     995472
+DoS               645785
+Fuzzy             579909
+Name: count, dtype: int64
+Dataset carregado em 2.87s
+Shape original: (4489685, 10)
+Pré-processamento concluído. Shape final: (4489685, 10)
+Salvando arquivo parquet...
+Arquivo salvo em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_fine\01_preprocessed.parquet
+Tempo de salvamento: 1.17s
+Tempo total do pipeline: 4.73s
+Relatorio salvo em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_fine\phase_reports\phase01_load_preprocess.json
+[2026-06-08 00:49:57] OK fase 1 concluida em 6.3s
+[2026-06-08 00:49:57] -> [fase 2 - 2/2] Amostragem k-means ...
+[2026-06-08 00:49:57] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase02_sample_kmeans --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_fine\phase_reports --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_fine --n-clusters 1000 --frac 0.008 --random-state 0 --sample-all-classes
+Label
+0    18211
+3     7924
+1     5115
+2     4669
+Name: count, dtype: int64
+Salvo: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_fine\02_sampled_kmeans.parquet shape=(35919, 10)
+[2026-06-08 00:50:03] OK fase 2 concluida em 6.5s
+[2026-06-08 00:50:03] === sessão concluída ===

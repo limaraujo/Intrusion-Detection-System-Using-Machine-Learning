@@ -9,7 +9,12 @@ from typing import Any
 import sys
 from pathlib import Path
 
-from mth_ids_pipeline.config import A06_TEST_SLICE_INFO, RESULTS_LOGS_DIR
+from mth_ids_pipeline.config import (
+    A06_TEST_SLICE_INFO,
+    PAPER_REFERENCE_LOAO_CAN,
+    RESULTS_LOGS_DIR,
+    is_can_pipeline_path,
+)
 from mth_ids_pipeline.core.biased_classifiers import load_best_n_clusters
 
 PAPER_REFERENCE_CICIDS2017 = {
@@ -124,7 +129,11 @@ def build_loao_summary(
         "mean_f1": f1_mean,
         "per_attack": per_attack,
         "log_pattern": str(RESULTS_LOGS_DIR / "loao" / "attack_<N>.log"),
-        "paper_reference_cicids2017": dict(PAPER_REFERENCE_CICIDS2017),
+        **(
+            {"paper_reference_can": dict(PAPER_REFERENCE_LOAO_CAN)}
+            if is_can_pipeline_path(output_root)
+            else {"paper_reference_cicids2017": dict(PAPER_REFERENCE_CICIDS2017)}
+        ),
     }
 
 

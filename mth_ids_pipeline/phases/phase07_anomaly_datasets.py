@@ -31,6 +31,7 @@ try:
         A02_PORTSCAN_ONLY,
         DEFAULT_TEST_SIZE,
         P02_SAMPLED_KMEANS,
+        default_loao_attack_label,
     )
 except ImportError:
     from mth_ids_pipeline.io.anomaly_io import (
@@ -49,6 +50,7 @@ except ImportError:
         A02_PORTSCAN_ONLY,
         DEFAULT_TEST_SIZE,
         P02_SAMPLED_KMEANS,
+        default_loao_attack_label,
     )
 
 try:
@@ -56,8 +58,8 @@ try:
 except ImportError:
     from mth_ids_pipeline.io.reporting import dataset_report, write_report
 
-# PortScan no notebook (LabelEncoder sobre amostra CICIDS2017)
-DEFAULT_ZERO_DAY_LABEL = 5
+# PortScan no notebook (LabelEncoder sobre amostra CICIDS2017 fine)
+# CAN usa DoS (label 1) — ver default_loao_attack_label()
 
 
 def main() -> None:
@@ -70,7 +72,12 @@ def main() -> None:
         default="loao",
         help="loao=Tabela IX; global=Tabela X (treino 80%%, hold-out 20%% na fase 13)",
     )
-    parser.add_argument("--attack-label", type=int, default=DEFAULT_ZERO_DAY_LABEL)
+    parser.add_argument(
+        "--attack-label",
+        type=int,
+        default=None,
+        help="Zero-day LOAO (default: PortScan=5 CICIDS, DoS=1 CAN)",
+    )
     parser.add_argument("--test-size", type=float, default=None)
     parser.add_argument("--random-state", type=int, default=0)
     args = parser.parse_args()
@@ -78,6 +85,11 @@ def main() -> None:
 
     paths = init_paths(args)
     work = resolve_work_dir(args, paths)
+    attack_label = (
+        args.attack_label
+        if args.attack_label is not None
+        else default_loao_attack_label(intermediate_dir=paths.intermediate)
+    )
     path_in = supervised_path(paths, P02_SAMPLED_KMEANS)
     require_path(
         path_in,
@@ -137,8 +149,8 @@ def main() -> None:
             **global_meta,
         }
     else:
-        orig_report = loao_original_label_report(df, args.attack_label, label_col=label_col)
-        df1, df2 = build_anomaly_binary_split(df, args.attack_label, label_col=label_col)
+        orig_report = loao_original_label_report(df, attack_label, label_col=label_col)
+        df1, df2 = build_anomaly_binary_split(df, attack_label, label_col=label_col)
         round_meta_path.write_text(
             json.dumps(_json_safe(orig_report), indent=2),
             encoding="utf-8",
@@ -161,7 +173,7 @@ def main() -> None:
         report = {
             "input": str(path_in),
             "mode": "loao",
-            "attack_label": args.attack_label,
+            "attack_label": attack_label,
             "without_portscan_output": str(p1),
             "portscan_output": str(p2),
             "without_portscan": dataset_report(df1, label_col),

@@ -19,11 +19,19 @@ import json
 from pathlib import Path
 
 from mth_ids_pipeline.config import (
+    CAN_LABEL_NAMES,
+    CICIDS2017_FINE_LABEL_NAMES,
+    INTERMEDIATE_DIR_CAN_FINE,
+    INTERMEDIATE_DIR_CAN_MERGED,
     INTERMEDIATE_DIR_FINE,
     INTERMEDIATE_DIR_MERGED,
+    PAPER_REFERENCE_LOAO_CAN,
+    PAPER_REFERENCE_SUPERVISED_CAN,
     PAPER_TABLE_X_REFERENCE,
     RESULTS_DIR,
+    RESULTS_DIR_CAN,
     ensure_results_dirs,
+    is_can_pipeline_path,
 )
 from mth_ids_pipeline.core.evaluation import (
     NOTEBOOK_REFERENCE_SUPERVISED,
@@ -39,6 +47,48 @@ PAPER_TABLE_VII_MODEL = "MTH-IDS (Multi-Class Model)"
 NOTEBOOK_STACKING_MODEL = "Stacking meta (HPO XGB)"
 # Prefixo usado no paper protocol (--meta-learner best-base)
 PAPER_STACKING_PREFIX = "Stacking meta ("
+
+
+def _dataset_key(merged_dir: Path, loao_root: Path) -> str:
+    if is_can_pipeline_path(merged_dir) or is_can_pipeline_path(loao_root):
+        return "can"
+    return "cicids2017"
+
+
+def _supervised_table_label(dataset: str) -> str:
+    return "VI" if dataset == "can" else "VII"
+
+
+def _loao_table_label(dataset: str) -> str:
+    return "VIII" if dataset == "can" else "IX"
+
+
+def _supervised_paper_reference(dataset: str) -> dict:
+    key = PAPER_TABLE_VII_MODEL
+    if dataset == "can":
+        return PAPER_REFERENCE_SUPERVISED_CAN[key]
+    return PAPER_REFERENCE_SUPERVISED[key]
+
+
+def _loao_paper_reference(summary: dict, dataset: str) -> dict:
+    if dataset == "can":
+        return summary.get("paper_reference_can", PAPER_REFERENCE_LOAO_CAN)
+    return summary.get("paper_reference_cicids2017", PAPER_REFERENCE_CICIDS2017)
+
+
+def _loao_attack_label_names(loao_root: Path) -> dict[int, str]:
+    if is_can_pipeline_path(loao_root):
+        return {k: v for k, v in CAN_LABEL_NAMES.items() if k > 0}
+    return {k: v for k, v in CICIDS2017_FINE_LABEL_NAMES.items() if k > 0}
+
+
+def _default_loao_root(merged_dir: Path) -> Path:
+    base = INTERMEDIATE_DIR_CAN_FINE if is_can_pipeline_path(merged_dir) else INTERMEDIATE_DIR_FINE
+    return base / "anomaly" / "loao"
+
+
+def _default_merged_dir(dataset: str) -> Path:
+    return INTERMEDIATE_DIR_CAN_MERGED if dataset == "can" else INTERMEDIATE_DIR_MERGED
 
 
 def _find_stacking_row(metrics: list[dict]) -> dict | None:
@@ -109,21 +159,23 @@ def _paper_ref_pct(ref: dict, key_pct: str) -> float:
     return float(ref.get(key_pct, 0)) / 100.0
 
 
-def report_table_vii(intermediate_dir: Path) -> dict | None:
+def report_table_vii(intermediate_dir: Path, *, dataset: str = "cicids2017") -> dict | None:
     metrics_path = intermediate_dir / "06_supervised_metrics.json"
     cv_path = intermediate_dir / "phase_reports" / "phase06_supervised_models.json"
+    table_no = _supervised_table_label(dataset)
     if not metrics_path.is_file():
-        print(f"Tabela VII: métricas não encontradas em {metrics_path}")
+        print(f"Tabela {table_no}: métricas não encontradas em {metrics_path}")
         return None
 
     metrics = _load_json(metrics_path)
     cv_report = _load_json(cv_path) if cv_path else None
-    paper = PAPER_REFERENCE_SUPERVISED[PAPER_TABLE_VII_MODEL]
+    paper = _supervised_paper_reference(dataset)
     ref_acc = _paper_ref_pct(paper, "accuracy_pct")
     ref_f1 = float(paper.get("f1", 0))
 
+    dataset_name = "CAN-intrusion" if dataset == "can" else "CICIDS2017"
     print("\n" + "=" * 72)
-    print("TABELA VII — Supervisionado (multi-class, hold-out 80/20)")
+    print(f"TABELA {table_no} — Supervisionado ({dataset_name}, multi-class, hold-out 80/20)")
     print("=" * 72)
     print(f"{'Modelo':<24} {'Acc':>10} {'F1(w)':>10}")
     print("-" * 72)
@@ -138,7 +190,12 @@ def report_table_vii(intermediate_dir: Path) -> dict | None:
     print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
     print("-" * 72)
     repro_model = stacking_row.get("model") if stacking_row else NOTEBOOK_STACKING_MODEL
-    out: dict = {"paper_model": PAPER_TABLE_VII_MODEL, "repro_model": repro_model}
+    out: dict = {
+        "dataset": dataset,
+        "table": table_no,
+        "paper_model": PAPER_TABLE_VII_MODEL,
+        "repro_model": repro_model,
+    }
     if stacking_row:
         acc = float(stacking_row.get("accuracy", 0))
         f1 = float(stacking_row.get("f1_weighted", 0))
@@ -159,7 +216,8 @@ def report_table_vii(intermediate_dir: Path) -> dict | None:
     return out
 
 
-def report_table_ix(loao_root: Path) -> dict | None:
+def report_table_ix(loao_root: Path, *, dataset: str = "cicids2017") -> dict | None:
+    table_no = _loao_table_label(dataset)
     summary_path = loao_root / "loao_summary.json"
     summary = _load_json(summary_path)
     if not summary:
@@ -167,10 +225,9 @@ def report_table_ix(loao_root: Path) -> dict | None:
         summary = _load_json(alt) if alt.is_file() else None
     if not summary and loao_root.is_dir():
         try:
-            from mth_ids_pipeline.config import CICIDS2017_FINE_LABEL_NAMES
             from mth_ids_pipeline.io.loao_reporting import build_loao_summary, write_loao_summary
 
-            label_names = {k: v for k, v in CICIDS2017_FINE_LABEL_NAMES.items() if k > 0}
+            label_names = _loao_attack_label_names(loao_root)
             summary = build_loao_summary(
                 loao_root,
                 label_names,
@@ -181,21 +238,23 @@ def report_table_ix(loao_root: Path) -> dict | None:
         except ImportError:
             pass
     if not summary:
-        print(f"Tabela IX: resumo LOAO nao encontrado em {loao_root}")
+        print(f"Tabela {table_no}: resumo LOAO nao encontrado em {loao_root}")
         return None
 
-    ref = summary.get("paper_reference_cicids2017", PAPER_REFERENCE_CICIDS2017)
+    ref = _loao_paper_reference(summary, dataset)
     mean_f1 = float(summary.get("mean_f1", 0))
     mean_dr = float(summary.get("mean_detection_rate", 0))
     mean_far = float(summary.get("mean_false_alarm_rate", 0))
-    ref_f1 = float(ref.get("mean_f1", 0.80013))
-    ref_dr = float(ref.get("mean_dr_pct", 75.943)) / 100.0
-    ref_far = float(ref.get("mean_far_pct", 13.882)) / 100.0
+    ref_f1 = float(ref.get("mean_f1", 0.80013 if dataset == "cicids2017" else 0.96307))
+    ref_dr = float(ref.get("mean_dr_pct", 75.943 if dataset == "cicids2017" else 93.740)) / 100.0
+    ref_far = float(ref.get("mean_far_pct", 13.882 if dataset == "cicids2017" else 0.128)) / 100.0
     n_done = len(summary.get("per_attack", []))
-    n_planned = int(summary.get("attacks_in_dataset", 14))
+    default_planned = 3 if dataset == "can" else 14
+    n_planned = int(summary.get("attacks_in_dataset", default_planned))
 
+    dataset_name = "CAN-intrusion" if dataset == "can" else "CICIDS2017"
     print("\n" + "=" * 72)
-    print("TABELA IX — Anomaly LOAO (média sobre ataques concluídos)")
+    print(f"TABELA {table_no} — Anomaly LOAO ({dataset_name}, média sobre ataques concluídos)")
     print("=" * 72)
     print(f"Ataques concluídos: {n_done}/{n_planned}")
     print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
@@ -217,6 +276,8 @@ def report_table_ix(loao_root: Path) -> dict | None:
     if n_done < n_planned:
         print(f"\nNota: média parcial — execute LOAO completo para comparar com o artigo.")
     return {
+        "dataset": dataset,
+        "table": table_no,
         "attacks_done": n_done,
         "attacks_planned": n_planned,
         "mean_f1": {"reproduced": mean_f1, "reference": ref_f1, "delta": mean_f1 - ref_f1},
@@ -226,15 +287,16 @@ def report_table_ix(loao_root: Path) -> dict | None:
     }
 
 
-def report_table_x(intermediate_dir: Path) -> dict | None:
+def report_table_x(intermediate_dir: Path, *, dataset: str = "cicids2017") -> dict | None:
     """Tabela X — sistema completo no hold-out (fase 13)."""
     report_path = intermediate_dir / "phase_reports" / "phase13_full_system_eval.json"
     data = _load_json(report_path)
+    protocol_flag = "can" if dataset == "can" else "paper"
     if not data:
         print(
             f"Tabela X: relatório não encontrado em {report_path}\n"
             "Execute:\n"
-            "  python -m mth_ids_pipeline.run_global_anomaly --protocol paper\n"
+            f"  python -m mth_ids_pipeline.run_global_anomaly --protocol {protocol_flag}\n"
             "  python -m mth_ids_pipeline.run_eval "
             f"--intermediate-dir {intermediate_dir} "
             f"--work-dir {intermediate_dir / 'anomaly' / 'global'}"
@@ -242,15 +304,16 @@ def report_table_x(intermediate_dir: Path) -> dict | None:
         return None
 
     binary = data.get("binary_metrics") or {}
-    ref = PAPER_TABLE_X_REFERENCE["cicids2017"]
+    ref = PAPER_TABLE_X_REFERENCE[dataset]
     acc_pct = float(data.get("accuracy", 0)) * 100.0
     dr_pct = float(binary.get("detection_rate", 0)) * 100.0
     far_pct = float(binary.get("false_alarm_rate", 0)) * 100.0
     f1 = float(binary.get("f1", 0))
     split_note = data.get("test_split") or "hold-out 80/20 (artigo: 70/30)"
 
+    dataset_name = "CAN-intrusion" if dataset == "can" else "CICIDS2017"
     print("\n" + "=" * 72)
-    print("TABELA X — Sistema completo no hold-out (CICIDS2017)")
+    print(f"TABELA X — Sistema completo no hold-out ({dataset_name})")
     print("=" * 72)
     print(f"Protocolo: {split_note}")
     print(f"{'Métrica':<12} {'Reprod':>12} {'Artigo':>12} {'Diff':>12}")
@@ -264,6 +327,7 @@ def report_table_x(intermediate_dir: Path) -> dict | None:
     figures = intermediate_dir / "figures"
     print(f"CM: {figures / 'fig_multiclass_cm.png'} | {figures / 'fig_binary_cm.png'}")
     return {
+        "dataset": dataset,
         "protocol": split_note,
         "accuracy_pct": {"reproduced": acc_pct, "reference": ref["accuracy_pct"], "delta": acc_pct - ref["accuracy_pct"]},
         "detection_rate_pct": {"reproduced": dr_pct, "reference": ref["detection_rate_pct"], "delta": dr_pct - ref["detection_rate_pct"]},
@@ -280,25 +344,33 @@ def _run_reports(
 ) -> tuple[dict, str]:
     """Executa relatórios; retorna (comparison dict, texto formatado)."""
     buf = io.StringIO()
+    dataset = _dataset_key(merged_dir, loao_root)
 
-    comparison: dict = {"merged_dir": str(merged_dir), "loao_root": str(loao_root)}
+    comparison: dict = {
+        "merged_dir": str(merged_dir),
+        "loao_root": str(loao_root),
+        "dataset": dataset,
+    }
 
     with contextlib.redirect_stdout(buf):
         if table == "all":
             print("=" * 72)
-            print("COMPARATIVO MTH-IDS vs artigo (CICIDS2017)")
+            sup_label = _supervised_table_label(dataset)
+            loao_label = _loao_table_label(dataset)
+            title = "CAN-intrusion" if dataset == "can" else "CICIDS2017"
+            print(f"COMPARATIVO MTH-IDS vs artigo ({title})")
             print("=" * 72)
-            print(f"Supervisionado / Tabela X: {merged_dir}")
-            print(f"LOAO / Tabela IX:          {loao_root}")
+            print(f"Supervisionado / Tabela {sup_label} / X: {merged_dir}")
+            print(f"LOAO / Tabela {loao_label}:          {loao_root}")
 
-        if table in ("notebook", "all"):
+        if table in ("notebook", "all") and dataset == "cicids2017":
             report_notebook_comparison(merged_dir)
         if table in ("vii", "all"):
-            comparison["table_vii"] = report_table_vii(merged_dir)
+            comparison["table_vii"] = report_table_vii(merged_dir, dataset=dataset)
         if table in ("ix", "all"):
-            comparison["table_ix"] = report_table_ix(loao_root)
+            comparison["table_ix"] = report_table_ix(loao_root, dataset=dataset)
         if table in ("x", "all"):
-            comparison["table_x"] = report_table_x(merged_dir)
+            comparison["table_x"] = report_table_x(merged_dir, dataset=dataset)
 
     report_text = buf.getvalue()
     print(report_text, end="" if report_text.endswith("\n") else "\n")
@@ -322,8 +394,8 @@ def main() -> None:
     parser.add_argument(
         "--loao-root",
         type=Path,
-        default=INTERMEDIATE_DIR_FINE / "anomaly" / "loao",
-        help="Raiz LOAO fine (Tabela IX)",
+        default=None,
+        help="Raiz LOAO (default: pipeline_can_fine ou pipeline_mth_ids_fine conforme --merged-dir)",
     )
     parser.add_argument(
         "--table",
@@ -350,9 +422,13 @@ def main() -> None:
     args = parser.parse_args()
 
     merged_dir = args.intermediate_dir or args.merged_dir
+    loao_root = args.loao_root or _default_loao_root(merged_dir)
+    dataset = _dataset_key(merged_dir, loao_root)
+    results_dir = RESULTS_DIR_CAN if (args.results_dir == RESULTS_DIR and dataset == "can") else args.results_dir
+
     comparison, report_text = _run_reports(
         merged_dir=merged_dir,
-        loao_root=args.loao_root,
+        loao_root=loao_root,
         table=args.table,
     )
 
@@ -360,9 +436,9 @@ def main() -> None:
         return
 
     ensure_results_dirs()
-    args.results_dir.mkdir(parents=True, exist_ok=True)
-    json_path = args.save_json or (args.results_dir / "paper_comparison.json")
-    txt_path = args.results_dir / "tables_report.txt"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    json_path = args.save_json or (results_dir / "paper_comparison.json")
+    txt_path = results_dir / "tables_report.txt"
     log_path = make_run_log_path(f"report_tables_{args.table}")
     json_path.write_text(
         json.dumps(comparison, indent=2, ensure_ascii=False),

@@ -5,10 +5,10 @@ Relatórios de auditoria, refatoração e reprodução gerados durante o desenvo
 Documentação atual:
 
 - [README.md](../README.md) — índice
-- [PAPER_PROTOCOL.md](../PAPER_PROTOCOL.md) — protocolo paper
-- [PIPELINE_PHASES.md](../PIPELINE_PHASES.md) — fases e CLI
-- [GUIA_ARQUITETURA_MTH_IDS.md](../GUIA_ARQUITETURA_MTH_IDS.md) — arquitetura
-- [PASTAS_E_BOOTSTRAP.md](../PASTAS_E_BOOTSTRAP.md) — pastas e bootstrap
+- [ARQUITETURA.md](../ARQUITETURA.md) — tiers, experimentos, código
+- [EXECUCAO.md](../EXECUCAO.md) — comandos, pastas, bootstrap
+- [PROTOCOLO_CICIDS.md](../PROTOCOLO_CICIDS.md) — CICIDS2017
+- [PROTOCOLO_CAN.md](../PROTOCOLO_CAN.md) — CAN-intrusion
 
 Arquivos nesta pasta:
 

@@ -35,9 +35,9 @@ def set_global_seeds(seed: int = DEFAULT_RANDOM_STATE) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
-def numpy_random_state(seed: int = DEFAULT_RANDOM_STATE) -> np.random.RandomState:
-    """RNG NumPy legado para Hyperopt ``fmin(..., rstate=...)``."""
-    return np.random.RandomState(seed)
+def numpy_random_state(seed: int = DEFAULT_RANDOM_STATE) -> np.random.Generator:
+    """RNG NumPy para Hyperopt ``fmin(..., rstate=...)`` (requer ``Generator`` desde hyperopt 0.2.6+)."""
+    return np.random.default_rng(seed)
 
 
 def collect_environment_versions() -> dict[str, str]:

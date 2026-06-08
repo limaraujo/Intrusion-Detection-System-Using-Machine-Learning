@@ -78,6 +78,12 @@ def main() -> None:
     )
     parser.add_argument("--ig-cumulative", type=float, default=0.9)
     parser.add_argument("--optimize-ig", action="store_true", help="BO-GP para α IG (artigo)")
+    parser.add_argument(
+        "--ig-features",
+        type=str,
+        default=None,
+        help="Features IG fixas (ex. CAN Tabela VI: CAN_ID,DATA_1,DATA_3,DATA_5)",
+    )
     parser.add_argument("--ig-hpo-calls", type=int, default=15)
     parser.add_argument("--cv-folds", type=int, default=10, help="CV para BO-GP α")
     args = parser.parse_args()
@@ -130,9 +136,19 @@ def main() -> None:
         }
         print(f"BO-GP IG: alpha={ig_cumulative:.4f}, CV acc={hpo.best_score:.4f}")
 
-    ig_features = information_gain_feature_subset(
-        X_train_s, feature_names, y_train, cumulative=ig_cumulative
-    )
+    if args.ig_features:
+        ig_features = [f.strip() for f in args.ig_features.split(",") if f.strip()]
+        missing = [f for f in ig_features if f not in feature_names]
+        if missing:
+            raise ValueError(
+                f"Features fixas ausentes no dataset: {missing}. "
+                f"Disponíveis: {feature_names}"
+            )
+        print(f"IG fixo (artigo): {ig_features}")
+    else:
+        ig_features = information_gain_feature_subset(
+            X_train_s, feature_names, y_train, cumulative=ig_cumulative
+        )
     (output_dir / P04_SELECTED_FEATURES).write_text("\n".join(ig_features), encoding="utf-8")
     ig_idx = [feature_names.index(n) for n in ig_features]
 
@@ -177,6 +193,7 @@ def main() -> None:
         "fcbf_scope": args.fcbf_scope,
         "scale_mode": scale_mode,
         "optimize_ig": args.optimize_ig,
+        "fixed_ig_features": args.ig_features,
         "train_output": str(train_path),
         "test_output": str(test_path),
     }

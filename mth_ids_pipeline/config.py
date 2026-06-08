@@ -122,6 +122,28 @@ DEFAULT_RAW_CSV_FINE = DATA_DIR / "CICIDS2017_fine.csv"
 INTERMEDIATE_DIR_MERGED = DATA_DIR / "pipeline_mth_ids_merged"
 INTERMEDIATE_DIR_FINE = DATA_DIR / "pipeline_mth_ids_fine"
 
+# CAN-intrusion-dataset (pastas separadas do CICIDS2017)
+DEFAULT_RAW_CSV_CAN = DATA_DIR / "CAN_Intrusion_Dataset.csv"
+INTERMEDIATE_DIR_CAN_MERGED = DATA_DIR / "pipeline_can_merged"
+INTERMEDIATE_DIR_CAN_FINE = DATA_DIR / "pipeline_can_fine"
+RESULTS_DIR_CAN = RESULTS_DIR / "can"
+CAN_KMEANS_FRAC = 0.008  # k-means 0,8% em todas as classes (igual notebook/CICIDS2017)
+CAN_TEST_SIZE = DEFAULT_TEST_SIZE  # alias legado; can_paper usa 80/20
+# Tabela VI CAN — 4 features citadas no artigo (referência; preset can_paper usa BO-GP α IG)
+CAN_PAPER_IG_FEATURES: tuple[str, ...] = ("CAN_ID", "DATA_1", "DATA_3", "DATA_5")
+
+# LabelEncoder alfabético sobre CAN_Intrusion_Dataset.csv
+CAN_LABEL_NAMES: dict[int, str] = {
+    0: "BENIGN",
+    1: "DoS",
+    2: "Fuzzy",
+    3: "Impersonation",
+}
+
+# Zero-day padrão quando fase 7 roda isolada (demo / debug)
+DEFAULT_LOAO_ATTACK_LABEL_CICIDS = 5  # PortScan (fine CICIDS2017)
+DEFAULT_LOAO_ATTACK_LABEL_CAN = 1  # DoS (CAN_LABEL_NAMES)
+
 # Log de sessão do ramo supervisionado (experiment_runner / run_supervised)
 SUPERVISED_RUN_LOG = "supervised_run.log"  # legado; logs novos vão em results/logs/
 
@@ -186,6 +208,44 @@ PAPER_TABLE_X_REFERENCE = {
         "f1": 0.9999,
     },
 }
+
+# Artigo — Tabela VI (CAN supervisionado, linha MTH-IDS)
+PAPER_REFERENCE_SUPERVISED_CAN = {
+    "MTH-IDS (Multi-Class Model)": {
+        "accuracy_pct": 99.999,
+        "detection_rate_pct": 99.999,
+        "false_alarm_rate_pct": 0.0006,
+        "f1": 0.99999,
+    },
+}
+
+# Artigo — Tabela VIII (CAN LOAO, média MTH-IDS)
+PAPER_REFERENCE_LOAO_CAN = {
+    "mean_f1": 0.96307,
+    "mean_dr_pct": 93.740,
+    "mean_far_pct": 0.128,
+}
+
+
+def is_can_pipeline_path(path: Path | str) -> bool:
+    """True se o caminho pertence a ``pipeline_can_*`` (protocolo CAN)."""
+    return "pipeline_can" in Path(path).as_posix()
+
+
+def default_loao_attack_label(
+    *,
+    intermediate_dir: Path | str | None = None,
+    protocol: str | None = None,
+) -> int:
+    """Zero-day padrão da fase 7: PortScan (CICIDS) ou DoS (CAN)."""
+    if intermediate_dir is not None and is_can_pipeline_path(intermediate_dir):
+        return DEFAULT_LOAO_ATTACK_LABEL_CAN
+    if protocol is not None:
+        from mth_ids_pipeline.protocol import is_can_protocol
+
+        if is_can_protocol(protocol):
+            return DEFAULT_LOAO_ATTACK_LABEL_CAN
+    return DEFAULT_LOAO_ATTACK_LABEL_CICIDS
 
 
 def ensure_intermediate_dirs(intermediate_dir: Path | None = None) -> PipelinePaths:

@@ -48,6 +48,11 @@ def main() -> None:
     )
     parser.add_argument("--auto-minority", action="store_true")
     parser.add_argument(
+        "--sample-all-classes",
+        action="store_true",
+        help="k-means em todas as classes (CAN: sem preservar ataques intactos; frac do protocolo)",
+    )
+    parser.add_argument(
         "--skip-sampling",
         action="store_true",
         help="Pula amostragem k-means e usa o dataset completo da fase 1",
@@ -60,6 +65,15 @@ def main() -> None:
     if args.skip_sampling:
         sampled = df.copy()
         minority_labels: tuple[int, ...] = ()
+    elif args.sample_all_classes:
+        minority_labels = ()
+        sampled = _sample_kmeans(
+            df,
+            n_clusters=args.n_clusters,
+            random_state=args.random_state,
+            frac=args.frac,
+            minority_labels=minority_labels,
+        )
     else:
         if args.auto_minority:
             minority_labels = minority_labels_all_attacks(df)
@@ -88,6 +102,7 @@ def main() -> None:
             "frac": args.frac,
             "minority_labels": list(minority_labels),
             "auto_minority": args.auto_minority,
+            "sample_all_classes": args.sample_all_classes,
             "skip_sampling": args.skip_sampling,
             "duration_s": round(time.time() - total_start, 4),
         }

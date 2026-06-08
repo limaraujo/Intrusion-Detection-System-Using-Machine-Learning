@@ -1,0 +1,14 @@
+
+========================================================================
+TABELA X — Sistema completo no hold-out (CAN-intrusion)
+========================================================================
+Protocolo: hold-out 80/20 (artigo: 70/30)
+Métrica            Reprod       Artigo         Diff
+------------------------------------------------------------------------
+Acc (%)             74.78        99.99       -25.21
+DR (%)              90.01       100.00        -9.99
+FAR (%)           21.6914       0.0001     +21.6913
+F1                 0.8479       0.9999      -0.1520
+
+Roteamento: {'n_test': 7184, 'n_stacking_normal': 4431, 'n_stacking_attack': 2753, 'anomaly_attack_detected': 1225, 'anomaly_normal_confirmed': 3206}
+CM: data\pipeline_can_merged\figures\fig_multiclass_cm.png | data\pipeline_can_merged\figures\fig_binary_cm.png

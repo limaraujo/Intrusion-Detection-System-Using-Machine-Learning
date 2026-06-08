@@ -455,8 +455,9 @@ def load_anomaly_splits(
     smote_target: int | None,
     random_state: int,
     label_col: str = "Label",
+    no_smote: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, bool]:
-    """Carrega KPCA + meta de slice; aplica SMOTE no treino (notebook IoTJ)."""
+    """Carrega KPCA + meta de slice; aplica SMOTE no treino (notebook IoTJ) salvo ``no_smote``."""
     df = pd.read_parquet(input_dir / A04_AFTER_KPCA)
     meta = json.loads((input_dir / A06_TEST_SLICE_INFO).read_text(encoding="utf-8"))
     n_train = int(meta.get("n_train_rows", meta["n_df1_rows"]))
@@ -494,11 +495,14 @@ def load_anomaly_splits(
     )
 
     train_path = input_dir / A05_TRAIN_SMOTE
-    if train_path.exists() and not internal_val:
+    if train_path.exists() and not internal_val and not no_smote:
         tr = pd.read_parquet(train_path)
         X_train = tr.drop(columns=[label_col]).values
         y_train = np.ravel(tr[label_col].values)
         return X_train, X_test, y_train, y_test, True
+
+    if no_smote:
+        return X_train, X_test, y_train, y_test, False
 
     X_train, y_train, did_smote, resolved = apply_notebook_anomaly_smote(
         X_train,

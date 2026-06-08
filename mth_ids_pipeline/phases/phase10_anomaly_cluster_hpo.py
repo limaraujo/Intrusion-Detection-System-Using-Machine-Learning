@@ -46,6 +46,11 @@ def main() -> None:
         default=None,
         help="Notebook: default = nº de BENIGN no treino",
     )
+    parser.add_argument(
+        "--no-smote",
+        action="store_true",
+        help="CAN / artigo: não aplicar SMOTE no treino anomaly",
+    )
     parser.add_argument("--skip-hpo", action="store_true")
     parser.add_argument(
         "--hpo-metric",
@@ -67,7 +72,10 @@ def main() -> None:
     paths = init_paths(args)
     work = resolve_work_dir(args, paths)
     X_train, X_test, y_train, y_test, did_smote = load_anomaly_splits(
-        work, smote_target=args.smote_target, random_state=args.random_state
+        work,
+        smote_target=args.smote_target,
+        random_state=args.random_state,
+        no_smote=args.no_smote,
     )
 
     y_base, baseline_score = cl_kmeans(

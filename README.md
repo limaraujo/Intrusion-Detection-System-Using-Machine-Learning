@@ -65,30 +65,34 @@ CAN-intrusion dataset, a benchmark network security dataset for intra-vehicle in
 
 #### MTH-IDS modular pipeline (Parquet + reports)
 
-The package [mth_ids_pipeline](mth_ids_pipeline) reproduces the MTH-IDS paper (default `--protocol paper`) or the published IoTJ notebook (`--protocol notebook`). Layout: `core/` (ML), `io/` (artifacts), `phases/` (executable steps), `orchestration/` (runner).
+The package [mth_ids_pipeline](mth_ids_pipeline) reproduces the MTH-IDS paper (default `--protocol paper`), the published IoTJ notebook (`--protocol notebook`), or the **CAN-intrusion** benchmark (`--protocol can`). Layout: `core/` (ML), `io/` (artifacts), `phases/` (executable steps), `orchestration/` (runner).
 
 **Documentation (Portuguese):**
 
 | Doc | Content |
 |-----|---------|
-| [docs/README.md](docs/README.md) | Index, quick start, troubleshooting |
-| [docs/PIPELINE_PHASES.md](docs/PIPELINE_PHASES.md) | All 12 phases + **[run each phase manually](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente)** |
-| [docs/IDS2018_TABELAS_VII_IX_X.md](docs/IDS2018_TABELAS_VII_IX_X.md) | **IDS2018** — Tabelas VII, IX e X (passo a passo) |
-| [docs/PROTOCOLO_CSE_CIC_IDS2018.md](docs/PROTOCOLO_CSE_CIC_IDS2018.md) | IDS2018 — isolamento do CICIDS2017 |
-| [docs/TABELAS_COMANDOS_SEPARADOS.md](docs/TABELAS_COMANDOS_SEPARADOS.md) | Comandos separados VII / IX / X + test set Tabela X |
-| [docs/COMO_RODAR_TABELAS.md](docs/COMO_RODAR_TABELAS.md) | **Passo a passo** Tabelas VII, IX e X |
-| [docs/MERGED_VS_FINE_E_TABELAS.md](docs/MERGED_VS_FINE_E_TABELAS.md) | Merged vs fine, LOAO vs global |
-| [docs/PAPER_PROTOCOL.md](docs/PAPER_PROTOCOL.md) | Paper vs notebook parameters (Tables VII & IX) |
-| [docs/GUIA_ARQUITETURA_MTH_IDS.md](docs/GUIA_ARQUITETURA_MTH_IDS.md) | Package layout and execution branches |
-| [docs/PASTAS_E_BOOTSTRAP.md](docs/PASTAS_E_BOOTSTRAP.md) | `merged` / `fine` folders and auto-bootstrap |
+| [docs/README.md](docs/README.md) | Index and quick start |
+| [docs/ARQUITETURA.md](docs/ARQUITETURA.md) | 4 tiers, 3 experiments, package layout |
+| [docs/EXECUCAO.md](docs/EXECUCAO.md) | Commands, folders, bootstrap, troubleshooting |
+| [docs/PIPELINE_PHASES.md](docs/PIPELINE_PHASES.md) | Phases 1–13 + [manual CLI](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente) |
+| [docs/PROTOCOLO_CICIDS.md](docs/PROTOCOLO_CICIDS.md) | CICIDS2017 (Tables VII/IX/X) |
+| [docs/PROTOCOLO_CAN.md](docs/PROTOCOLO_CAN.md) | CAN-intrusion (Tables VI/VIII) |
+| [docs/PAPER_PROTOCOL.md](docs/PAPER_PROTOCOL.md) | Paper vs notebook preset comparison |
 
 Prepare datasets:
+
+**CICIDS2017:**
 ```bash
 python -m mth_ids_pipeline.utils.merge_cicids --profile merged
 python -m mth_ids_pipeline.utils.merge_cicids --profile fine
 ```
 
-**Fine: load + sampling, then LOAO (Table IX)** — run from the repo root. Step 1 can be skipped if `data/CICIDS2017_fine.csv` already exists. Step 2 forces regeneration of phases 1–2 (~27k rows; minority labels aligned with merged `df_minor` — see [docs/PASTAS_E_BOOTSTRAP.md](docs/PASTAS_E_BOOTSTRAP.md)). Step 3 auto-bootstraps `06_supervised_metrics.json` from merged Table VII if missing.
+**CAN-intrusion** (place `CAN_*.txt` in `data/CAN_DATA/` first):
+```bash
+python -m mth_ids_pipeline.utils.merge_can
+```
+
+**Fine: load + sampling, then LOAO (Table IX)** — run from the repo root. Step 1 can be skipped if `data/CICIDS2017_fine.csv` already exists. Step 2 forces regeneration of phases 1–2 (~27k rows; see [docs/EXECUCAO.md](docs/EXECUCAO.md#bootstrap-automático)). Step 3 auto-bootstraps `06_supervised_metrics.json` from merged Table VII if missing.
 
 ```powershell
 # 1) Fine CSV (skip if data\CICIDS2017_fine.csv already exists)
@@ -139,6 +143,20 @@ python -m mth_ids_pipeline.report_paper_tables --table all \
 
 Output: `results/paper_comparison.json` and `results/tables_report.txt`.
 
+**CAN-intrusion** (Tables VI/VIII — `--protocol can`):
+
+```powershell
+python -m mth_ids_pipeline.utils.merge_can
+python -m mth_ids_pipeline.run_supervised --protocol can
+python -m mth_ids_pipeline.run_anomaly --protocol can --loao
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_can_merged `
+  --loao-root data/pipeline_can_fine/anomaly/loao `
+  --results-dir results/can
+```
+
+See [docs/PROTOCOLO_CAN.md](docs/PROTOCOLO_CAN.md).
+
 **Run each phase manually** (full commands, LOAO resume, flags): [docs/PIPELINE_PHASES.md — Rodar cada fase manualmente](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente).
 
 CLI quick reference:
@@ -146,9 +164,9 @@ CLI quick reference:
 | Phase | Module | `--intermediate-dir` | Typical extras |
 | --- | --- | --- | --- |
 | 1 | `phases.phase01_load_preprocess` | merged or fine | `--input data/CICIDS2017.csv` |
-| 2 | `phases.phase02_sample_kmeans` | merged or fine | `--frac 0.008` |
-| 4 | `phases.phase04_feature_engineering` | merged | `--fcbf-scope train`, `--optimize-ig` (split 80/20 inside) |
-| 5 | `phases.phase05_smote` | merged | — |
+| 2 | `phases.phase02_sample_kmeans` | merged, fine, or `pipeline_can_*` | `--frac 0.008` (CICIDS e CAN) + auto `--sample-all-classes` no CAN |
+| 4 | `phases.phase04_feature_engineering` | merged / `pipeline_can_merged` | `--fcbf-scope train`, `--optimize-ig` (split 80/20 inside) |
+| 5 | `phases.phase05_smote` | merged only | skipped with `--protocol can` |
 | 6 | `phases.phase06_supervised_models` | merged | `--cv-folds 10`, `--hpo-on-validation` |
 | 7 | `phases.phase07_anomaly_datasets` | fine | `--work-dir …/loao/attack_N`, `--attack-label N` |
 | 8 | `phases.phase08_anomaly_features` | fine | `--work-dir …/attack_N`, `--optimize-ig --optimize-kpca` |

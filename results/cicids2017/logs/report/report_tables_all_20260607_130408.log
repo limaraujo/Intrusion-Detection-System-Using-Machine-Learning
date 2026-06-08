@@ -1,8 +1,8 @@
 ========================================================================
 COMPARATIVO MTH-IDS vs artigo (CICIDS2017)
 ========================================================================
-Supervisionado / Tabela X: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_mth_ids_merged
-LOAO / Tabela IX:          C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_mth_ids_fine\anomaly\loao
+Supervisionado / Tabela X: data\pipeline_mth_ids_merged
+LOAO / Tabela IX:          data\pipeline_mth_ids_fine\anomaly\loao
 
 ========================================================================
 Comparação vs Notebook (hold-out)
@@ -11,14 +11,14 @@ Modelo/Métrica                      Ref     Reprod   Diff abs   Diff %
 ------------------------------------------------------------------------
 XGBoost (base) / accuracy      0.995700   0.996081   0.000381    0.04%
 XGBoost (base) / f1_weighted   0.995700   0.996092   0.000392    0.04%
-RandomForest (HPO) / accuracy   0.995100   0.995148   0.000048    0.00%
-RandomForest (HPO) / f1_weighted   0.995100   0.995142   0.000042    0.00%
-DecisionTree (HPO) / accuracy   0.993700   0.994029   0.000329    0.03%
-DecisionTree (HPO) / f1_weighted   0.993800   0.994033   0.000233    0.02%
-ExtraTrees (HPO) / accuracy    0.995500   0.992723  -0.002777   -0.28%
-ExtraTrees (HPO) / f1_weighted   0.995500   0.992736  -0.002764   -0.28%
+RandomForest (HPO) / accuracy   0.995100   0.995335   0.000235    0.02%
+RandomForest (HPO) / f1_weighted   0.995100   0.995340   0.000240    0.02%
+DecisionTree (HPO) / accuracy   0.993700   0.991230  -0.002470   -0.25%
+DecisionTree (HPO) / f1_weighted   0.993800   0.991209  -0.002591   -0.26%
+ExtraTrees (HPO) / accuracy    0.995500   0.995895   0.000395    0.04%
+ExtraTrees (HPO) / f1_weighted   0.995500   0.995888   0.000388    0.04%
 Stacking meta (XGBoost (base)) / accuracy   0.995700   0.995522  -0.000178   -0.02%
-Stacking meta (XGBoost (base)) / f1_weighted   0.995700   0.995518  -0.000182   -0.02%
+Stacking meta (XGBoost (base)) / f1_weighted   0.995700   0.995516  -0.000184   -0.02%
 
 ========================================================================
 TABELA VII — Supervisionado (multi-class, hold-out 80/20)
@@ -26,23 +26,23 @@ TABELA VII — Supervisionado (multi-class, hold-out 80/20)
 Modelo                          Acc      F1(w)
 ------------------------------------------------------------------------
 XGBoost (base)             0.996081   0.996092
-RandomForest (HPO)         0.995148   0.995142
-DecisionTree (HPO)         0.994029   0.994033
-ExtraTrees (HPO)           0.992723   0.992736
-Stacking meta (XGBoost (base))   0.995522   0.995518
+RandomForest (HPO)         0.995335   0.995340
+DecisionTree (HPO)         0.991230   0.991209
+ExtraTrees (HPO)           0.995895   0.995888
+Stacking meta (XGBoost (base))   0.995522   0.995516
 
 Comparação vs artigo (tier multi-class / stacking):
 Métrica            Reprod       Artigo         Diff
 ------------------------------------------------------------------------
 Acc              0.995522     0.998790    -0.003268
-F1(w)            0.995518     0.998790    -0.003272
+F1(w)            0.995516     0.998790    -0.003274
 
 10-fold CV no treino (reprodução):
-  XGBoost (base): 0.9968 ± 0.0009
-  RandomForest (HPO): 0.9949 ± 0.0009
-  DecisionTree (HPO): 0.9936 ± 0.0010
-  ExtraTrees (HPO): 0.9928 ± 0.0008
-  Stacking meta (XGBoost (base)): 0.9994 ± 0.0004
+  XGBoost (base): 0.9965 ± 0.0012
+  RandomForest (HPO): 0.9948 ± 0.0013
+  DecisionTree (HPO): 0.9921 ± 0.0015
+  ExtraTrees (HPO): 0.9967 ± 0.0013
+  Stacking meta (XGBoost (base)): 0.9995 ± 0.0005
 
 ========================================================================
 TABELA IX — Anomaly LOAO (média sobre ataques concluídos)
@@ -83,4 +83,4 @@ FAR (%)            2.2627       0.1000      +2.1627
 F1                 0.9755       0.9988      -0.0233
 
 Roteamento: {'n_test': 5359, 'n_stacking_normal': 3620, 'n_stacking_attack': 1739, 'anomaly_attack_detected': 73, 'anomaly_normal_confirmed': 3547}
-CM: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_mth_ids_merged\figures\fig_multiclass_cm.png | C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_mth_ids_merged\figures\fig_binary_cm.png
+CM: data\pipeline_mth_ids_merged\figures\fig_multiclass_cm.png | data\pipeline_mth_ids_merged\figures\fig_binary_cm.png

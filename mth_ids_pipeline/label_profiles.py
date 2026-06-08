@@ -7,7 +7,7 @@ Perfis de rótulos CICIDS2017 para o pipeline MTH-IDS.
 Fase 2 fine: preserva inteiros os fine cuja família merged está no ``df_minor`` do notebook
 (Bot, Infiltration, WebAttack), não “todos os rótulos que o merge não agrega” (PortScan
 é amostrado). Ver ``compute_fine_minority_labels_notebook_aligned()`` e
-``docs/PASTAS_E_BOOTSTRAP.md``.
+``docs/EXECUCAO.md``.
 """
 
 from __future__ import annotations
@@ -16,7 +16,14 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from mth_ids_pipeline.config import DATA_DIR, CICIDS2017_FINE_LABEL_NAMES, DEFAULT_MINORITY_LABELS
+from mth_ids_pipeline.config import (
+    CICIDS2017_FINE_LABEL_NAMES,
+    DATA_DIR,
+    DEFAULT_MINORITY_LABELS,
+    DEFAULT_RAW_CSV_CAN,
+    INTERMEDIATE_DIR_CAN_FINE,
+    INTERMEDIATE_DIR_CAN_MERGED,
+)
 
 # Separador corrompido quando UTF-8 (U+FFFD) é lido com encoding="latin1"
 _WEB_ATTACK_SEP_MOJIBAKE = "\xef\xbf\xbd"
@@ -75,10 +82,14 @@ class LabelProfile:
     intermediate_dir: Path
     minority_labels: tuple[int, ...] | None
     description: str
+    paired_supervised_dir: Path | None = None
+    table_vii_profile: str | None = None
+    # CAN: k-means 0,8% em BENIGN + ataques (nenhuma classe preservada intacta).
+    kmeans_sample_all_classes: bool = False
 
     @property
     def auto_minority(self) -> bool:
-        return self.minority_labels is None
+        return self.minority_labels is None and not self.kmeans_sample_all_classes
 
     def minority_labels_csv(self) -> str | None:
         if self.minority_labels is None:
@@ -153,8 +164,12 @@ def get_label_profile(name: str) -> LabelProfile:
         return MERGED_PROFILE
     if key in (LabelProfileKind.FINE.value, "fine-grained", "finegrained", "14"):
         return FINE_PROFILE
+    if key in ("can_merged", "can-merged", "can_sup", "can"):
+        return CAN_MERGED_PROFILE
+    if key in ("can_fine", "can-fine", "can_loao"):
+        return CAN_FINE_PROFILE
     raise ValueError(
-        f"Perfil desconhecido: {name!r}. Use 'merged' ou 'fine'."
+        f"Perfil desconhecido: {name!r}. Use 'merged', 'fine', 'can_merged' ou 'can_fine'."
     )
 
 
@@ -179,9 +194,37 @@ FINE_PROFILE = LabelProfile(
     ),
 )
 
+CAN_MERGED_PROFILE = LabelProfile(
+    kind=LabelProfileKind.MERGED,
+    raw_csv=DEFAULT_RAW_CSV_CAN,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_MERGED,
+    minority_labels=None,
+    kmeans_sample_all_classes=True,
+    description=(
+        "CAN intra-veicular (Tabela VI): k-means 0,8% em todas as classes "
+        "(BENIGN + DoS/Fuzzy/Impersonation); split 80/20; sem SMOTE."
+    ),
+)
+
+CAN_FINE_PROFILE = LabelProfile(
+    kind=LabelProfileKind.FINE,
+    raw_csv=DEFAULT_RAW_CSV_CAN,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_FINE,
+    minority_labels=None,
+    kmeans_sample_all_classes=True,
+    paired_supervised_dir=INTERMEDIATE_DIR_CAN_MERGED,
+    table_vii_profile="can_merged",
+    description=(
+        "CAN LOAO (Tabela VIII): k-means 0,8% em todas as classes; "
+        "cada ataque como zero-day (3 rodadas)."
+    ),
+)
+
 ALL_PROFILES: dict[str, LabelProfile] = {
     LabelProfileKind.MERGED.value: MERGED_PROFILE,
     LabelProfileKind.FINE.value: FINE_PROFILE,
+    "can_merged": CAN_MERGED_PROFILE,
+    "can_fine": CAN_FINE_PROFILE,
 }
 
 

@@ -327,8 +327,12 @@ def _ig_fcbf_cv_score(
         return 0.0
     clf = RandomForestClassifier(n_estimators=50, random_state=random_state, n_jobs=-1)
     cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
-    scores = cross_val_score(clf, X_fcbf, y_train, cv=cv, scoring="accuracy", n_jobs=-1)
-    return float(np.mean(scores))
+    scores = cross_val_score(
+        clf, X_fcbf, y_train, cv=cv, scoring="accuracy", n_jobs=-1, error_score=0.0
+    )
+    from mth_ids_pipeline.core.validation import sanitize_hpo_score
+
+    return sanitize_hpo_score(float(np.mean(scores)))
 
 
 def optimize_ig_alpha(
@@ -347,6 +351,8 @@ def optimize_ig_alpha(
     from skopt import gp_minimize
     from skopt.space import Real
 
+    from mth_ids_pipeline.core.validation import sanitize_hpo_score, score_to_bo_loss
+
     trials: list[dict[str, Any]] = []
 
     def objective(params: list[Any]) -> float:
@@ -360,8 +366,10 @@ def optimize_ig_alpha(
             cv_folds=cv_folds,
             random_state=random_state,
         )
-        trials.append({"alpha": alpha, "score": score})
-        return 1.0 - score
+        score = sanitize_hpo_score(score)
+        loss = score_to_bo_loss(score)
+        trials.append({"alpha": alpha, "score": score, "loss": loss})
+        return loss
 
     result = gp_minimize(
         objective,
@@ -370,7 +378,7 @@ def optimize_ig_alpha(
         random_state=random_state,
     )
     best_alpha = float(result.x[0])
-    best_score = 1.0 - float(result.fun)
+    best_score = sanitize_hpo_score(1.0 - float(result.fun))
     return IgAlphaHpoResult(best_alpha=best_alpha, best_score=best_score, trials=trials)
 
 
@@ -410,15 +418,21 @@ def optimize_kpca_params(
             return 1.0
         clf = RandomForestClassifier(n_estimators=50, random_state=random_state, n_jobs=-1)
         cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
-        scores = cross_val_score(clf, X_k, y_train, cv=cv, scoring="accuracy", n_jobs=-1)
-        score = float(np.mean(scores))
+        scores = cross_val_score(
+            clf, X_k, y_train, cv=cv, scoring="accuracy", n_jobs=-1, error_score=0.0
+        )
+        from mth_ids_pipeline.core.validation import sanitize_hpo_score, score_to_bo_loss
+
+        score = sanitize_hpo_score(float(np.mean(scores)))
         trials.append({"n_components": n_comp, "kernel": kernel, "score": score})
-        return 1.0 - score
+        return score_to_bo_loss(score)
 
     result = gp_minimize(objective, space, n_calls=n_calls, random_state=random_state)
     best_n = int(result.x[0])
     best_kernel = str(result.x[1])
-    best_score = 1.0 - float(result.fun)
+    from mth_ids_pipeline.core.validation import sanitize_hpo_score
+
+    best_score = sanitize_hpo_score(1.0 - float(result.fun))
     return KpcaHpoResult(
         best_n_components=best_n,
         best_kernel=best_kernel,

@@ -24,6 +24,7 @@ try:
     )
     from mth_ids_pipeline.cli import init_paths, phase_parser, supervised_path
     from mth_ids_pipeline.config import (
+        CAN_LABEL_NAMES,
         CICIDS2017_FINE_LABEL_NAMES,
         CICIDS2017_MERGED_LABEL_NAMES,
         P02_SAMPLED_KMEANS,
@@ -41,6 +42,7 @@ except ImportError:
     )
     from mth_ids_pipeline.cli import init_paths, phase_parser, supervised_path
     from mth_ids_pipeline.config import (
+        CAN_LABEL_NAMES,
         CICIDS2017_FINE_LABEL_NAMES,
         CICIDS2017_MERGED_LABEL_NAMES,
         P02_SAMPLED_KMEANS,
@@ -59,9 +61,14 @@ def _format_duration(seconds: float) -> str:
     return f"{int(seconds // 3600)}h{int((seconds % 3600) // 60):02d}m"
 
 
-def _resolve_label_names(attacks: list[int]) -> dict[int, str]:
-    """Nomes legíveis por ID (fine se >6 classes de ataque, senão merged)."""
-    table = CICIDS2017_FINE_LABEL_NAMES if max(attacks, default=0) > 6 else CICIDS2017_MERGED_LABEL_NAMES
+def _resolve_label_names(attacks: list[int], intermediate_dir: Path | None = None) -> dict[int, str]:
+    """Nomes legíveis por ID (CAN, CICIDS merged ou fine)."""
+    if intermediate_dir and "pipeline_can" in intermediate_dir.as_posix():
+        table = CAN_LABEL_NAMES
+    elif max(attacks, default=0) > 6:
+        table = CICIDS2017_FINE_LABEL_NAMES
+    else:
+        table = CICIDS2017_MERGED_LABEL_NAMES
     return {label: table.get(label, f"Label={label}") for label in attacks}
 
 
@@ -116,6 +123,11 @@ def main() -> None:
         default=None,
         help="Notebook: default = nº de BENIGN no treino",
     )
+    parser.add_argument(
+        "--no-smote",
+        action="store_true",
+        help="CAN / artigo: não aplicar SMOTE no treino anomaly",
+    )
     parser.add_argument("--hpo-n-calls", type=int, default=20)
     parser.add_argument("--hpo-metric", choices=("accuracy", "f1"), default="f1")
     parser.add_argument("--biased-mode", default="both")
@@ -155,10 +167,10 @@ def main() -> None:
 
     attacks = requested
 
-    all_label_names = _resolve_label_names(discover_attack_labels(df))
+    all_label_names = _resolve_label_names(discover_attack_labels(df), paths.intermediate)
 
     output_root.mkdir(parents=True, exist_ok=True)
-    label_names = _resolve_label_names(attacks)
+    label_names = _resolve_label_names(attacks, paths.intermediate)
     subphases = _loao_subphases(args)
     n_attacks = len(attacks)
     n_sub = len(subphases)
@@ -238,7 +250,9 @@ def main() -> None:
                 "--random-state",
                 str(args.random_state),
             ]
-            if args.smote_target is not None:
+            if args.no_smote:
+                p9.append("--no-smote")
+            elif args.smote_target is not None:
                 p9 += ["--smote-target", str(args.smote_target)]
 
             p10: list[str] = [
@@ -252,7 +266,9 @@ def main() -> None:
                 "--hpo-metric",
                 args.hpo_metric,
             ]
-            if args.smote_target is not None:
+            if args.no_smote:
+                p10.append("--no-smote")
+            elif args.smote_target is not None:
                 p10 += ["--smote-target", str(args.smote_target)]
             if args.metrics:
                 p10 += ["--metrics", args.metrics]
@@ -266,7 +282,9 @@ def main() -> None:
                 "--biased-mode",
                 args.biased_mode,
             ]
-            if args.smote_target is not None:
+            if args.no_smote:
+                p11.append("--no-smote")
+            elif args.smote_target is not None:
                 p11 += ["--smote-target", str(args.smote_target)]
             if args.force_biased:
                 p11.append("--force-biased")

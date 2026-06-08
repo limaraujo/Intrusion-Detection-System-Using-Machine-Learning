@@ -147,8 +147,14 @@ def estimator_factory_for_supervised(
 
         def _from_joblib() -> Any:
             est = clone(template)
-            if hasattr(est, "set_params") and "random_state" in est.get_params(deep=False):
-                est.set_params(random_state=random_state)
+            params: dict[str, Any] = {"random_state": random_state}
+            # Tier 4 é binário (benigno vs ataque); template da fase 6 pode ser multi-class.
+            if isinstance(est, xgb.XGBClassifier):
+                obj = est.get_params().get("objective", "")
+                if obj and obj != "binary:logistic":
+                    params["objective"] = "binary:logistic"
+            if hasattr(est, "set_params"):
+                est.set_params(**params)
             return est
 
         if models_root is not None and models_root != intermediate_dir:

@@ -1,0 +1,77 @@
+[2026-06-08 00:27:27] === sessão iniciada — log: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\results\logs\global_anomaly_can_20260608_002727.log ===
+[2026-06-08 00:27:27] intermediate-dir: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged
+[2026-06-08 00:27:27] work-dir: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\anomaly\global
+[2026-06-08 00:27:27] protocol: can | fases: 7-11
+[2026-06-08 00:27:27] -> fase 7 (mth_ids_pipeline.phases.phase07_anomaly_datasets) ...
+[2026-06-08 00:27:27] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase07_anomaly_datasets --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports --work-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\anomaly\global --random-state 0 --mode global --test-size 0.2
+Modo global (Tabela X): treino=(359164, 10), hold-out reservado=89792 linhas (fase 13)
+
+=== LOAO [fase 7 (global binário)] ===
+  treino: rows=359164 labels={'0': 181698, '1': 177466}
+  teste:  rows=0 labels={}
+  zero-day=0 benign_test=0 regra=none_holdout_reserved
+  rótulos originais no treino (pré-binário): {'0': 181698, '3': 79475, '1': 51757, '2': 46234}
+Salvo: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\anomaly\global\a01_without_portscan.parquet (359164, 10), C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\anomaly\global\a02_portscan_only.parquet (0, 10)
+Relatorio salvo em: C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports\phase07_anomaly_datasets.json
+[2026-06-08 00:27:30] -> fase 8 (mth_ids_pipeline.phases.phase08_anomaly_features) ...
+[2026-06-08 00:27:30] >> C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase08_anomaly_features --intermediate-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged --report-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\phase_reports --work-dir C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_can_merged\anomaly\global --random-state 0 --feature-fit-scope train --fcbf-k 20 --kpca-components 10 --kpca-kernel rbf --ig-cumulative 0.9 --zscore-scope combined --optimize-ig --optimize-kpca
+Traceback (most recent call last):
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\mth_ids_pipeline\core\dimensionality_reduction.py", line 33, in fit_kpca
+    kpca.fit(X32)
+    ~~~~~~~~^^^^^
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\base.py", line 1336, in wrapper
+    return fit_method(estimator, *args, **kwargs)
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\decomposition\_kernel_pca.py", line 441, in fit
+    K = self._get_kernel(X)
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\decomposition\_kernel_pca.py", line 324, in _get_kernel
+    return pairwise_kernels(
+        X, Y, metric=self.kernel, filter_params=True, n_jobs=self.n_jobs, **params
+    )
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\utils\_param_validation.py", line 191, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\metrics\pairwise.py", line 2672, in pairwise_kernels
+    return _parallel_pairwise(X, Y, func, n_jobs, **kwds)
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\metrics\pairwise.py", line 1969, in _parallel_pairwise
+    return func(X, Y, **kwds)
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\utils\_param_validation.py", line 191, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\metrics\pairwise.py", line 1551, in sigmoid_kernel
+    K = safe_sparse_dot(X, Y.T, dense_output=True)
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\.venv\Lib\site-packages\sklearn\utils\extmath.py", line 227, in safe_sparse_dot
+    ret = a @ b
+          ~~^~~
+numpy._core._exceptions._ArrayMemoryError: Unable to allocate 481. GiB for an array with shape (359164, 359164) and data type float32
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\mth_ids_pipeline\phases\phase08_anomaly_features.py", line 576, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\mth_ids_pipeline\phases\phase08_anomaly_features.py", line 450, in main
+    kpca = fit_kpca(X_train_fcbf, n_components=n_comp, kernel=kernel)
+  File "C:\Users\Araújo Notebook\Documents\GitHub\Intrusion-Detection-System-Using-Machine-Learning\mth_ids_pipeline\core\dimensionality_reduction.py", line 35, in fit_kpca
+    raise MemoryError(
+    ...<2 lines>...
+    ) from e
+MemoryError: KernelPCA esgotou memória (~480.6 GiB necessários para 359164 amostras). Opções: fechar outros apps, usar máquina com mais RAM, ou reduzir amostras na fase 2.
+[1/6] [###-----------------] Dados carregados (fase 7) (+0.1s)
+
+=== LOAO [fase 8 (global — pré-normalização)] ===
+  treino: rows=359164 labels={'0': 181698, '1': 177466}
+  teste:  rows=0 labels={}
+  zero-day=0 benign_test=0 regra=none_holdout_reserved
+  rótulos originais no treino (pré-binário): {'0': 181698, '3': 79475, '1': 51757, '2': 46234}
+Partição global (Tabela X): treino=(359164, 10), teste interno vazio (hold-out na fase 13)
+features=9
+[2/6] [######--------------] Partição treino/teste (+0.1s)
+  [Z-score (fit treino)] shape=(359164, 9)
+  [IG 90% (8 feats)] shape=(359164, 8)
+  [FCBF k=20] shape=(359164, 8)
+  [Tabela X] teste interno vazio — transform teste omitido (hold-out na fase 13)
+[3/6] [##########----------] Z-score + IG + FCBF (fit treino, transform teste) (+21.1s)
+KernelPCA: matriz kernel estimada ~480.6 GiB (359164 amostras). Feche outros programas se ocorrer MemoryError.
+  [KPCA fit treino] shape=(359164, 8), n_components=14
+[2026-06-08 00:27:53] === sessão encerrada com erro: CalledProcessError: Command '['C:\\Users\\Araújo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\.venv\\Scripts\\python.exe', '-m', 'mth_ids_pipeline.phases.phase08_anomaly_features', '--intermediate-dir', 'C:\\Users\\Araújo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_merged', '--report-dir', 'C:\\Users\\Araújo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_merged\\phase_reports', '--work-dir', 'C:\\Users\\Araújo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_merged\\anomaly\\global', '--random-state', '0', '--feature-fit-scope', 'train', '--fcbf-k', '20', '--kpca-components', '10', '--kpca-kernel', 'rbf', '--ig-cumulative', '0.9', '--zscore-scope', 'combined', '--optimize-ig', '--optimize-kpca']' returned non-zero exit status 1. ===

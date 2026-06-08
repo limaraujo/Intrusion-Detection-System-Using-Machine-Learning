@@ -1,0 +1,207 @@
+{
+  "input_without_portscan": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\a01_without_portscan.parquet",
+  "input_portscan": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\a02_portscan_only.parquet",
+  "combined_output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\a03_combined_normalized.parquet",
+  "kpca_output": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\a04_after_kpca.parquet",
+  "test_slice_meta": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\a06_test_slice.json",
+  "artifact_paths": {
+    "scaler": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\fitted_scaler.joblib",
+    "ig_features": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\fitted_ig_features.txt",
+    "fcbf": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\fitted_fcbf.joblib",
+    "kpca": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\fitted_kpca.joblib",
+    "partition": "C:\\Users\\Ara\u00fajo Notebook\\Documents\\GitHub\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_fine\\anomaly\\a06_test_slice.json"
+  },
+  "protocol": "combined_combined",
+  "feature_fit_scope": "combined",
+  "zscore_scope": "combined",
+  "fcbf_k": 20,
+  "kpca_components": 20,
+  "kpca_kernel": "sigmoid",
+  "ig_cumulative": 0.9448370670884951,
+  "optimize_ig": true,
+  "optimize_kpca": true,
+  "zero_day_samples": 0,
+  "benign_sample_n": 0,
+  "benign_available": 18211,
+  "benign_pairing_rule": "paper_table_ix_1_to_1",
+  "random_state": 0,
+  "train_shape": {
+    "rows": 35919,
+    "cols": 9
+  },
+  "test_shape": {
+    "rows": 0,
+    "cols": 9
+  },
+  "kpca_shape": {
+    "rows": 35919,
+    "cols": 20
+  },
+  "ig_feature_count": 8,
+  "ig_hpo": {
+    "best_alpha": 0.9448370670884951,
+    "best_cv_accuracy": 0.8734652301379532,
+    "trials": [
+      {
+        "alpha": 0.8719249392852553,
+        "score": 0.870876065752106,
+        "loss": 0.12912393424789403
+      },
+      {
+        "alpha": 0.9448370670884951,
+        "score": 0.8734652301379532,
+        "loss": 0.12653476986204681
+      },
+      {
+        "alpha": 0.9488042291105996,
+        "score": 0.8734652301379532,
+        "loss": 0.12653476986204681
+      },
+      {
+        "alpha": 0.9457030042473964,
+        "score": 0.8734652301379532,
+        "loss": 0.12653476986204681
+      },
+      {
+        "alpha": 0.880833472067932,
+        "score": 0.870876065752106,
+        "loss": 0.12912393424789403
+      },
+      {
+        "alpha": 0.8114706951148829,
+        "score": 0.8520837325930515,
+        "loss": 0.14791626740694852
+      },
+      {
+        "alpha": 0.786285035897897,
+        "score": 0.8520837325930515,
+        "loss": 0.14791626740694852
+      },
+      {
+        "alpha": 0.7164467634220585,
+        "score": 0.8520837325930515,
+        "loss": 0.14791626740694852
+      },
+      {
+        "alpha": 0.7790703254282328,
+        "score": 0.8520837325930515,
+        "loss": 0.14791626740694852
+      },
+      {
+        "alpha": 0.8385228840231915,
+        "score": 0.8549791408116926,
+        "loss": 0.14502085918830743
+      },
+      {
+        "alpha": 0.99,
+        "score": 0.8706254934540013,
+        "loss": 0.1293745065459987
+      },
+      {
+        "alpha": 0.9187087215536252,
+        "score": 0.8734652301379532,
+        "loss": 0.12653476986204681
+      },
+      {
+        "alpha": 0.9720923616495482,
+        "score": 0.8734652301379532,
+        "loss": 0.12653476986204681
+      },
+      {
+        "alpha": 0.9293147322445254,
+        "score": 0.8734652301379532,
+        "loss": 0.12653476986204681
+      },
+      {
+        "alpha": 0.7000406150452945,
+        "score": 0.8520837325930515,
+        "loss": 0.14791626740694852
+      }
+    ]
+  },
+  "kpca_hpo": {
+    "best_n_components": 20,
+    "best_kernel": "sigmoid",
+    "best_cv_accuracy": 0.8677858115564249,
+    "trials": [
+      {
+        "n_components": 8,
+        "kernel": "sigmoid",
+        "score": 0.8672290148076053
+      },
+      {
+        "n_components": 8,
+        "kernel": "sigmoid",
+        "score": 0.8677857805502784
+      },
+      {
+        "n_components": 8,
+        "kernel": "poly",
+        "score": 0.8665608517326391
+      },
+      {
+        "n_components": 8,
+        "kernel": "rbf",
+        "score": 0.8653636966705911
+      },
+      {
+        "n_components": 8,
+        "kernel": "poly",
+        "score": 0.8667557137351338
+      },
+      {
+        "n_components": 8,
+        "kernel": "poly",
+        "score": 0.8658091425963368
+      },
+      {
+        "n_components": 8,
+        "kernel": "sigmoid",
+        "score": 0.8675352508877834
+      },
+      {
+        "n_components": 8,
+        "kernel": "poly",
+        "score": 0.8660040549838193
+      },
+      {
+        "n_components": 8,
+        "kernel": "sigmoid",
+        "score": 0.8670341140474276
+      },
+      {
+        "n_components": 7,
+        "kernel": "sigmoid",
+        "score": 0.86695059511647
+      },
+      {
+        "n_components": 8,
+        "kernel": "sigmoid",
+        "score": 0.8677858115564249
+      },
+      {
+        "n_components": 8,
+        "kernel": "rbf",
+        "score": 0.865140971769834
+      },
+      {
+        "n_components": 5,
+        "kernel": "rbf",
+        "score": 0.8621899036546014
+      },
+      {
+        "n_components": 5,
+        "kernel": "poly",
+        "score": 0.8643892936396782
+      },
+      {
+        "n_components": 5,
+        "kernel": "sigmoid",
+        "score": 0.8659761804582523
+      }
+    ]
+  },
+  "fcbf_feature_count": 20,
+  "phase": "phase08_anomaly_features",
+  "timestamp": 1780891788
+}
