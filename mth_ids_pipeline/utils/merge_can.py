@@ -124,6 +124,14 @@ def _parse_can_csv_line(line: str, label: str) -> dict | None:
         dlc = int(parts[2])
     except ValueError:
         return None
+    
+    # Remove as linhas rotuladas como R (pacotes normais) nos conjuntos de dados de ataque
+    flag_index = 3 + dlc
+    if flag_index < len(parts):
+        flag = parts[flag_index].strip().upper()
+        if flag == "R":
+            return None
+
     data_tokens = parts[3 : 3 + dlc]
     if len(data_tokens) < dlc:
         return None

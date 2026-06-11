@@ -1,0 +1,32 @@
+[2026-06-11 00:39:13] === sessão iniciada — log: /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/results/logs/global_anomaly_can_intrusion_20260611_003913.log ===
+[2026-06-11 00:39:13] intermediate-dir: /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged
+[2026-06-11 00:39:13] work-dir: /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged/anomaly/global
+[2026-06-11 00:39:13] protocol: can_intrusion | fases: 7-11
+[2026-06-11 00:39:13] -> fase 7 (mth_ids_pipeline.phases.phase07_anomaly_datasets) ...
+[2026-06-11 00:39:13] >> /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/.venv/bin/python -m mth_ids_pipeline.phases.phase07_anomaly_datasets --intermediate-dir /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged --report-dir /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged/phase_reports --work-dir /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged/anomaly/global --random-state 0 --mode global --test-size 0.2
+Modo global (Tabela X): treino=(26556, 11), hold-out reservado=6640 linhas (fase 13)
+
+=== LOAO [fase 7 (global binário)] ===
+  treino: rows=26556 labels={'1': 18640, '0': 7916}
+  teste:  rows=0 labels={}
+  zero-day=0 benign_test=0 regra=none_holdout_reserved
+  rótulos originais no treino (pré-binário): {'0': 7916, '4': 5239, '3': 4776, '1': 4700, '2': 3925}
+Salvo: /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged/anomaly/global/a01_without_portscan.parquet (26556, 11), /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged/anomaly/global/a02_portscan_only.parquet (0, 11)
+Relatorio salvo em: /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged/phase_reports/phase07_anomaly_datasets.json
+[2026-06-11 00:39:15] -> fase 8 (mth_ids_pipeline.phases.phase08_anomaly_features) ...
+[2026-06-11 00:39:15] >> /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/.venv/bin/python -m mth_ids_pipeline.phases.phase08_anomaly_features --intermediate-dir /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged --report-dir /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged/phase_reports --work-dir /home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_merged/anomaly/global --random-state 0 --feature-fit-scope train --fcbf-k 20 --kpca-components 10 --kpca-kernel rbf --ig-cumulative 0.9 --zscore-scope combined --optimize-kpca
+[1/6] [###-----------------] Dados carregados (fase 7) (+0.0s)
+
+=== LOAO [fase 8 (global — pré-normalização)] ===
+  treino: rows=26556 labels={'1': 18640, '0': 7916}
+  teste:  rows=0 labels={}
+  zero-day=0 benign_test=0 regra=none_holdout_reserved
+  rótulos originais no treino (pré-binário): {'0': 7916, '4': 5239, '3': 4776, '1': 4700, '2': 3925}
+Partição global (Tabela X): treino=(26556, 11), teste interno vazio (hold-out na fase 13)
+features=10
+[2/6] [######--------------] Partição treino/teste (+0.0s)
+  [Z-score (fit treino)] shape=(26556, 10)
+  [IG 90% (8 feats)] shape=(26556, 8)
+  [FCBF k=20] shape=(26556, 8)
+  [Tabela X] teste interno vazio — transform teste omitido (hold-out na fase 13)
+[3/6] [##########----------] Z-score + IG + FCBF (fit treino, transform teste) (+3.1s)
