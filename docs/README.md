@@ -14,6 +14,7 @@
 | [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) | Car-Hacking original (artigo, `merge_can --source original`) |
 | [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md) | Repack OTIDS (`merge_can --source otids`) |
 | [PROTOCOLO_UNSW_NB15.md](PROTOCOLO_UNSW_NB15.md) | UNSW-NB15 (`--protocol unsw`) |
+| [ADAPTACOES_UNSW_DESDE_CICIDS17.md](ADAPTACOES_UNSW_DESDE_CICIDS17.md) | Diferenças práticas entre CICIDS2017 e UNSW-NB15 |
 | [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) | Comparativo `paper` vs `notebook` |
 
 Cada protocolo inclui a seção **Tabelas — `report_paper_tables`** (`--table vii` / `ix` / `x` / `all`).

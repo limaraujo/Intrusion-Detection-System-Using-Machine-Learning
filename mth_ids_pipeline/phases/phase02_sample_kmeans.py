@@ -22,6 +22,7 @@ try:
         parse_minority_labels,
     )
     from mth_ids_pipeline.core.clustering import sample_kmeans as _sample_kmeans
+    from mth_ids_pipeline.core.clustering import sample_kmeans_staged as _sample_kmeans_staged
     from mth_ids_pipeline.label_profiles import minority_labels_all_attacks
     from mth_ids_pipeline.io.reporting import dataset_report, write_report
 except ImportError:
@@ -34,6 +35,7 @@ except ImportError:
         parse_minority_labels,
     )
     from mth_ids_pipeline.core.clustering import sample_kmeans as _sample_kmeans
+    from mth_ids_pipeline.core.clustering import sample_kmeans_staged as _sample_kmeans_staged
     from label_profiles import minority_labels_all_attacks
     from mth_ids_pipeline.io.reporting import dataset_report, write_report
 
@@ -71,6 +73,16 @@ def main() -> None:
             "Use --no-zscore-after-sample para desativar (ex.: CICIDS artigo)."
         ),
     )
+    parser.add_argument(
+        "--sampling-stage",
+        action="append",
+        default=[],
+        metavar="LABELS:FRAC",
+        help=(
+            "Amostragem k-means em estagios. Ex.: --sampling-stage 3,7:0.008 "
+            "--sampling-stage 5,6,4,8:0.10"
+        ),
+    )
     args = parser.parse_args()
 
     if not args.zscore_after_sample:
@@ -83,9 +95,19 @@ def main() -> None:
     paths = init_paths(args)
     df = pd.read_parquet(supervised_path(paths, P01_PREPROCESSED))
 
+    sampling_stages = _parse_sampling_stages(args.sampling_stage)
+
     if args.skip_sampling:
         sampled = df.copy()
         minority_labels: tuple[int, ...] = ()
+    elif sampling_stages:
+        minority_labels = ()
+        sampled = _sample_kmeans_staged(
+            df,
+            sampling_stages,
+            n_clusters=args.n_clusters,
+            random_state=args.random_state,
+        )
     elif args.sample_all_classes:
         minority_labels = ()
         sampled = _sample_kmeans(
@@ -135,10 +157,35 @@ def main() -> None:
             "sample_all_classes": args.sample_all_classes,
             "skip_sampling": args.skip_sampling,
             "zscore_after_sample": args.zscore_after_sample,
+            "sampling_stages": [
+                {"labels": list(labels), "frac": frac}
+                for labels, frac in sampling_stages
+            ],
             "duration_s": round(time.time() - total_start, 4),
         }
     )
     write_report(paths.reports, "phase02_sample_kmeans", report)
+
+
+def _parse_sampling_stages(values: list[str]) -> tuple[tuple[tuple[int, ...], float], ...]:
+    stages: list[tuple[tuple[int, ...], float]] = []
+    for value in values:
+        if ":" not in value:
+            raise SystemExit(
+                f"sampling-stage invalido: {value!r}. Use LABELS:FRAC, ex. 3,7:0.008"
+            )
+        labels_part, frac_part = value.split(":", 1)
+        labels = tuple(int(x.strip()) for x in labels_part.split(",") if x.strip())
+        if not labels:
+            raise SystemExit(f"sampling-stage sem labels: {value!r}")
+        try:
+            frac = float(frac_part)
+        except ValueError as exc:
+            raise SystemExit(f"frac invalido em sampling-stage: {value!r}") from exc
+        if not 0 < frac <= 1:
+            raise SystemExit(f"frac fora de (0, 1] em sampling-stage: {value!r}")
+        stages.append((labels, frac))
+    return tuple(stages)
 
 
 if __name__ == "__main__":

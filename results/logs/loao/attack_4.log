@@ -1,0 +1,185 @@
+[2026-06-10 22:34:16] === sessão iniciada — log: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\loao_run.log ===
+[2026-06-10 22:34:16] intermediate-dir: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine
+[2026-06-10 22:34:16] amostra: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\02_sampled_kmeans.parquet
+[2026-06-10 22:34:16] output-root: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao
+[2026-06-10 22:34:16] [LOAO 4/10] zero-day: DoS (Label=4) | decorrido global 21m26s
+[2026-06-10 22:34:16]   -> [fase 7 - 1/5] Partição binária LOAO ...
+[2026-06-10 22:34:16] >> C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase07_anomaly_datasets --intermediate-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine --report-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports --work-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4 --attack-label 4
+
+=== LOAO [fase 7 (split binário)] ===
+  treino: rows=26814 labels={'0': 17745, '1': 9069}
+  teste:  rows=128 labels={'1': 128}
+  zero-day=128 benign_test=0 regra=fase7_zero_day_only
+  benign_label=3
+  rótulos originais no treino (pré-binário): {'3': 17745, '0': 2677, '1': 1795, '7': 1718, '9': 1511, '2': 534, '5': 368, '6': 180, '10': 174, '8': 112}
+  zero-day label=4 excluído_do_treino=True
+Salvo: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\a01_without_portscan.parquet (26814, 44), C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\a02_portscan_only.parquet (128, 44)
+Relatorio salvo em: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports\phase07_anomaly_datasets.json
+[2026-06-10 22:34:18]   OK fase 7 concluida em 1.8s
+[2026-06-10 22:34:18]   -> [fase 8 - 2/5] Features (Z-score, IG, FCBF, KPCA) ...
+[2026-06-10 22:34:18] >> C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase08_anomaly_features --intermediate-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine --report-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports --work-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4 --random-state 0 --feature-fit-scope combined --zscore-scope combined --fcbf-k 20 --kpca-components 10 --kpca-kernel rbf --ig-cumulative 0.9 --cv-folds 10 --ig-hpo-calls 15 --kpca-hpo-calls 15 --optimize-ig --optimize-kpca
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Lib\site-packages\sklearn\utils\parallel.py:144: UserWarning: `sklearn.utils.parallel.delayed` should be used with `sklearn.utils.parallel.Parallel` to make it possible to propagate the scikit-learn configuration of the current thread to the joblib workers.
+  warnings.warn(
+[1/5] [####----------------] Dados carregados (fase 7) (+0.1s)
+
+=== LOAO [fase 8 (pré-normalização)] ===
+  treino: rows=26814 labels={'0': 17745, '1': 9069}
+  teste:  rows=256 labels={'1': 128, '0': 128}
+  zero-day=128 benign_test=128 regra=paper_table_ix_1_to_1
+  benign_label=0
+  rótulos originais no treino (pré-binário): {'3': 17745, '0': 2677, '1': 1795, '7': 1718, '9': 1511, '2': 534, '5': 368, '6': 180, '10': 174, '8': 112}
+  zero-day label=4 excluído_do_treino=True
+Partição LOAO: treino=(26814, 44), teste=(256, 44)
+features=43
+[2/5] [########------------] Partição treino/teste (+0.1s)
+BO-GP IG (treino LOAO): alpha=0.8719, CV acc=0.9940
+  [PCA] --optimize-kpca ignorado: KPCA foi substituido por PCA linear.
+  [PCA fit treino] shape=(27070, 20), n_components=10
+  [PCA transform combinado] shape=(27070, 10)
+[3/5] [############--------] Z-score (combined) + IG + FCBF + PCA (combinado) (+422.6s)
+[4/5] [################----] Artefatos e parquets salvos (+422.6s)
+Salvo: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\a03_combined_normalized.parquet shape=(27070, 44)
+Salvo: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\a04_after_kpca.parquet shape=(27070, 11)
+Meta/partição: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\a06_test_slice.json
+Relatorio salvo em: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports\phase08_anomaly_features.json
+[5/5] [####################] Relatorio JSON (+422.6s)
+[2026-06-10 22:41:23]   OK fase 8 concluida em 7m04s
+[2026-06-10 22:41:23]   -> [fase 9 - 3/5] SMOTE + CL-k-means inicial ...
+[2026-06-10 22:41:23] >> C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase09_anomaly_cluster --intermediate-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine --report-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports --work-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4 --random-state 0
+Partição KPCA: treino=(26814, 10) labels={'0': 17745, '1': 9069} | teste=(256, 10) labels={'1': 128, '0': 128}
+SMOTE notebook: classe 1 -> 17745 (alvo = n benignos no treino)
+Salvo treino pós-SMOTE: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\a05_train_after_smote.parquet
+              precision    recall  f1-score   support
+
+           0       0.95      0.94      0.94       128
+           1       0.94      0.95      0.95       128
+
+    accuracy                           0.95       256
+   macro avg       0.95      0.95      0.95       256
+weighted avg       0.95      0.95      0.95       256
+
+Accuracy: 0.9453125
+CM:
+ [[120   8]
+ [  6 122]]
+Relatorio salvo em: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports\phase09_anomaly_cluster.json
+[2026-06-10 22:41:27]   OK fase 9 concluida em 3.9s
+[2026-06-10 22:41:27]   -> [fase 10 - 4/5] BO-GP n_clusters ...
+[2026-06-10 22:41:27] >> C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase10_anomaly_cluster_hpo --intermediate-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine --report-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports --work-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4 --random-state 0 --n-calls 15 --hpo-metric f1 --metrics euclidean,manhattan,cosine,mahalanobis
+Partição KPCA: treino=(26814, 10) labels={'0': 17745, '1': 9069} | teste=(256, 10) labels={'1': 128, '0': 128}
+Baseline CL-k-means (n=8, metric=euclidean): f1=0.9457
+  trial n=30, metric=mahalanobis: f1=0.9524
+  trial n=43, metric=mahalanobis: f1=0.9647
+  trial n=32, metric=manhattan: f1=0.9647
+  trial n=16, metric=euclidean: f1=0.9531
+  trial n=15, metric=manhattan: f1=0.9453
+  trial n=41, metric=manhattan: f1=0.9647
+  trial n=21, metric=mahalanobis: f1=0.9565
+  trial n=18, metric=cosine: f1=0.9647
+  trial n=20, metric=mahalanobis: f1=0.9572
+  trial n=9, metric=mahalanobis: f1=0.9494
+  trial n=50, metric=euclidean: f1=0.9612
+  trial n=9, metric=cosine: f1=0.9562
+  trial n=26, metric=cosine: f1=0.9524
+  trial n=36, metric=manhattan: f1=0.9647
+  trial n=48, metric=manhattan: f1=0.9565
+Melhor n_clusters=43, metric=mahalanobis, f1=0.9647
+Avaliação final n=43, metric=mahalanobis: f1=0.9647
+Partição LOAO (fase 10): treino=(35490, 10) labels={'0': 17745, '1': 17745} | teste=(256, 10) labels={'1': 128, '0': 128}
+Relatório salvo em: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports\phase10_anomaly_cluster_hpo.json
+[2026-06-10 22:41:50]   OK fase 10 concluida em 23.5s
+[2026-06-10 22:41:50]   -> [fase 11 - 5/5] Biased B1/B2 ...
+[2026-06-10 22:41:50] >> C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\venv\Scripts\python.exe -m mth_ids_pipeline.phases.phase11_anomaly_biased --intermediate-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine --report-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports --work-dir C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4 --random-state 0 --biased-mode both --force-biased --optimize-p-star --p-star-n-calls 15
+k automático da fase 10: 43
+metric automática da fase 10: mahalanobis
+Biased learners: família de 'RandomForest (HPO)'
+Partição KPCA: treino=(26814, 10) labels={'0': 17745, '1': 9069} | teste=(256, 10) labels={'1': 128, '0': 128}
+Partição LOAO (fase 11): treino=(35490, 10) labels={'0': 17745, '1': 17745} | teste=(256, 10) labels={'1': 128, '0': 128}
+CL-k-means (n=43, metric=mahalanobis): accuracy=0.9648
+              precision    recall  f1-score   support
+
+           0       0.96      0.97      0.96       128
+           1       0.97      0.96      0.96       128
+
+    accuracy                           0.96       256
+   macro avg       0.96      0.96      0.96       256
+weighted avg       0.96      0.96      0.96       256
+
+DR=0.9609 FAR=0.0312 F1=0.9647
+
+Modo biased selecionado: both
+BO-GP p*: melhor=0.7905, F1=0.9647
+
+MTH-IDS anomaly (biased mode=both, p*=0.790493862930259):
+              precision    recall  f1-score   support
+
+           0       0.96      0.97      0.96       128
+           1       0.97      0.96      0.96       128
+
+    accuracy                           0.96       256
+   macro avg       0.96      0.96      0.96       256
+weighted avg       0.96      0.96      0.96       256
+
+Acc=0.9648 DR=0.9609 FAR=0.0312 F1=0.9647
+CM:
+ [[124   4]
+ [  5 123]]
+Relatório salvo em: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\reports\phase11_anomaly_biased.json
+Modelos anomaly salvos em: C:\Users\labou\projects\Intrusion-Detection-System-Using-Machine-Learning\data\pipeline_unsw_nb15_fine\anomaly\loao\attack_4\models\anomaly
+[2026-06-10 22:41:57]   OK fase 11 concluida em 6.9s
+[2026-06-10 22:41:57] Resultado - DR=0.9609, FAR=0.0312, F1=0.9647 | rodada 7m40s | restam 6 nesta execucao
+[2026-06-10 22:41:57] === sessão concluída ===

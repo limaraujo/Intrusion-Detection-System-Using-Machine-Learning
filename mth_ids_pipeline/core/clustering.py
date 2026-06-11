@@ -38,14 +38,19 @@ def sample_kmeans(
     random_state: int = 0,
     frac: float = 0.008,
     label_col: str = "Label",
-    minority_labels: tuple[int, ...] = (6, 1, 4),
+    minority_labels: tuple[int, ...] = (),
 ) -> pd.DataFrame:
-    """MiniBatchKMeans na classe majoritária + amostragem 0.8% por cluster."""
     from mth_ids_pipeline.core.preprocessing import encode_labels
 
-    encoded, _ = encode_labels(df, label_col=label_col)
-    df_minor = encoded[encoded[label_col].isin(minority_labels)]
-    df_major = encoded.drop(df_minor.index)
+    # Ordena numericamente antes de encodar para evitar ordem alfabética
+    # '10' antes de '2' no LabelEncoder padrão
+    df = df.copy()
+    original_labels = sorted(df[label_col].unique(), key=lambda x: int(str(x)))
+    label_map = {str(orig): i for i, orig in enumerate(original_labels)}
+    df[label_col] = df[label_col].astype(str).map(label_map).astype("int64")
+
+    df_minor = df[df[label_col].isin(minority_labels)]
+    df_major = df.drop(df_minor.index)
 
     X = df_major.drop(columns=[label_col]).to_numpy(dtype=np.float32)
     kmeans = MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state)
@@ -60,6 +65,49 @@ def sample_kmeans(
     result = result.drop(columns=["klabel"], errors="ignore")
     return pd.concat([result, df_minor], ignore_index=True)
 
+
+def sample_kmeans_staged(
+    df: pd.DataFrame,
+    stages: tuple[tuple[tuple[int, ...], float], ...],
+    *,
+    n_clusters: int = 1000,
+    random_state: int = 0,
+    label_col: str = "Label",
+) -> pd.DataFrame:
+    """Aplica amostragem k-means em grupos de labels, um estagio por vez."""
+    if not stages:
+        return df.copy()
+
+    out = df.copy()
+    original_labels = sorted(out[label_col].unique(), key=lambda x: int(str(x)))
+    label_map = {str(orig): i for i, orig in enumerate(original_labels)}
+    out[label_col] = out[label_col].astype(str).map(label_map).astype("int64")
+
+    for target_labels, frac in stages:
+        if not target_labels:
+            raise ValueError("sampling-stage precisa conter ao menos um label")
+        if not 0 < frac <= 1:
+            raise ValueError(f"frac do sampling-stage deve estar em (0, 1], recebido: {frac}")
+
+        target_mask = out[label_col].isin(target_labels)
+        df_target = out[target_mask].copy()
+        df_rest = out[~target_mask].copy()
+        if df_target.empty:
+            continue
+
+        X = df_target.drop(columns=[label_col]).to_numpy(dtype=np.float32)
+        stage_clusters = min(n_clusters, len(df_target))
+        kmeans = MiniBatchKMeans(n_clusters=stage_clusters, random_state=random_state)
+        kmeans.fit(X)
+        df_target["klabel"] = kmeans.labels_
+
+        sampled_target = df_target.groupby("klabel", group_keys=False).apply(
+            lambda group: group.sample(frac=frac, random_state=random_state)
+        )
+        sampled_target = sampled_target.drop(columns=["klabel"], errors="ignore")
+        out = pd.concat([sampled_target, df_rest], ignore_index=True)
+
+    return out
 
 def _validate_metric(metric: str) -> str:
     m = str(metric).lower()

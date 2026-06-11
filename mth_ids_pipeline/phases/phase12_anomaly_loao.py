@@ -27,6 +27,8 @@ try:
         CICIDS2017_FINE_LABEL_NAMES,
         CICIDS2017_MERGED_LABEL_NAMES,
         P02_SAMPLED_KMEANS,
+        UNSW_NB15_LABEL_NAMES,
+        default_benign_label,
         resolve_can_label_names,
     )
     from mth_ids_pipeline.io.reporting import write_report
@@ -45,6 +47,8 @@ except ImportError:
         CICIDS2017_FINE_LABEL_NAMES,
         CICIDS2017_MERGED_LABEL_NAMES,
         P02_SAMPLED_KMEANS,
+        UNSW_NB15_LABEL_NAMES,
+        default_benign_label,
         resolve_can_label_names,
     )
     from mth_ids_pipeline.io.reporting import write_report
@@ -68,6 +72,8 @@ def _resolve_label_names(attacks: list[int], intermediate_dir: Path | None = Non
             attack_labels=attacks,
             pipeline_path=intermediate_dir,
         )
+    elif intermediate_dir and "pipeline_unsw_nb15" in intermediate_dir.as_posix():
+        table = UNSW_NB15_LABEL_NAMES
     elif max(attacks, default=0) > 6:
         table = CICIDS2017_FINE_LABEL_NAMES
     else:
@@ -162,15 +168,19 @@ def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     path_in = supervised_path(paths, P02_SAMPLED_KMEANS)
     df = pd.read_parquet(path_in)
+    benign_label = default_benign_label(intermediate_dir=paths.intermediate)
 
     if args.attack_labels:
         requested = [int(x.strip()) for x in args.attack_labels.split(",")]
     else:
-        requested = discover_attack_labels(df)
+        requested = discover_attack_labels(df, benign_label=benign_label)
 
     attacks = requested
 
-    all_label_names = _resolve_label_names(discover_attack_labels(df), paths.intermediate)
+    all_label_names = _resolve_label_names(
+        discover_attack_labels(df, benign_label=benign_label),
+        paths.intermediate,
+    )
 
     output_root.mkdir(parents=True, exist_ok=True)
     label_names = _resolve_label_names(attacks, paths.intermediate)

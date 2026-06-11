@@ -205,26 +205,7 @@ def _run_combined_features(
     n_comp = kpca_components
     kernel = kpca_kernel
     if optimize_kpca:
-        try:
-            from mth_ids_pipeline.core.hyperparameter_optimization import optimize_kpca_params
-        except ImportError:
-            from mth_ids_pipeline.core.hyperparameter_optimization import optimize_kpca_params
-        hpo_k = optimize_kpca_params(
-            X_fcbf[:n_train],
-            y[:n_train],
-            n_calls=kpca_hpo_calls,
-            cv_folds=min(5, cv_folds),
-            random_state=random_state,
-        )
-        n_comp = hpo_k.best_n_components
-        kernel = hpo_k.best_kernel
-        kpca_hpo_report = {
-            "best_n_components": n_comp,
-            "best_kernel": kernel,
-            "best_cv_accuracy": hpo_k.best_score,
-            "trials": hpo_k.trials,
-        }
-        print(f"BO-GP KPCA: n={n_comp}, kernel={kernel}, CV acc={hpo_k.best_score:.4f}")
+        print("  [PCA] --optimize-kpca ignorado: KPCA foi substituido por PCA linear.")
 
     kpca = fit_kpca(X_fcbf, n_components=n_comp, kernel=kernel)
     X_kpca = transform_kpca(X_fcbf, kpca, split="combinado")
@@ -256,7 +237,7 @@ def main() -> None:
     warnings.filterwarnings("ignore")
     ensure_repo_on_path()
 
-    parser = phase_parser("Fase 8 — features anomaly (IG+FCBF+KPCA)")
+    parser = phase_parser("Fase 8 - features anomaly (IG+FCBF+PCA)")
     add_work_dir(parser)
     parser.add_argument("--fcbf-k", type=int, default=20)
     parser.add_argument("--kpca-components", type=int, default=10)
@@ -316,6 +297,7 @@ def main() -> None:
     round_meta_path = work / A00_LOAO_ROUND
     if round_meta_path.is_file():
         orig_meta = json.loads(round_meta_path.read_text(encoding="utf-8"))
+    benign_label = 0
 
     if is_global_table_x_protocol(orig_meta):
         train_df, test_df, partition_meta = build_global_anomaly_partition(
@@ -338,6 +320,7 @@ def main() -> None:
         train_df, test_df, partition_meta = build_loao_train_test_split(
             df1,
             df2,
+            benign_label=benign_label,
             label_col=label_col,
             benign_target=args.benign_target,
             random_state=args.random_state,
@@ -412,7 +395,7 @@ def main() -> None:
         fcbf = combined_meta["fcbf"]
         y_train = np.ravel(train_df[label_col].values)
         y_test = np.ravel(test_df[label_col].values)
-        tick(f"Z-score ({args.zscore_scope}) + IG + FCBF + KPCA (combinado)")
+        tick(f"Z-score ({args.zscore_scope}) + IG + FCBF + PCA (combinado)")
         protocol_name = f"combined_{args.zscore_scope}"
     else:
         X_train = train_df[feature_names].values
@@ -429,24 +412,7 @@ def main() -> None:
             X_test_fcbf = pipeline.transform(X_test, split="teste")
         tick("Z-score + IG + FCBF (fit treino, transform teste)")
         if args.optimize_kpca:
-            try:
-                from mth_ids_pipeline.core.hyperparameter_optimization import optimize_kpca_params
-            except ImportError:
-                from mth_ids_pipeline.core.hyperparameter_optimization import optimize_kpca_params
-            hpo_k = optimize_kpca_params(
-                X_train_fcbf,
-                y_train,
-                n_calls=args.kpca_hpo_calls,
-                cv_folds=min(5, args.cv_folds),
-                random_state=rs,
-            )
-            n_comp = hpo_k.best_n_components
-            kernel = hpo_k.best_kernel
-            kpca_hpo_report = {
-                "best_n_components": n_comp,
-                "best_kernel": kernel,
-                "best_cv_accuracy": hpo_k.best_score,
-            }
+            print("  [PCA] --optimize-kpca ignorado: KPCA foi substituido por PCA linear.")
         kpca = fit_kpca(X_train_fcbf, n_components=n_comp, kernel=kernel)
         X_train_kpca = transform_kpca(X_train_fcbf, kpca, split="treino")
         if skip_test_transform:
@@ -462,7 +428,7 @@ def main() -> None:
         )
         fcbf = pipeline.fcbf
         protocol_name = "fit_train_transform_test"
-        tick("KPCA (fit treino, transform teste)")
+        tick("PCA (fit treino, transform teste)")
 
     df_norm = pd.concat(
         [
@@ -500,6 +466,7 @@ def main() -> None:
                 "fcbf_selected_indices": pipeline.fcbf_selected_indices(),
                 "kpca_components": n_comp,
                 "kpca_kernel": kernel,
+                "dimensionality_reduction": "pca",
                 "ig_cumulative": ig_cumulative,
                 "feature_count_raw": len(feature_names),
                 "feature_count_ig": len(pipeline.ig_features),
@@ -523,6 +490,7 @@ def main() -> None:
                 "fcbf_selected_indices": list(fcbf.idx_sel) if fcbf else [],
                 "kpca_components": n_comp,
                 "kpca_kernel": kernel,
+                "dimensionality_reduction": "pca",
                 "ig_cumulative": ig_cumulative,
                 "feature_count_raw": len(feature_names),
                 "feature_count_ig": len(ig_features),
@@ -549,6 +517,7 @@ def main() -> None:
         "fcbf_k": args.fcbf_k,
         "kpca_components": n_comp,
         "kpca_kernel": kernel,
+        "dimensionality_reduction": "pca",
         "ig_cumulative": ig_cumulative,
         "optimize_ig": args.optimize_ig,
         "optimize_kpca": args.optimize_kpca,
