@@ -52,6 +52,7 @@ def build_anomaly_binary_split(
     df: pd.DataFrame,
     attack_label: int,
     *,
+    benign_label: int = 0,
     label_col: str = "Label",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -60,16 +61,22 @@ def build_anomaly_binary_split(
     Alinhado ao artigo: leave-one-attack-out — o ataque escolhido é o desconhecido.
     """
     df1 = df[df[label_col] != attack_label].copy()
-    df1.loc[df1[label_col] > 0, label_col] = 1
+    df1.loc[df1[label_col] != benign_label, label_col] = 1
+    df1.loc[df1[label_col] == benign_label, label_col] = 0
 
     df2 = df[df[label_col] == attack_label].copy()
     df2.loc[:, label_col] = 1
     return df1, df2
 
 
-def discover_attack_labels(df: pd.DataFrame, *, label_col: str = "Label") -> list[int]:
-    """Rótulos de ataque (>0) presentes no dataframe."""
-    return sorted(int(x) for x in df[label_col].unique() if int(x) > 0)
+def discover_attack_labels(
+    df: pd.DataFrame,
+    *,
+    label_col: str = "Label",
+    benign_label: int = 0,
+) -> list[int]:
+    """Rótulos de ataque presentes no dataframe, excluindo a classe benigna."""
+    return sorted(int(x) for x in df[label_col].unique() if int(x) != benign_label)
 
 
 def benign_sample_size_for_zero_day(n_zero_day: int, available_benign: int) -> int:
@@ -93,15 +100,19 @@ def loao_original_label_report(
     df: pd.DataFrame,
     attack_label: int,
     *,
+    benign_label: int = 0,
     label_col: str = "Label",
 ) -> dict[str, Any]:
     """Contagens por rótulo original antes do colapso binário (fase 7)."""
     train_orig = df[df[label_col] != attack_label]
     zero_day = df[df[label_col] == attack_label]
-    attack_labels_in_train = sorted(int(x) for x in train_orig[label_col].unique() if int(x) > 0)
+    attack_labels_in_train = sorted(
+        int(x) for x in train_orig[label_col].unique() if int(x) != benign_label
+    )
     return {
         "zero_day_label": int(attack_label),
         "zero_day_samples": int(len(zero_day)),
+        "benign_label": int(benign_label),
         "train_original_label_counts": label_value_counts_dict(train_orig[label_col]),
         "train_attack_labels_present": attack_labels_in_train,
         "zero_day_fully_excluded_from_train": int(attack_label) not in {
@@ -128,6 +139,8 @@ def log_loao_partition(
         f"  zero-day={meta.get('zero_day_samples')} benign_test={meta.get('benign_sampled')} "
         f"regra={meta.get('benign_pairing_rule')}"
     )
+    if meta.get("benign_label") is not None:
+        print(f"  benign_label={meta.get('benign_label')}")
     if meta.get("train_original_label_counts"):
         print(f"  rótulos originais no treino (pré-binário): {meta['train_original_label_counts']}")
     if meta.get("zero_day_label") is not None:
@@ -188,10 +201,16 @@ def numeric_feature_columns(df: pd.DataFrame, *, label_col: str = "Label") -> li
     return [c for c in df.columns if c != label_col and pd.api.types.is_numeric_dtype(df[c])]
 
 
-def binarize_attack_labels(df: pd.DataFrame, *, label_col: str = "Label") -> pd.DataFrame:
+def binarize_attack_labels(
+    df: pd.DataFrame,
+    *,
+    label_col: str = "Label",
+    benign_label: int = 0,
+) -> pd.DataFrame:
     """0 = BENIGN; 1 = qualquer ataque (detector global Tabela X)."""
     out = df.copy()
-    out.loc[out[label_col] > 0, label_col] = 1
+    out.loc[out[label_col] != benign_label, label_col] = 1
+    out.loc[out[label_col] == benign_label, label_col] = 0
     return out
 
 
@@ -200,6 +219,7 @@ def build_global_binary_train_split(
     *,
     test_size: float,
     random_state: int,
+    benign_label: int = 0,
     label_col: str = "Label",
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Any]]:
     """
@@ -224,11 +244,14 @@ def build_global_binary_train_split(
     holdout_raw = pd.DataFrame(X_holdout, columns=feature_cols)
     holdout_raw[label_col] = y_holdout
 
-    train_df = binarize_attack_labels(train_raw, label_col=label_col)
+    train_df = train_raw.copy()
+    train_df.loc[train_df[label_col] != benign_label, label_col] = 1
+    train_df.loc[train_df[label_col] == benign_label, label_col] = 0
     meta: dict[str, Any] = {
         "protocol": GLOBAL_TABLE_X_PROTOCOL,
         "test_size": float(test_size),
         "random_state": int(random_state),
+        "benign_label": int(benign_label),
         "n_train_rows": int(len(train_df)),
         "n_holdout_rows": int(len(holdout_raw)),
         "holdout_reserved_for_phase13": True,
@@ -236,7 +259,7 @@ def build_global_binary_train_split(
         "train_binary_label_counts": label_value_counts_dict(train_df[label_col]),
         "holdout_label_counts": label_value_counts_dict(holdout_raw[label_col]),
         "train_attack_labels_present": sorted(
-            int(x) for x in train_raw[label_col].unique() if int(x) > 0
+            int(x) for x in train_raw[label_col].unique() if int(x) != benign_label
         ),
     }
     return train_df, holdout_raw, meta
@@ -299,6 +322,7 @@ def build_loao_train_test_split(
     df1: pd.DataFrame,
     df2: pd.DataFrame,
     *,
+    benign_label: int = 0,
     label_col: str = "Label",
     benign_target: int | None = None,
     random_state: int | None = None,
@@ -310,7 +334,7 @@ def build_loao_train_test_split(
     df2_attack = df2.copy()
     n_zero_day = int(len(df2_attack))
 
-    benign_pool = train_df[train_df[label_col] == 0]
+    benign_pool = train_df[train_df[label_col] == benign_label]
     available_benign = int(len(benign_pool))
 
     if benign_target is not None:
@@ -341,6 +365,7 @@ def build_loao_train_test_split(
         "test_row_start": n_train,
         "test_row_end": n_train + n_test,
         "zero_day_samples": n_zero_day,
+        "benign_label": int(benign_label),
         "benign_sampled": sample_n,
         "benign_available_in_train": available_benign,
         "benign_pairing_rule": pairing_rule,

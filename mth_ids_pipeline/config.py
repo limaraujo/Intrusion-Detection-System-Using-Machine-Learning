@@ -157,22 +157,23 @@ INTERMEDIATE_DIR_UNSW_NB15_FINE = DATA_DIR / "pipeline_unsw_nb15_fine"
 RESULTS_DIR_UNSW_NB15 = RESULTS_DIR / "unsw_nb15"
 UNSW_NB15_KMEANS_FRAC = 0.008  # Benign: k-means 15%; ataques preservados intactos
 
-# LabelEncoder alfabético — UNSW-NB15 merged (Benign + 10 attack_cat)
+# LabelEncoder alfabético — UNSW-NB15 merged (Benign = 3 neste workspace)
 UNSW_NB15_LABEL_NAMES: dict[int, str] = {
     0: "Analysis",
     1: "Backdoors",
-    2: "Benign",
-    3: "DoS",
-    4: "Exploits",
-    5: "Fuzzers",
-    6: "Generic",
-    7: "Reconnaissance",
-    8: "Shellcode",
-    9: "Worms",
+    2: "Backdoor",
+    3: "Benign",
+    4: "DoS",
+    5: "Exploits",
+    6: "Fuzzers",
+    7: "Generic",
+    8: "Reconnaissance",
+    9: "Shellcode",
+    10: "Worms",
 }
 
-# Fase 2: todas as classes de ataque preservadas (só Benign passa pelo k-means)
-UNSW_NB15_PRESERVED_ATTACK_LABELS: tuple[int, ...] = (0, 1, 2, 9, 10)
+# Fase 2: classes preservadas intactas; só Benign passa pelo k-means
+UNSW_NB15_PRESERVED_ATTACK_LABELS: tuple[int, ...] = (4, 5, 6, 7, 8)
 
 # Fase 5: SMOTE supervisionado (docs/PROTOCOLO_UNSW_NB15.md)
 UNSW_NB15_SMOTE_TARGETS: dict[int, int] = {
@@ -208,6 +209,7 @@ CAN_DATASET_META = DATA_DIR / "can_dataset_meta.json"
 # Zero-day padrão quando fase 7 roda isolada (demo / debug)
 DEFAULT_LOAO_ATTACK_LABEL_CICIDS = 5  # PortScan (fine CICIDS2017)
 DEFAULT_LOAO_ATTACK_LABEL_CAN = 1  # DoS (CAN_LABEL_NAMES)
+DEFAULT_LOAO_ATTACK_LABEL_UNSW = 0  # primeira classe de ataque no UNSW-NB15 encodado
 
 # Log de sessão do ramo supervisionado (experiment_runner / run_supervised)
 SUPERVISED_RUN_LOG = "supervised_run.log"  # legado; logs novos vão em results/logs/
@@ -368,7 +370,29 @@ def default_loao_attack_label(
 
         if is_can_protocol(protocol):
             return DEFAULT_LOAO_ATTACK_LABEL_CAN
+        from mth_ids_pipeline.protocol import is_unsw_protocol
+
+        if is_unsw_protocol(protocol):
+            return DEFAULT_LOAO_ATTACK_LABEL_UNSW
     return DEFAULT_LOAO_ATTACK_LABEL_CICIDS
+
+
+def default_benign_label(
+    *,
+    intermediate_dir: Path | str | None = None,
+    protocol: str | None = None,
+) -> int:
+    """Rótulo encodado da classe benigna para o pipeline atual."""
+    if intermediate_dir is not None:
+        path = Path(intermediate_dir).as_posix().lower()
+        if "pipeline_unsw_nb15" in path:
+            return 3
+    if protocol is not None:
+        from mth_ids_pipeline.protocol import is_unsw_protocol
+
+        if is_unsw_protocol(protocol):
+            return 3
+    return 0
 
 
 def ensure_intermediate_dirs(intermediate_dir: Path | None = None) -> PipelinePaths:

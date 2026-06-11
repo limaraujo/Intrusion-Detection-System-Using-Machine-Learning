@@ -297,6 +297,7 @@ def main() -> None:
     round_meta_path = work / A00_LOAO_ROUND
     if round_meta_path.is_file():
         orig_meta = json.loads(round_meta_path.read_text(encoding="utf-8"))
+    benign_label = 0
 
     if is_global_table_x_protocol(orig_meta):
         train_df, test_df, partition_meta = build_global_anomaly_partition(
@@ -319,6 +320,7 @@ def main() -> None:
         train_df, test_df, partition_meta = build_loao_train_test_split(
             df1,
             df2,
+            benign_label=benign_label,
             label_col=label_col,
             benign_target=args.benign_target,
             random_state=args.random_state,

@@ -31,6 +31,7 @@ try:
         A02_PORTSCAN_ONLY,
         DEFAULT_TEST_SIZE,
         P02_SAMPLED_KMEANS,
+        default_benign_label,
         default_loao_attack_label,
     )
 except ImportError:
@@ -50,6 +51,7 @@ except ImportError:
         A02_PORTSCAN_ONLY,
         DEFAULT_TEST_SIZE,
         P02_SAMPLED_KMEANS,
+        default_benign_label,
         default_loao_attack_label,
     )
 
@@ -102,6 +104,7 @@ def main() -> None:
     )
     df = pd.read_parquet(path_in)
     label_col = "Label"
+    benign_label = default_benign_label(intermediate_dir=paths.intermediate)
 
     p1 = work / A01_WITHOUT_PORTSCAN
     p2 = work / A02_PORTSCAN_ONLY
@@ -112,6 +115,7 @@ def main() -> None:
             df,
             test_size=test_size,
             random_state=int(args.random_state),
+            benign_label=benign_label,
             label_col=label_col,
         )
         df2 = df1.iloc[0:0].copy()
@@ -127,6 +131,7 @@ def main() -> None:
             **global_meta,
             "zero_day_samples": 0,
             "benign_sampled": 0,
+            "benign_label": benign_label,
             "benign_pairing_rule": "none_holdout_reserved",
             "test_binary_label_counts": {},
         }
@@ -149,14 +154,25 @@ def main() -> None:
             **global_meta,
         }
     else:
-        orig_report = loao_original_label_report(df, attack_label, label_col=label_col)
-        df1, df2 = build_anomaly_binary_split(df, attack_label, label_col=label_col)
+        orig_report = loao_original_label_report(
+            df,
+            attack_label,
+            benign_label=benign_label,
+            label_col=label_col,
+        )
+        df1, df2 = build_anomaly_binary_split(
+            df,
+            attack_label,
+            benign_label=benign_label,
+            label_col=label_col,
+        )
         round_meta_path.write_text(
             json.dumps(_json_safe(orig_report), indent=2),
             encoding="utf-8",
         )
         phase7_meta = {
             **orig_report,
+            "benign_label": benign_label,
             "zero_day_samples": int(len(df2)),
             "benign_sampled": 0,
             "benign_pairing_rule": "fase7_zero_day_only",

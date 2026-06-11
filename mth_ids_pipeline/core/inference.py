@@ -160,8 +160,8 @@ def run_full_system_inference(
         route_stats["anomaly_attack_detected"] = int((y_anom == 1).sum())
         route_stats["anomaly_normal_confirmed"] = int((y_anom == 0).sum())
 
-    y_true_bin = (y_true > benign_label).astype(np.int64)
-    y_pred_bin = (y_final > benign_label).astype(np.int64)
+    y_true_bin = (y_true != benign_label).astype(np.int64)
+    y_pred_bin = (y_final != benign_label).astype(np.int64)
     binary_metrics = binary_dr_far_f1(y_true_bin, y_pred_bin)
 
     acc = float(accuracy_score(y_true, y_final))

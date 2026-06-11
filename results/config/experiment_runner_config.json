@@ -1,6 +1,6 @@
 {
   "run_name": "experiment_runner",
-  "timestamp": 1781137176,
+  "timestamp": 1781140367,
   "environment": {
     "python": "3.14.5 (tags/v3.14.5:5607950, May 10 2026, 10:43:50) [MSC v.1944 64 bit (AMD64)]",
     "platform": "Windows-11-10.0.26200-SP0",
@@ -33,11 +33,11 @@
       "raw_csv": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\UNSW-NB15_merged.csv",
       "intermediate_dir": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_unsw_nb15_fine",
       "minority_labels": [
-        0,
-        1,
-        2,
-        9,
-        10
+        4,
+        5,
+        6,
+        7,
+        8
       ],
       "description": "UNSW-NB15 LOAO: 9 zero-days (uma rodada por attack_cat).",
       "paired_supervised_dir": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_unsw_nb15_merged",
