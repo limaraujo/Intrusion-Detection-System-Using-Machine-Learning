@@ -1,0 +1,6 @@
+{
+  "merged_dir": "data/pipeline_can_intrusion_merged",
+  "loao_root": "/home/pedro_campelo/projects/cin/ataqueDeteccaoDeIntrusao/Intrusion-Detection-System-Using-Machine-Learning/data/pipeline_can_intrusion_fine/anomaly/loao",
+  "dataset": "can",
+  "table_x": null
+}
