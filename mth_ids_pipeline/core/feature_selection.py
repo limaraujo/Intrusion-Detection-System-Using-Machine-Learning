@@ -50,11 +50,22 @@ def numeric_feature_names(df: pd.DataFrame, label_col: str = "Label") -> list[st
     ]
 
 
-def fit_fcbf(X_train: np.ndarray, y_train: np.ndarray, *, k: int = 20):
-    """Ajusta FCBFK(k) no treino — requer FCBF_module no path."""
-    from mth_ids_pipeline.utils.FCBF_module import FCBFK
+def fit_fcbf(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    *,
+    k: int = 20,
+    alpha: float | None = None,
+    mode: str = "k",
+):
+    """Ajusta FCBF no treino — modo ``k`` (FCBFK) ou ``alpha`` (FCBF com limiar th)."""
+    from mth_ids_pipeline.utils.FCBF_module import FCBF, FCBFK
 
-    fcbf = FCBFK(k=k)
+    if mode == "alpha":
+        th = float(alpha if alpha is not None else 0.01)
+        fcbf = FCBF(th=th)
+    else:
+        fcbf = FCBFK(k=k)
     fcbf.fit(X_train, y_train)
     return fcbf
 
@@ -64,9 +75,16 @@ def transform_fcbf(fcbf, X: np.ndarray) -> np.ndarray:
     return fcbf.transform(X)
 
 
-def apply_fcbf(X: np.ndarray, y: np.ndarray, *, k: int = 20):
+def apply_fcbf(
+    X: np.ndarray,
+    y: np.ndarray,
+    *,
+    k: int = 20,
+    alpha: float | None = None,
+    mode: str = "k",
+):
     """Ajusta e transforma no mesmo conjunto (legado; preferir fit_fcbf + transform_fcbf)."""
-    fcbf = fit_fcbf(X, y, k=k)
+    fcbf = fit_fcbf(X, y, k=k, alpha=alpha, mode=mode)
     return transform_fcbf(fcbf, X), fcbf
 
 

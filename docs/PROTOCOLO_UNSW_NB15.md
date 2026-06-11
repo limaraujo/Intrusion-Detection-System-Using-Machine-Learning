@@ -162,10 +162,6 @@ python -m mth_ids_pipeline.run_anomaly --protocol unsw --loao
 
 # 2) Pipeline supervisionado
 python -m mth_ids_pipeline.run_supervised --protocol unsw
-
-# 3) Métricas (quando report_paper_tables suportar UNSW)
-python -m mth_ids_pipeline.report_paper_tables --table supervised `
-  --merged-dir data/pipeline_unsw_nb15_merged
 ```
 
 ---
@@ -238,6 +234,63 @@ data/
 
 results/
 └── unsw_nb15/
+```
+
+---
+
+## Tabelas — `report_paper_tables`
+
+Use os mesmos flags `vii` / `ix` / `x` / `all` dos outros protocolos (nomes legados do script). O relatório detecta automaticamente o dataset pela pasta `pipeline_unsw_nb15_*` e grava em `results/unsw_nb15/`.
+
+| Relatório | Flag `--table` | Equivalente no artigo |
+|-----------|----------------|------------------------|
+| Supervisionado | `vii` | — (sem tabela no artigo) |
+| LOAO | `ix` | — |
+| Sistema completo | `x` | — |
+| Todas | `all` | — |
+
+> UNSW-NB15 **não** tem referência numérica no artigo Yang et al. — as tabelas mostram só as métricas reproduzidas (sem coluna “Artigo”).
+
+### Pré-requisitos
+
+| Tabela | Flag `--table` | Pré-requisito no pipeline |
+|--------|----------------|---------------------------|
+| Supervisionado | `vii` | `06_supervised_metrics.json` (fases 1–6) |
+| LOAO | `ix` | `anomaly/loao/loao_summary.json` (fases 7–12) |
+| Sistema completo | `x` | `phase13_full_system_eval.json` (`run_global_anomaly` + `run_eval`) |
+| Todas | `all` | Os três acima |
+
+### Comandos
+
+```powershell
+# Supervisionado (multi-classe, stacking)
+python -m mth_ids_pipeline.report_paper_tables --table vii `
+  --merged-dir data/pipeline_unsw_nb15_merged
+
+# LOAO (média + por ataque)
+python -m mth_ids_pipeline.report_paper_tables --table ix `
+  --merged-dir data/pipeline_unsw_nb15_merged `
+  --loao-root data/pipeline_unsw_nb15_fine/anomaly/loao
+
+# Sistema completo (cascata tiers 1→4)
+python -m mth_ids_pipeline.report_paper_tables --table x `
+  --merged-dir data/pipeline_unsw_nb15_merged
+
+# Todas de uma vez
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_unsw_nb15_merged `
+  --loao-root data/pipeline_unsw_nb15_fine/anomaly/loao
+```
+
+**Saída:** `results/unsw_nb15/paper_comparison.json` + `results/unsw_nb15/tables_report.txt`
+
+Só imprimir no terminal (sem gravar):
+
+```powershell
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_unsw_nb15_merged `
+  --loao-root data/pipeline_unsw_nb15_fine/anomaly/loao `
+  --no-save
 ```
 
 ---

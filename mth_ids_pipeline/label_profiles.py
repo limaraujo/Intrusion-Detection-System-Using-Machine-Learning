@@ -231,8 +231,8 @@ CAN_INTRUSION_MERGED_PROFILE = LabelProfile(
     minority_labels=None,
     kmeans_sample_all_classes=True,
     description=(
-        "Car-Hacking (Tabela VI): 5 classes (BENIGN, DoS, Fuzzy, Gear, RPM); "
-        "k-means 0,8% em todas; split 80/20; sem SMOTE."
+        "Car-Hacking (Tabela VI artigo): 5 classes; k-means 0,8% em todas; "
+        "split 70/30; IG α=0,9 + 4 features; Z-score pós k-means; sem SMOTE."
     ),
 )
 
@@ -254,8 +254,8 @@ CAN_OTIDS_MERGED_PROFILE = LabelProfile(
     minority_labels=None,
     kmeans_sample_all_classes=True,
     description=(
-        "CAN-OTIDS repack (Tabela VI): 4 classes; k-means 0,8% em todas; "
-        "split 80/20; sem SMOTE."
+        "CAN-OTIDS repack (Tabela VI): 4 classes; mesmo preset can_paper "
+        "(k-means 0,8%, split 70/30, 4 features IG); sem SMOTE."
     ),
 )
 

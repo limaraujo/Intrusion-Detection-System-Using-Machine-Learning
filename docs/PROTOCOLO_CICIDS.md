@@ -196,6 +196,63 @@ results/                              # report_paper_tables (default)
 
 ---
 
+## Tabelas — `report_paper_tables`
+
+O script `report_paper_tables` usa flags legados (`vii`, `ix`, `x`, `all`). Detecta CICIDS2017 pela pasta `pipeline_mth_ids_*` e grava em `results/` (padrão).
+
+| Artigo | Flag `--table` | Conteúdo |
+|--------|----------------|----------|
+| **Tabela VII** | `vii` | Supervisionado multi-classe + stacking |
+| **Tabela IX** | `ix` | LOAO anomaly (média + por ataque) |
+| **Tabela X** | `x` | Sistema completo (cascata tiers 1→4) |
+| Todas | `all` | VII + IX + X (+ notebook, se CICIDS) |
+
+Comparação numérica vs artigo Yang et al. incluída nas três tabelas.
+
+### Pré-requisitos
+
+| Tabela | Flag `--table` | Pré-requisito no pipeline |
+|--------|----------------|---------------------------|
+| VII (supervisionado) | `vii` | `06_supervised_metrics.json` (fases 1–6) |
+| IX (LOAO) | `ix` | `anomaly/loao/loao_summary.json` (fases 7–12) |
+| X (sistema completo) | `x` | `phase13_full_system_eval.json` (`run_global_anomaly` + `run_eval`) |
+| Todas | `all` | Os três acima |
+
+### Comandos
+
+```powershell
+# Tabela VII — supervisionado
+python -m mth_ids_pipeline.report_paper_tables --table vii `
+  --merged-dir data/pipeline_mth_ids_merged
+
+# Tabela IX — LOAO
+python -m mth_ids_pipeline.report_paper_tables --table ix `
+  --merged-dir data/pipeline_mth_ids_merged `
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
+
+# Tabela X — sistema completo
+python -m mth_ids_pipeline.report_paper_tables --table x `
+  --merged-dir data/pipeline_mth_ids_merged
+
+# Todas de uma vez
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_mth_ids_merged `
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
+```
+
+**Saída:** `results/paper_comparison.json` + `results/tables_report.txt`
+
+Só imprimir no terminal (sem gravar):
+
+```powershell
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_mth_ids_merged `
+  --loao-root data/pipeline_mth_ids_fine/anomaly/loao `
+  --no-save
+```
+
+---
+
 ## Defaults dos entrypoints
 
 | Script | `--protocol` | Perfil | Pasta |
@@ -247,5 +304,5 @@ Mais: [EXECUCAO.md — Solução de problemas](EXECUCAO.md#solução-de-problema
 
 - [EXECUCAO.md](EXECUCAO.md) — comandos e bootstrap (CICIDS + CAN)
 - [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) — tabela comparativa `paper` vs `notebook`
-- [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) — CAN (índice) · [INTRUSION](PROTOCOLO_CAN_INTRUSION.md) · [OTIDS](PROTOCOLO_CAN_OTIDS.md)
+- [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) — CAN (índice) · [INTRUSION](PROTOCOLO_CAN_INTRUSION.md) · [OTIDS](PROTOCOLO_CAN_OTIDS.md) · [UNSW](PROTOCOLO_UNSW_NB15.md)
 - [PIPELINE_PHASES.md](PIPELINE_PHASES.md) — referência de cada fase

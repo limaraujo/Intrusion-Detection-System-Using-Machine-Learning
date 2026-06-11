@@ -43,8 +43,6 @@ Em `data/CAN_OTIDS_DATA/`:
 python -m mth_ids_pipeline.utils.merge_can --source otids
 python -m mth_ids_pipeline.run_supervised --protocol can_otids
 python -m mth_ids_pipeline.run_anomaly --protocol can_otids --loao
-python -m mth_ids_pipeline.report_paper_tables --table all `
-  --merged-dir data/pipeline_can_otids_merged
 ```
 
 ### LOAO — 3 zero-days
@@ -57,4 +55,56 @@ python -m mth_ids_pipeline.report_paper_tables --table all `
 
 ```powershell
 python -m mth_ids_pipeline.run_anomaly --protocol can_otids --loao --attack-labels 1,2,3
+```
+
+### Tabela X (sistema completo)
+
+```powershell
+python -m mth_ids_pipeline.run_global_anomaly --protocol can_otids
+python -m mth_ids_pipeline.run_eval `
+  --intermediate-dir data/pipeline_can_otids_merged `
+  --work-dir data/pipeline_can_otids_merged/anomaly/global
+```
+
+---
+
+## Tabelas — `report_paper_tables`
+
+Flags legados do script: `vii` = **Tabela VI**, `ix` = **Tabela VIII**, `x` = **Tabela X**. Detecção automática pela pasta `pipeline_can_otids_*`; saída em `results/can_otids/`.
+
+| Artigo | Flag `--table` | Pré-requisito |
+|--------|----------------|---------------|
+| Tabela VI (supervisionado) | `vii` | `06_supervised_metrics.json` |
+| Tabela VIII (LOAO) | `ix` | `anomaly/loao/loao_summary.json` |
+| Tabela X (sistema completo) | `x` | `phase13_full_system_eval.json` |
+| Todas | `all` | Os três acima |
+
+```powershell
+# Tabela VI — supervisionado
+python -m mth_ids_pipeline.report_paper_tables --table vii `
+  --merged-dir data/pipeline_can_otids_merged
+
+# Tabela VIII — LOAO (3 zero-days)
+python -m mth_ids_pipeline.report_paper_tables --table ix `
+  --merged-dir data/pipeline_can_otids_merged `
+  --loao-root data/pipeline_can_otids_fine/anomaly/loao
+
+# Tabela X — sistema completo
+python -m mth_ids_pipeline.report_paper_tables --table x `
+  --merged-dir data/pipeline_can_otids_merged
+
+# Todas de uma vez
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_can_otids_merged `
+  --loao-root data/pipeline_can_otids_fine/anomaly/loao
+```
+
+**Saída:** `results/can_otids/paper_comparison.json` + `results/can_otids/tables_report.txt`
+
+```powershell
+# Só terminal, sem gravar
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_can_otids_merged `
+  --loao-root data/pipeline_can_otids_fine/anomaly/loao `
+  --no-save
 ```

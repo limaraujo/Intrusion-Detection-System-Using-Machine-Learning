@@ -68,11 +68,7 @@ Saída: `data/CAN_intrusion_Dataset.csv` + `data/can_intrusion_meta.json`.
 ```powershell
 python -m mth_ids_pipeline.run_supervised --protocol can
 python -m mth_ids_pipeline.run_anomaly --protocol can --loao
-python -m mth_ids_pipeline.report_paper_tables --table all `
-  --merged-dir data/pipeline_can_intrusion_merged
 ```
-
-Relatórios vão para `results/can_intrusion/` automaticamente.
 
 ### LOAO (Tabela VIII) — 4 zero-days
 
@@ -94,6 +90,49 @@ python -m mth_ids_pipeline.run_global_anomaly --protocol can
 python -m mth_ids_pipeline.run_eval `
   --intermediate-dir data/pipeline_can_intrusion_merged `
   --work-dir data/pipeline_can_intrusion_merged/anomaly/global
+```
+
+---
+
+## Tabelas — `report_paper_tables`
+
+Flags legados do script: `vii` = **Tabela VI**, `ix` = **Tabela VIII**, `x` = **Tabela X**. Detecção automática pela pasta `pipeline_can_intrusion_*`; saída em `results/can_intrusion/`.
+
+| Artigo | Flag `--table` | Pré-requisito |
+|--------|----------------|---------------|
+| Tabela VI (supervisionado) | `vii` | `06_supervised_metrics.json` |
+| Tabela VIII (LOAO) | `ix` | `anomaly/loao/loao_summary.json` |
+| Tabela X (sistema completo) | `x` | `phase13_full_system_eval.json` |
+| Todas | `all` | Os três acima |
+
+```powershell
+# Tabela VI — supervisionado
+python -m mth_ids_pipeline.report_paper_tables --table vii `
+  --merged-dir data/pipeline_can_intrusion_merged
+
+# Tabela VIII — LOAO (4 zero-days)
+python -m mth_ids_pipeline.report_paper_tables --table ix `
+  --merged-dir data/pipeline_can_intrusion_merged `
+  --loao-root data/pipeline_can_intrusion_fine/anomaly/loao
+
+# Tabela X — sistema completo
+python -m mth_ids_pipeline.report_paper_tables --table x `
+  --merged-dir data/pipeline_can_intrusion_merged
+
+# Todas de uma vez
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_can_intrusion_merged `
+  --loao-root data/pipeline_can_intrusion_fine/anomaly/loao
+```
+
+**Saída:** `results/can_intrusion/paper_comparison.json` + `results/can_intrusion/tables_report.txt`
+
+```powershell
+# Só terminal, sem gravar
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_can_intrusion_merged `
+  --loao-root data/pipeline_can_intrusion_fine/anomaly/loao `
+  --no-save
 ```
 
 ---

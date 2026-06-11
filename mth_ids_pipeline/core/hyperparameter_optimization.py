@@ -37,6 +37,14 @@ class IgAlphaHpoResult:
 
 
 @dataclass
+class FcbfAlphaHpoResult:
+    best_alpha: float
+    best_score: float
+    trials: list[dict[str, Any]]
+    objective_metric: str = "cv_accuracy"
+
+
+@dataclass
 class KpcaHpoResult:
     best_n_components: int
     best_kernel: str
@@ -301,7 +309,9 @@ def _ig_fcbf_cv_score(
     feature_names: list[str],
     *,
     cumulative: float,
-    fcbf_k: int,
+    fcbf_k: int = 20,
+    fcbf_alpha: float | None = None,
+    fcbf_mode: str = "k",
     cv_folds: int,
     random_state: int,
 ) -> float:
@@ -319,7 +329,13 @@ def _ig_fcbf_cv_score(
     idx = [feature_names.index(n) for n in feats]
     X_ig = X_train[:, idx]
     try:
-        fcbf = fit_fcbf(X_ig, y_train, k=fcbf_k)
+        fcbf = fit_fcbf(
+            X_ig,
+            y_train,
+            k=fcbf_k,
+            alpha=fcbf_alpha,
+            mode=fcbf_mode,
+        )
         X_fcbf = transform_fcbf(fcbf, X_ig)
     except Exception:
         return 0.0
@@ -380,6 +396,54 @@ def optimize_ig_alpha(
     best_alpha = float(result.x[0])
     best_score = sanitize_hpo_score(1.0 - float(result.fun))
     return IgAlphaHpoResult(best_alpha=best_alpha, best_score=best_score, trials=trials)
+
+
+def optimize_fcbf_alpha(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    feature_names: list[str],
+    *,
+    ig_cumulative: float = 0.9,
+    n_calls: int = 15,
+    cv_folds: int = 10,
+    random_state: int = 0,
+    low: float = 0.001,
+    high: float = 0.5,
+) -> FcbfAlphaHpoResult:
+    """BO-GP (skopt) para limiar α do FCBF (classe FCBF, th=α)."""
+    from skopt import gp_minimize
+    from skopt.space import Real
+
+    from mth_ids_pipeline.core.validation import sanitize_hpo_score, score_to_bo_loss
+
+    trials: list[dict[str, Any]] = []
+
+    def objective(params: list[Any]) -> float:
+        alpha = float(params[0])
+        score = _ig_fcbf_cv_score(
+            X_train,
+            y_train,
+            feature_names,
+            cumulative=ig_cumulative,
+            fcbf_alpha=alpha,
+            fcbf_mode="alpha",
+            cv_folds=cv_folds,
+            random_state=random_state,
+        )
+        score = sanitize_hpo_score(score)
+        loss = score_to_bo_loss(score)
+        trials.append({"alpha": alpha, "score": score, "loss": loss})
+        return loss
+
+    result = gp_minimize(
+        objective,
+        [Real(low, high, name="fcbf_alpha")],
+        n_calls=n_calls,
+        random_state=random_state,
+    )
+    best_alpha = float(result.x[0])
+    best_score = sanitize_hpo_score(1.0 - float(result.fun))
+    return FcbfAlphaHpoResult(best_alpha=best_alpha, best_score=best_score, trials=trials)
 
 
 def optimize_kpca_params(

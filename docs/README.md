@@ -16,6 +16,8 @@
 | [PROTOCOLO_UNSW_NB15.md](PROTOCOLO_UNSW_NB15.md) | UNSW-NB15 (`--protocol unsw`) |
 | [ADAPTACOES_UNSW_DESDE_CICIDS17.md](ADAPTACOES_UNSW_DESDE_CICIDS17.md) | Diferenças práticas entre CICIDS2017 e UNSW-NB15 |
 | [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) | Comparativo `paper` vs `notebook` |
+
+Cada protocolo inclui a seção **Tabelas — `report_paper_tables`** (`--table vii` / `ix` / `x` / `all`).
 | [NOTA_REPRODUCAO.md](NOTA_REPRODUCAO.md) | **Limitações artigo × notebook** (texto para relatório) |
 | [REPRODUCAO_CICIDS2017_VALIDACAO.md](REPRODUCAO_CICIDS2017_VALIDACAO.md) | Validação vs artigo e notebook |
 
