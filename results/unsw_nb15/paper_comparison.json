@@ -395,16 +395,16 @@
     "dataset": "unsw_nb15",
     "protocol": "hold-out 80/20 (artigo: 70/30)",
     "accuracy_pct": {
-      "reproduced": 18.11023622047244
+      "reproduced": 90.21135515955243
     },
     "detection_rate_pct": {
-      "reproduced": 100.0
+      "reproduced": 99.96866186148543
     },
     "false_alarm_rate_pct": {
-      "reproduced": 100.0
+      "reproduced": 1.9720531890917288
     },
     "f1": {
-      "reproduced": 0.41832721552176194
+      "reproduced": 0.9731543624161074
     }
   }
 }

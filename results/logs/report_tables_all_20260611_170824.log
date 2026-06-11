@@ -55,10 +55,10 @@ TABELA X — Sistema completo no hold-out (UNSW-NB15)
 Protocolo: hold-out 80/20 (artigo: 70/30)
 Métrica            Reprod
 ------------------------------------------------------------------------
-Acc (%)             90.21
-DR (%)              99.97
-FAR (%)            1.9721
-F1                 0.9732
+Acc (%)             18.11
+DR (%)             100.00
+FAR (%)          100.0000
+F1                 0.4183
 
-Roteamento: {'n_test': 12065, 'n_stacking_normal': 8849, 'n_stacking_attack': 3216, 'anomaly_attack_detected': 149, 'anomaly_normal_confirmed': 8700}
+Roteamento: {'n_test': 12065, 'n_stacking_normal': 8849, 'n_stacking_attack': 3216, 'anomaly_attack_detected': 8849, 'anomaly_normal_confirmed': 0}
 CM: data\pipeline_unsw_nb15_merged\figures\fig_multiclass_cm.png | data\pipeline_unsw_nb15_merged\figures\fig_binary_cm.png
