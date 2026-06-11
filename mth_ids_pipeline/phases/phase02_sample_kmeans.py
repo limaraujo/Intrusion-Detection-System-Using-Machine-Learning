@@ -65,6 +65,15 @@ def main() -> None:
         help="Pula amostragem k-means e usa o dataset completo da fase 1",
     )
     parser.add_argument(
+        "--zscore-after-sample",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Z-score após amostragem k-means (padrão True; artigo CAN Tabela VI). "
+            "Use --no-zscore-after-sample para desativar (ex.: CICIDS artigo)."
+        ),
+    )
+    parser.add_argument(
         "--sampling-stage",
         action="append",
         default=[],
@@ -72,16 +81,6 @@ def main() -> None:
         help=(
             "Amostragem k-means em estagios. Ex.: --sampling-stage 3,7:0.008 "
             "--sampling-stage 5,6,4,8:0.10"
-        ),
-    )
-
-    parser.add_argument(
-        "--zscore-after-sample",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help=(
-            "Z-score após amostragem k-means (padrão True; artigo CAN Tabela VI). "
-            "Use --no-zscore-after-sample para desativar (ex.: CICIDS artigo)."
         ),
     )
     args = parser.parse_args()
@@ -157,11 +156,11 @@ def main() -> None:
             "auto_minority": args.auto_minority,
             "sample_all_classes": args.sample_all_classes,
             "skip_sampling": args.skip_sampling,
+            "zscore_after_sample": args.zscore_after_sample,
             "sampling_stages": [
                 {"labels": list(labels), "frac": frac}
                 for labels, frac in sampling_stages
             ],
-            "zscore_after_sample": args.zscore_after_sample,
             "duration_s": round(time.time() - total_start, 4),
         }
     )

@@ -1,6 +1,10 @@
 {
   "run_name": "experiment_runner",
+<<<<<<< HEAD
   "timestamp": 1781148894,
+=======
+  "timestamp": 1781140367,
+>>>>>>> b10d97662d110c37f7e97bb20d1d7ec6f86fdd7c
   "environment": {
     "python": "3.14.5 (tags/v3.14.5:5607950, May 10 2026, 10:43:50) [MSC v.1944 64 bit (AMD64)]",
     "platform": "Windows-11-10.0.26200-SP0",
@@ -17,7 +21,11 @@
     "branch": "anomaly",
     "random_state": 0,
     "from_phase": 7,
+<<<<<<< HEAD
     "to_phase": 11,
+=======
+    "to_phase": 12,
+>>>>>>> b10d97662d110c37f7e97bb20d1d7ec6f86fdd7c
     "only_phase": null,
     "skip_phase6": false,
     "run_hpo": true,
@@ -30,19 +38,31 @@
     "report_dir": null,
     "profile": {
       "kind": "fine",
-      "raw_csv": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\CAN_intrusion_Dataset.csv",
-      "intermediate_dir": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_intrusion_fine",
-      "minority_labels": null,
-      "description": "Car-Hacking LOAO (Tabela VIII): 4 zero-days (DoS, Fuzzy, Gear, RPM).",
-      "paired_supervised_dir": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_can_intrusion_merged",
-      "table_vii_profile": "can_intrusion_merged",
-      "kmeans_sample_all_classes": true
+      "raw_csv": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\UNSW-NB15_merged.csv",
+      "intermediate_dir": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_unsw_nb15_fine",
+      "minority_labels": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "description": "UNSW-NB15 LOAO: 9 zero-days (uma rodada por attack_cat).",
+      "paired_supervised_dir": "C:\\Users\\labou\\projects\\Intrusion-Detection-System-Using-Machine-Learning\\data\\pipeline_unsw_nb15_merged",
+      "table_vii_profile": "unsw_nb15_merged",
+      "kmeans_sample_all_classes": false
     },
     "test_size": 0.3,
     "cv_folds": 10,
     "hpo_on_validation": true,
-    "smote_strategy": {},
-    "kmeans_frac": 0.01,
+    "smote_strategy": {
+      "2": 1000,
+      "4": 1000,
+      "6": 1200,
+      "8": 1000,
+      "10": 500
+    },
+    "kmeans_frac": 0.008,
     "kmeans_sampling_stages": [],
     "skip_kmeans_sampling": false,
     "anomaly_benign_target": null,
@@ -76,7 +96,7 @@
     "fixed_supervised_features": null,
     "phase1_zscore": false,
     "post_sample_zscore": true,
-    "protocol_description": "Car-Hacking (Tabela VI artigo): k-means 1%, split 70/30, sem SMOTE; IG \u03b1=0,9 din\u00e2mico; Z-score p\u00f3s k-means; FCBF full; 10-fold CV; meta best-base; BO-GP KPCA/p* (anomaly)."
+    "protocol_description": "UNSW-NB15: Benign k-means 10%; ataques preservados; SMOTE Analysis/Backdoors/Shellcode\u21925000, Worms\u21922000; BO-GP \u03b1 IG; 10-fold CV; meta best-base."
   },
   "non_deterministic_components": [
     "KernelPCA (sklearn, sem random_state)",
