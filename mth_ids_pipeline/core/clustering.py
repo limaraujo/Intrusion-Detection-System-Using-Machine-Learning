@@ -14,6 +14,22 @@ from sklearn.metrics import pairwise_distances_argmin_min
 CL_KMEANS_METRICS = ("euclidean", "manhattan", "cosine", "mahalanobis")
 
 
+def _sorted_labels_for_encoding(labels) -> list:
+    label_values = list(labels)
+    try:
+        return sorted(label_values, key=lambda x: int(str(x)))
+    except ValueError:
+        return sorted(label_values, key=lambda x: str(x))
+
+
+def _encode_labels_for_sampling(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
+    out = df.copy()
+    original_labels = _sorted_labels_for_encoding(out[label_col].unique())
+    label_map = {str(orig): i for i, orig in enumerate(original_labels)}
+    out[label_col] = out[label_col].astype(str).map(label_map).astype("int64")
+    return out
+
+
 @dataclass
 class CLKmeansModel:
     """Modelo leve para variantes de distância sem suporte nativo no MiniBatchKMeans."""
@@ -40,14 +56,8 @@ def sample_kmeans(
     label_col: str = "Label",
     minority_labels: tuple[int, ...] = (),
 ) -> pd.DataFrame:
-    from mth_ids_pipeline.core.preprocessing import encode_labels
-
-    # Ordena numericamente antes de encodar para evitar ordem alfabética
-    # '10' antes de '2' no LabelEncoder padrão
-    df = df.copy()
-    original_labels = sorted(df[label_col].unique(), key=lambda x: int(str(x)))
-    label_map = {str(orig): i for i, orig in enumerate(original_labels)}
-    df[label_col] = df[label_col].astype(str).map(label_map).astype("int64")
+    # Numeric labels keep numeric order; text labels use alphabetical order.
+    df = _encode_labels_for_sampling(df, label_col)
 
     df_minor = df[df[label_col].isin(minority_labels)]
     df_major = df.drop(df_minor.index)
@@ -78,10 +88,7 @@ def sample_kmeans_staged(
     if not stages:
         return df.copy()
 
-    out = df.copy()
-    original_labels = sorted(out[label_col].unique(), key=lambda x: int(str(x)))
-    label_map = {str(orig): i for i, orig in enumerate(original_labels)}
-    out[label_col] = out[label_col].astype(str).map(label_map).astype("int64")
+    out = _encode_labels_for_sampling(df, label_col)
 
     for target_labels, frac in stages:
         if not target_labels:
