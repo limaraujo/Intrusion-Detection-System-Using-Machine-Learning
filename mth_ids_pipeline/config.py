@@ -155,7 +155,7 @@ UNSW_NB15_DATASET_META = DATA_DIR / "unsw_nb15_meta.json"
 INTERMEDIATE_DIR_UNSW_NB15_MERGED = DATA_DIR / "pipeline_unsw_nb15_merged"
 INTERMEDIATE_DIR_UNSW_NB15_FINE = DATA_DIR / "pipeline_unsw_nb15_fine"
 RESULTS_DIR_UNSW_NB15 = RESULTS_DIR / "unsw_nb15"
-UNSW_NB15_KMEANS_FRAC = 0.10  # Benign: k-means 10%; ataques preservados intactos
+UNSW_NB15_KMEANS_FRAC = 0.008  # Benign: k-means 15%; ataques preservados intactos
 
 # LabelEncoder alfabético — UNSW-NB15 merged (Benign + 10 attack_cat)
 UNSW_NB15_LABEL_NAMES: dict[int, str] = {
@@ -172,16 +172,15 @@ UNSW_NB15_LABEL_NAMES: dict[int, str] = {
 }
 
 # Fase 2: todas as classes de ataque preservadas (só Benign passa pelo k-means)
-UNSW_NB15_PRESERVED_ATTACK_LABELS: tuple[int, ...] = tuple(
-    idx for idx, name in UNSW_NB15_LABEL_NAMES.items() if name != "Benign"
-)
+UNSW_NB15_PRESERVED_ATTACK_LABELS: tuple[int, ...] = (0, 1, 2, 9, 10)
 
 # Fase 5: SMOTE supervisionado (docs/PROTOCOLO_UNSW_NB15.md)
 UNSW_NB15_SMOTE_TARGETS: dict[int, int] = {
-    0: 5_000,  # Analysis
-    1: 5_000,  # Backdoors
-    8: 5_000,  # Shellcode
-    9: 2_000,  # Worms
+    2: 1000,
+    4: 1000,
+    6: 1200,
+    8: 1000,
+    10: 500,
 }
 # Tabela VI CAN — 4 features citadas no artigo (referência; preset can_paper usa BO-GP α IG)
 CAN_PAPER_IG_FEATURES: tuple[str, ...] = ("CAN_ID", "DATA_1", "DATA_3", "DATA_5")

@@ -43,6 +43,43 @@ def encode_labels(df: pd.DataFrame, *, label_col: str = "Label") -> tuple[pd.Dat
     return out, encoder
 
 
+def _fix_hex_columns(df: pd.DataFrame, *, verbose: bool = True) -> pd.DataFrame:
+    """Converte colunas com valores hex (ex: '0x000b') para float64.
+    Funciona em qualquer dataset — se não houver hex, não faz nada.
+    """
+    for col in df.columns:
+        if df[col].dtype == object:
+            sample = df[col].dropna().head(1000)
+            has_hex = sample.apply(lambda x: isinstance(x, str) and str(x).startswith("0x")).any()
+            if has_hex:
+                df[col] = pd.to_numeric(
+                    df[col].apply(
+                        lambda x: int(str(x), 16) if isinstance(x, str) and str(x).startswith("0x") else x
+                    ),
+                    errors="coerce",
+                ).fillna(0).astype("float64")
+                if verbose:
+                    print(f"Coluna '{col}' convertida de hex para float64")
+    return df
+
+
+def _cast_numeric_columns(df: pd.DataFrame, *, label_col: str = "Label", verbose: bool = True) -> pd.DataFrame:
+    """Converte colunas object para numérico, preservando a coluna de rótulo."""
+    df = df.copy()
+    for col in df.columns:
+        if col == label_col:
+            continue
+        if df[col].dtype == object:
+            # Trata strings vazias ou espaços como NaN antes de converter
+            cleaned = df[col].replace(r"^\s*$", np.nan, regex=True)
+            coerced = pd.to_numeric(cleaned, errors="coerce")
+            if coerced.notna().any():
+                df[col] = coerced
+                if verbose:
+                    print(f"Coluna '{col}' convertida para numérico (coerce) e valores não numéricos definidos como NaN")
+    return df
+
+
 def load_and_preprocess(raw_csv: Path, *, label_col: str = "Label", verbose: bool = True) -> pd.DataFrame:
     """Fase 1: load CSV + Z-score + fillna(0)."""
     warnings.filterwarnings("ignore")
@@ -54,6 +91,10 @@ def load_and_preprocess(raw_csv: Path, *, label_col: str = "Label", verbose: boo
         print(df[label_col].value_counts())
         print(f"Dataset carregado em {time.time() - start:.2f}s")
         print(f"Shape original: {df.shape}")
+
+    df = _fix_hex_columns(df, verbose=verbose)
+    df = _cast_numeric_columns(df, label_col=label_col, verbose=verbose)
+
     df = zscore_normalize(df, label_col=label_col)
     if verbose:
         print(f"Pré-processamento concluído. Shape final: {df.shape}")

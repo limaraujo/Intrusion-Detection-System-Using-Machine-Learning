@@ -102,6 +102,7 @@ class ExperimentConfig:
     hpo_on_validation: bool = False
     smote_strategy: dict[int, int] = field(default_factory=dict)
     kmeans_frac: float = 0.008
+    kmeans_sampling_stages: tuple[str, ...] = ()
     skip_kmeans_sampling: bool = False
     anomaly_benign_target: int | None = None
     anomaly_smote_target: int | None = None
@@ -219,7 +220,10 @@ def _phase_args(phase: int, cfg: ExperimentConfig) -> list[str]:
             "--frac", str(cfg.kmeans_frac),
             "--random-state", str(cfg.random_state),
         ]
-        if cfg.skip_kmeans_sampling:
+        if cfg.kmeans_sampling_stages:
+            for stage in cfg.kmeans_sampling_stages:
+                extra += ["--sampling-stage", stage]
+        elif cfg.skip_kmeans_sampling:
             extra.append("--skip-sampling")
         elif getattr(p, "kmeans_sample_all_classes", False):
             extra.append("--sample-all-classes")
@@ -629,6 +633,16 @@ def build_arg_parser(description: str) -> argparse.ArgumentParser:
     p.add_argument("--intermediate-dir", type=Path, default=None)
     p.add_argument("--raw-csv", type=Path, default=None)
     p.add_argument("--random-state", type=int, default=DEFAULT_RANDOM_STATE)
+    p.add_argument(
+        "--kmeans-stage",
+        action="append",
+        default=[],
+        metavar="LABELS:FRAC",
+        help=(
+            "Fase 2: amostragem k-means em estagios. "
+            "Ex.: --kmeans-stage 3,7:0.008 --kmeans-stage 5,6,4,8:0.10"
+        ),
+    )
     p.add_argument("--no-hpo", action="store_true")
     p.add_argument("--skip-phase6", action="store_true")
     p.add_argument(
@@ -666,6 +680,7 @@ def config_from_args(args: argparse.Namespace, *, branch: str) -> ExperimentConf
         to_phase=args.to,
         only_phase=args.only,
         random_state=args.random_state,
+        kmeans_sampling_stages=tuple(args.kmeans_stage or ()),
         run_loao=args.loao or args.to >= 12,
     )
     if args.intermediate_dir:

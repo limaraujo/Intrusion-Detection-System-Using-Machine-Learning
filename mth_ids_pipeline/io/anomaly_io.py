@@ -11,7 +11,6 @@ import joblib
 import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE
-from sklearn.decomposition import KernelPCA
 from sklearn.preprocessing import StandardScaler
 
 from mth_ids_pipeline.config import (
@@ -362,7 +361,7 @@ def save_anomaly_fitted_artifacts(
     scaler: StandardScaler,
     ig_features: list[str],
     fcbf,
-    kpca: KernelPCA,
+    kpca: Any,
     partition_meta: dict[str, Any],
 ) -> dict[str, str]:
     """Persiste scaler, IG, FCBF, KPCA e metadados de partição."""
