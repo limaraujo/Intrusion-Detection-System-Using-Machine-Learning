@@ -4,7 +4,7 @@ Fase 11 (anomaly tier 4): CL-k-means + biased classifiers B1/B2 + threshold p* (
 - k padrão: lido de phase10_anomaly_cluster_hpo.json
 - B1/B2: mesma **família** (RF/XGB/DT/ET) do melhor modelo da Tabela VII
   (``06_supervised_metrics.json`` no merged, copiado para fine no bootstrap — ver
-  ``docs/PASTAS_E_BOOTSTRAP.md``)
+  ``docs/EXECUCAO.md``)
 - Gate: aplica biased só se melhorar F1 no hold-out interno do treino
 """
 
@@ -97,6 +97,11 @@ def main() -> None:
         help="Notebook: default = nº de BENIGN no treino",
     )
     parser.add_argument(
+        "--no-smote",
+        action="store_true",
+        help="CAN / artigo: não aplicar SMOTE no treino anomaly",
+    )
+    parser.add_argument(
         "--metric",
         choices=("euclidean", "manhattan", "cosine", "mahalanobis"),
         default=None,
@@ -131,13 +136,18 @@ def main() -> None:
     metric, metric_source = _resolve_metric(report_dir, args.metric)
     metrics_path = paths.intermediate / "06_supervised_metrics.json"
     best_model_name = pick_best_supervised_model(metrics_path)
-    factory = estimator_factory_for_supervised(best_model_name, random_state=args.random_state)
+    factory = estimator_factory_for_supervised(
+        best_model_name,
+        random_state=args.random_state,
+        intermediate_dir=paths.intermediate,
+    )
     print(f"Biased learners: família de '{best_model_name}'")
 
     X_train, X_test, y_train, y_test, did_smote = load_anomaly_splits(
         work,
         smote_target=args.smote_target,
         random_state=args.random_state,
+        no_smote=args.no_smote,
     )
     train_label_counts = label_value_counts_dict(pd.Series(y_train))
     test_label_counts = label_value_counts_dict(pd.Series(y_test))

@@ -44,6 +44,48 @@ def supervised_models_dir(intermediate_dir: Path) -> Path:
     return intermediate_dir / MODELS_SUPERVISED_DIR
 
 
+_SUPERVISED_FAMILY_FILES: dict[str, str] = {
+    "dt": SUP_DT,
+    "rf": SUP_RF,
+    "et": SUP_ET,
+    "xgb": SUP_XGB,
+}
+
+
+def resolve_supervised_models_dir(intermediate_dir: Path) -> Path:
+    """
+    Pasta ``models/supervised`` com artefatos da fase 6.
+
+    LOAO (fine) só recebe ``06_supervised_metrics.json`` no bootstrap; os ``.joblib``
+    ficam em ``pipeline_mth_ids_merged`` — faz fallback automático.
+    """
+    from mth_ids_pipeline.config import INTERMEDIATE_DIR_MERGED
+
+    local = supervised_models_dir(intermediate_dir)
+    if (local / SUP_ET).is_file():
+        return intermediate_dir
+    if intermediate_dir != INTERMEDIATE_DIR_MERGED:
+        merged_models = supervised_models_dir(INTERMEDIATE_DIR_MERGED)
+        if (merged_models / SUP_ET).is_file():
+            return INTERMEDIATE_DIR_MERGED
+    return intermediate_dir
+
+
+def load_supervised_classifier_template(intermediate_dir: Path, family: str) -> Any:
+    """Carrega um classificador base (dt/rf/et/xgb) treinado na fase 6."""
+    key = family.strip().lower()
+    if key not in _SUPERVISED_FAMILY_FILES:
+        raise ValueError(f"Família supervisionada desconhecida: {family!r}. Use dt, rf, et ou xgb.")
+    root = resolve_supervised_models_dir(intermediate_dir)
+    path = supervised_models_dir(root) / _SUPERVISED_FAMILY_FILES[key]
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Modelo supervisionado não encontrado: {path}\n"
+            "Execute a fase 6 em pipeline_mth_ids_merged antes da fase 11."
+        )
+    return joblib.load(path)
+
+
 def anomaly_models_dir(work_dir: Path) -> Path:
     return work_dir / MODELS_ANOMALY_DIR
 

@@ -48,50 +48,57 @@ def pick_best_supervised_model(metrics_path: Path) -> str:
     rows = json.loads(metrics_path.read_text(encoding="utf-8"))
     if not rows:
         return "RandomForest (HPO)"
-    best = max(rows, key=lambda r: float(r.get("f1_weighted", 0)))
+    base_rows = [r for r in rows if "stacking" not in str(r.get("model", "")).lower()]
+    pool = base_rows or rows
+    best = max(pool, key=lambda r: float(r.get("f1_weighted", 0)))
     return str(best["model"])
 
 
-def estimator_factory_for_supervised(
-    model_name: str,
-    *,
-    random_state: int = 0,
-) -> Callable[[], Any]:
-    """
-    Factory do melhor learner do tier 1–2 (mesma família do artigo), para treinar B1/B2
-    no espaço de features do anomaly (KPCA).
-    """
+def resolve_supervised_family_key(model_name: str) -> str:
+    """Mapeia nome da fase 6 (ou stacking meta) para dt/rf/et/xgb."""
     name = model_name.lower()
-
-    if "randomforest" in name or name.startswith("rf"):
-        return lambda: RandomForestClassifier(
-            n_estimators=71,
-            min_samples_leaf=1,
-            max_depth=46,
-            min_samples_split=9,
-            max_features=20,
-            criterion="entropy",
-            random_state=random_state,
-        )
-    if "extratrees" in name or "extra" in name:
-        return lambda: ExtraTreesClassifier(
-            n_estimators=71,
-            min_samples_leaf=1,
-            max_depth=46,
-            min_samples_split=9,
-            max_features=20,
-            criterion="entropy",
-            random_state=random_state,
-        )
+    if "extratrees" in name or "extra trees" in name:
+        return "et"
+    if "randomforest" in name or "random forest" in name or name.startswith("rf"):
+        return "rf"
+    if "decisiontree" in name or "decision tree" in name or name.startswith("dt"):
+        return "dt"
     if "xgboost" in name or "xgb" in name:
-        return lambda: xgb.XGBClassifier(
+        return "xgb"
+    return "rf"
+
+
+def _notebook_default_estimator(family: str, *, random_state: int) -> Any:
+    """Fallback quando ``models/supervised/*.joblib`` não existem (--no-hpo notebook)."""
+    if family == "et":
+        return ExtraTreesClassifier(
+            n_estimators=53,
+            min_samples_leaf=1,
+            max_depth=31,
+            min_samples_split=5,
+            max_features=20,
+            criterion="entropy",
+            random_state=random_state,
+        )
+    if family == "rf":
+        return RandomForestClassifier(
+            n_estimators=71,
+            min_samples_leaf=1,
+            max_depth=46,
+            min_samples_split=9,
+            max_features=20,
+            criterion="entropy",
+            random_state=random_state,
+        )
+    if family == "xgb":
+        return xgb.XGBClassifier(
             learning_rate=0.7340229699980686,
             n_estimators=70,
             max_depth=14,
             random_state=random_state,
         )
-    if "decisiontree" in name or name.startswith("dt"):
-        return lambda: DecisionTreeClassifier(
+    if family == "dt":
+        return DecisionTreeClassifier(
             min_samples_leaf=2,
             max_depth=47,
             min_samples_split=3,
@@ -99,7 +106,65 @@ def estimator_factory_for_supervised(
             criterion="gini",
             random_state=random_state,
         )
-    return lambda: RandomForestClassifier(n_estimators=100, random_state=random_state)
+    return RandomForestClassifier(n_estimators=100, random_state=random_state)
+
+
+def estimator_factory_for_supervised(
+    model_name: str,
+    *,
+    random_state: int = 0,
+    intermediate_dir: Path | None = None,
+) -> Callable[[], Any]:
+    """
+    Factory do melhor learner do tier 1–2 (mesma família do artigo), para treinar B1/B2
+    no espaço de features do anomaly (KPCA).
+
+    Com ``intermediate_dir``, clona hiperparâmetros dos ``.joblib`` da fase 6
+    (fallback para ``pipeline_mth_ids_merged`` no LOAO fine).
+    """
+    family = resolve_supervised_family_key(model_name)
+    template: Any | None = None
+    models_root: Path | None = None
+
+    if intermediate_dir is not None:
+        try:
+            from mth_ids_pipeline.io.model_io import (
+                load_supervised_classifier_template,
+                resolve_supervised_models_dir,
+            )
+        except ImportError:
+            from mth_ids_pipeline.io.model_io import (
+                load_supervised_classifier_template,
+                resolve_supervised_models_dir,
+            )
+        try:
+            template = load_supervised_classifier_template(intermediate_dir, family)
+            models_root = resolve_supervised_models_dir(intermediate_dir)
+        except FileNotFoundError:
+            template = None
+
+    if template is not None:
+
+        def _from_joblib() -> Any:
+            est = clone(template)
+            params: dict[str, Any] = {"random_state": random_state}
+            # Tier 4 é binário (benigno vs ataque); template da fase 6 pode ser multi-class.
+            if isinstance(est, xgb.XGBClassifier):
+                obj = est.get_params().get("objective", "")
+                if obj and obj != "binary:logistic":
+                    params["objective"] = "binary:logistic"
+            if hasattr(est, "set_params"):
+                est.set_params(**params)
+            return est
+
+        if models_root is not None and models_root != intermediate_dir:
+            print(
+                f"Biased factory: hiperparâmetros de {family}.joblib "
+                f"← {models_root / 'models' / 'supervised'}"
+            )
+        return _from_joblib
+
+    return lambda: _notebook_default_estimator(family, random_state=random_state)
 
 
 def collect_train_errors(

@@ -1,6 +1,8 @@
 """
-Fase 1: carrega CICIDS2017, normalização Z-score nas colunas numéricas,
-preenche NaN com 0. Mantém a coluna Label como no CSV original.
+Fase 1: carrega CSV bruto, Z-score opcional nas colunas numéricas, preenche NaN com 0.
+
+CAN (artigo Yang et al., 2022): **sem** Z-score nesta fase — normalização após k-means (fase 2).
+CICIDS / UNSW: Z-score no carregamento (padrão).
 
 Saída:
 data/pipeline_mth_ids/01_preprocessed.parquet
@@ -16,10 +18,10 @@ import pandas as pd
 
 try:
     from mth_ids_pipeline.cli import init_paths, phase_parser, supervised_path
-    from mth_ids_pipeline.config import DEFAULT_RAW_CSV, P01_PREPROCESSED
+    from mth_ids_pipeline.config import DEFAULT_RAW_CSV, P01_PREPROCESSED, is_can_automotive_context
 except ImportError:
     from mth_ids_pipeline.cli import init_paths, phase_parser, supervised_path
-    from mth_ids_pipeline.config import DEFAULT_RAW_CSV, P01_PREPROCESSED
+    from mth_ids_pipeline.config import DEFAULT_RAW_CSV, P01_PREPROCESSED, is_can_automotive_context
 
 try:
     from mth_ids_pipeline.io.reporting import dataset_report, write_report
@@ -33,8 +35,8 @@ except ImportError:
     from mth_ids_pipeline.core.preprocessing import load_and_preprocess as _load_and_preprocess
 
 
-def load_and_preprocess(raw_csv: Path) -> pd.DataFrame:
-    return _load_and_preprocess(raw_csv)
+def load_and_preprocess(raw_csv: Path, *, zscore: bool = True) -> pd.DataFrame:
+    return _load_and_preprocess(raw_csv, zscore=zscore)
 
 
 def main() -> None:
@@ -42,11 +44,36 @@ def main() -> None:
 
     parser = phase_parser("Fase 1 — load + preprocess")
     parser.add_argument("--input", type=Path, default=DEFAULT_RAW_CSV, help="CSV bruto")
+    parser.add_argument(
+        "--no-zscore",
+        action="store_true",
+        help="Não aplicar Z-score no carregamento (padrão automático para datasets CAN)",
+    )
+    parser.add_argument(
+        "--zscore",
+        action="store_true",
+        help="Forçar Z-score no carregamento (sobrescreve detecção CAN)",
+    )
     args = parser.parse_args()
 
     paths = init_paths(args)
     out = supervised_path(paths, P01_PREPROCESSED)
-    df = load_and_preprocess(args.input)
+    is_can = is_can_automotive_context(
+        intermediate_dir=args.intermediate_dir,
+        input_path=args.input,
+    )
+    if args.zscore:
+        apply_zscore = True
+    elif args.no_zscore:
+        apply_zscore = False
+    else:
+        apply_zscore = not is_can
+    if is_can and not apply_zscore:
+        print(
+            "CAN detectado: Z-score adiado para a fase 2 (pós k-means), "
+            "conforme protocolo Yang et al. (2022)."
+        )
+    df = load_and_preprocess(args.input, zscore=apply_zscore)
 
     # Salva parquet
     print("Salvando arquivo parquet...")
@@ -68,6 +95,8 @@ def main() -> None:
             "input": str(args.input),
             "output": str(out),
             "feature_count": len(feature_cols),
+            "zscore": apply_zscore,
+            "can_context": is_can,
             "duration_s": round(time.time() - total_start, 4),
         }
     )

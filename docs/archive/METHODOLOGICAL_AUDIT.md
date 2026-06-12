@@ -53,7 +53,7 @@ flowchart TB
 | Aspecto | Artigo | Notebook | Pipeline |
 |---------|--------|----------|----------|
 | Externo | CICIDS2017 completo (~2.8M fluxos, 80 features) | `./data/CICIDS2017.csv` ou amostra `CICIDS2017_sample_km.csv` | Configurável via `--raw-csv` |
-| Intra-veicular | CAN-intrusion-dataset | Mencionado, não executado no notebook | `utils/merge_can.py` |
+| Intra-veicular | CAN-OTIDS | Mencionado, não executado no notebook | `utils/merge_can.py` |
 | Amostragem | k-means cluster sampling 0.8% | **Confirmada** | **Confirmada** |
 | Validação externa | 10-fold CV (Tabela VII) | Hold-out 20% estratificado | Hold-out 20% (**diverge do artigo**) |
 

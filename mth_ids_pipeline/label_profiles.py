@@ -7,7 +7,7 @@ Perfis de rótulos CICIDS2017 para o pipeline MTH-IDS.
 Fase 2 fine: preserva inteiros os fine cuja família merged está no ``df_minor`` do notebook
 (Bot, Infiltration, WebAttack), não “todos os rótulos que o merge não agrega” (PortScan
 é amostrado). Ver ``compute_fine_minority_labels_notebook_aligned()`` e
-``docs/PASTAS_E_BOOTSTRAP.md``.
+``docs/EXECUCAO.md``.
 """
 
 from __future__ import annotations
@@ -16,7 +16,21 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from mth_ids_pipeline.config import DATA_DIR, CICIDS2017_FINE_LABEL_NAMES, DEFAULT_MINORITY_LABELS
+from mth_ids_pipeline.config import (
+    CICIDS2017_FINE_LABEL_NAMES,
+    DATA_DIR,
+    DEFAULT_MINORITY_LABELS,
+    DEFAULT_RAW_CSV_CAN_INTRUSION,
+    DEFAULT_RAW_CSV_CAN_OTIDS,
+    DEFAULT_RAW_CSV_UNSW_NB15,
+    INTERMEDIATE_DIR_CAN_INTRUSION_FINE,
+    INTERMEDIATE_DIR_CAN_INTRUSION_MERGED,
+    INTERMEDIATE_DIR_CAN_OTIDS_FINE,
+    INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
+    INTERMEDIATE_DIR_UNSW_NB15_FINE,
+    INTERMEDIATE_DIR_UNSW_NB15_MERGED,
+    UNSW_NB15_PRESERVED_ATTACK_LABELS,
+)
 
 # Separador corrompido quando UTF-8 (U+FFFD) é lido com encoding="latin1"
 _WEB_ATTACK_SEP_MOJIBAKE = "\xef\xbf\xbd"
@@ -75,10 +89,14 @@ class LabelProfile:
     intermediate_dir: Path
     minority_labels: tuple[int, ...] | None
     description: str
+    paired_supervised_dir: Path | None = None
+    table_vii_profile: str | None = None
+    # CAN: k-means 0,8% em BENIGN + ataques (nenhuma classe preservada intacta).
+    kmeans_sample_all_classes: bool = False
 
     @property
     def auto_minority(self) -> bool:
-        return self.minority_labels is None
+        return self.minority_labels is None and not self.kmeans_sample_all_classes
 
     def minority_labels_csv(self) -> str | None:
         if self.minority_labels is None:
@@ -153,8 +171,35 @@ def get_label_profile(name: str) -> LabelProfile:
         return MERGED_PROFILE
     if key in (LabelProfileKind.FINE.value, "fine-grained", "finegrained", "14"):
         return FINE_PROFILE
+    if key in (
+        "can_intrusion_merged",
+        "can-intrusion-merged",
+        "can_merged",
+        "can-merged",
+        "can_sup",
+        "can",
+    ):
+        return CAN_INTRUSION_MERGED_PROFILE
+    if key in (
+        "can_intrusion_fine",
+        "can-intrusion-fine",
+        "can_fine",
+        "can-fine",
+        "can_loao",
+    ):
+        return CAN_INTRUSION_FINE_PROFILE
+    if key in ("can_otids_merged", "can-otids-merged"):
+        return CAN_OTIDS_MERGED_PROFILE
+    if key in ("can_otids_fine", "can-otids-fine", "can_otids_loao"):
+        return CAN_OTIDS_FINE_PROFILE
+    if key in ("unsw_nb15_merged", "unsw-nb15-merged", "unsw_merged", "unsw"):
+        return UNSW_NB15_MERGED_PROFILE
+    if key in ("unsw_nb15_fine", "unsw-nb15-fine", "unsw_fine", "unsw_loao"):
+        return UNSW_NB15_FINE_PROFILE
     raise ValueError(
-        f"Perfil desconhecido: {name!r}. Use 'merged' ou 'fine'."
+        f"Perfil desconhecido: {name!r}. "
+        "Use merged/fine, can_intrusion_merged/fine, can_otids_merged/fine "
+        "ou unsw_nb15_merged/fine."
     )
 
 
@@ -179,9 +224,88 @@ FINE_PROFILE = LabelProfile(
     ),
 )
 
+CAN_INTRUSION_MERGED_PROFILE = LabelProfile(
+    kind=LabelProfileKind.MERGED,
+    raw_csv=DEFAULT_RAW_CSV_CAN_INTRUSION,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_INTRUSION_MERGED,
+    minority_labels=None,
+    kmeans_sample_all_classes=True,
+    description=(
+        "Car-Hacking (Tabela VI artigo): 5 classes; k-means 0,8% em todas; "
+        "split 70/30; IG α=0,9 + 4 features; Z-score pós k-means; sem SMOTE."
+    ),
+)
+
+CAN_INTRUSION_FINE_PROFILE = LabelProfile(
+    kind=LabelProfileKind.FINE,
+    raw_csv=DEFAULT_RAW_CSV_CAN_INTRUSION,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_INTRUSION_FINE,
+    minority_labels=None,
+    kmeans_sample_all_classes=True,
+    paired_supervised_dir=INTERMEDIATE_DIR_CAN_INTRUSION_MERGED,
+    table_vii_profile="can_intrusion_merged",
+    description="Car-Hacking LOAO (Tabela VIII): 4 zero-days (DoS, Fuzzy, Gear, RPM).",
+)
+
+CAN_OTIDS_MERGED_PROFILE = LabelProfile(
+    kind=LabelProfileKind.MERGED,
+    raw_csv=DEFAULT_RAW_CSV_CAN_OTIDS,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
+    minority_labels=None,
+    kmeans_sample_all_classes=True,
+    description=(
+        "CAN-OTIDS repack (Tabela VI): 4 classes; mesmo preset can_paper "
+        "(k-means 0,8%, split 70/30, 4 features IG); sem SMOTE."
+    ),
+)
+
+CAN_OTIDS_FINE_PROFILE = LabelProfile(
+    kind=LabelProfileKind.FINE,
+    raw_csv=DEFAULT_RAW_CSV_CAN_OTIDS,
+    intermediate_dir=INTERMEDIATE_DIR_CAN_OTIDS_FINE,
+    minority_labels=None,
+    kmeans_sample_all_classes=True,
+    paired_supervised_dir=INTERMEDIATE_DIR_CAN_OTIDS_MERGED,
+    table_vii_profile="can_otids_merged",
+    description="CAN-OTIDS LOAO (Tabela VIII): 3 zero-days (DoS, Fuzzy, Impersonation).",
+)
+
+# Aliases legados
+CAN_MERGED_PROFILE = CAN_INTRUSION_MERGED_PROFILE
+CAN_FINE_PROFILE = CAN_INTRUSION_FINE_PROFILE
+
+UNSW_NB15_MERGED_PROFILE = LabelProfile(
+    kind=LabelProfileKind.MERGED,
+    raw_csv=DEFAULT_RAW_CSV_UNSW_NB15,
+    intermediate_dir=INTERMEDIATE_DIR_UNSW_NB15_MERGED,
+    minority_labels=UNSW_NB15_PRESERVED_ATTACK_LABELS,
+    description=(
+        "UNSW-NB15 merged: Benign k-means 10%; Generic/Exploits/Fuzzers/DoS/Reconnaissance "
+        "preservados; SMOTE Analysis/Backdoors/Shellcode→5000, Worms→2000."
+    ),
+)
+
+UNSW_NB15_FINE_PROFILE = LabelProfile(
+    kind=LabelProfileKind.FINE,
+    raw_csv=DEFAULT_RAW_CSV_UNSW_NB15,
+    intermediate_dir=INTERMEDIATE_DIR_UNSW_NB15_FINE,
+    minority_labels=UNSW_NB15_PRESERVED_ATTACK_LABELS,
+    paired_supervised_dir=INTERMEDIATE_DIR_UNSW_NB15_MERGED,
+    table_vii_profile="unsw_nb15_merged",
+    description="UNSW-NB15 LOAO: 9 zero-days (uma rodada por attack_cat).",
+)
+
 ALL_PROFILES: dict[str, LabelProfile] = {
     LabelProfileKind.MERGED.value: MERGED_PROFILE,
     LabelProfileKind.FINE.value: FINE_PROFILE,
+    "can_intrusion_merged": CAN_INTRUSION_MERGED_PROFILE,
+    "can_intrusion_fine": CAN_INTRUSION_FINE_PROFILE,
+    "can_otids_merged": CAN_OTIDS_MERGED_PROFILE,
+    "can_otids_fine": CAN_OTIDS_FINE_PROFILE,
+    "can_merged": CAN_INTRUSION_MERGED_PROFILE,
+    "can_fine": CAN_INTRUSION_FINE_PROFILE,
+    "unsw_nb15_merged": UNSW_NB15_MERGED_PROFILE,
+    "unsw_nb15_fine": UNSW_NB15_FINE_PROFILE,
 }
 
 

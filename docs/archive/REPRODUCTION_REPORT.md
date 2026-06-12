@@ -112,7 +112,7 @@ python -m mth_ids_pipeline.experiment_runner \
 
 ### Dataset sugerido para validação cruzada
 
-**CAN-intrusion-dataset** (intra-veicular, usado no artigo Tabela VI/VIII):
+**CAN-OTIDS** (intra-veicular, usado no artigo Tabela VI/VIII):
 - Justificativa: segundo benchmark do artigo; scripts `utils/merge_can.py` já presentes
 - Adaptações: remover timestamp; 4 features IG-FCBF; validação leave-one-attack-out
 

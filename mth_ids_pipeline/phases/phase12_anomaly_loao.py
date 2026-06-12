@@ -27,8 +27,12 @@ try:
         CICIDS2017_FINE_LABEL_NAMES,
         CICIDS2017_MERGED_LABEL_NAMES,
         P02_SAMPLED_KMEANS,
+        UNSW_NB15_LABEL_NAMES,
+        default_benign_label,
+        resolve_can_label_names,
     )
     from mth_ids_pipeline.io.reporting import write_report
+    from mth_ids_pipeline.io.results_io import mirror_log
     from mth_ids_pipeline.io.run_log import RunLog
     from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8
 except ImportError:
@@ -43,8 +47,12 @@ except ImportError:
         CICIDS2017_FINE_LABEL_NAMES,
         CICIDS2017_MERGED_LABEL_NAMES,
         P02_SAMPLED_KMEANS,
+        UNSW_NB15_LABEL_NAMES,
+        default_benign_label,
+        resolve_can_label_names,
     )
     from mth_ids_pipeline.io.reporting import write_report
+    from mth_ids_pipeline.io.results_io import mirror_log
     from mth_ids_pipeline.io.run_log import RunLog
     from mth_ids_pipeline.io.subprocess_env import configure_stdio_utf8
 
@@ -57,9 +65,19 @@ def _format_duration(seconds: float) -> str:
     return f"{int(seconds // 3600)}h{int((seconds % 3600) // 60):02d}m"
 
 
-def _resolve_label_names(attacks: list[int]) -> dict[int, str]:
-    """Nomes legíveis por ID (fine se >6 classes de ataque, senão merged)."""
-    table = CICIDS2017_FINE_LABEL_NAMES if max(attacks, default=0) > 6 else CICIDS2017_MERGED_LABEL_NAMES
+def _resolve_label_names(attacks: list[int], intermediate_dir: Path | None = None) -> dict[int, str]:
+    """Nomes legíveis por ID (CAN, CICIDS merged ou fine)."""
+    if intermediate_dir and "pipeline_can_otids" in intermediate_dir.as_posix():
+        table = resolve_can_label_names(
+            attack_labels=attacks,
+            pipeline_path=intermediate_dir,
+        )
+    elif intermediate_dir and "pipeline_unsw_nb15" in intermediate_dir.as_posix():
+        table = UNSW_NB15_LABEL_NAMES
+    elif max(attacks, default=0) > 6:
+        table = CICIDS2017_FINE_LABEL_NAMES
+    else:
+        table = CICIDS2017_MERGED_LABEL_NAMES
     return {label: table.get(label, f"Label={label}") for label in attacks}
 
 
@@ -114,6 +132,11 @@ def main() -> None:
         default=None,
         help="Notebook: default = nº de BENIGN no treino",
     )
+    parser.add_argument(
+        "--no-smote",
+        action="store_true",
+        help="CAN / artigo: não aplicar SMOTE no treino anomaly",
+    )
     parser.add_argument("--hpo-n-calls", type=int, default=20)
     parser.add_argument("--hpo-metric", choices=("accuracy", "f1"), default="f1")
     parser.add_argument("--biased-mode", default="both")
@@ -145,18 +168,22 @@ def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     path_in = supervised_path(paths, P02_SAMPLED_KMEANS)
     df = pd.read_parquet(path_in)
+    benign_label = default_benign_label(intermediate_dir=paths.intermediate)
 
     if args.attack_labels:
         requested = [int(x.strip()) for x in args.attack_labels.split(",")]
     else:
-        requested = discover_attack_labels(df)
+        requested = discover_attack_labels(df, benign_label=benign_label)
 
     attacks = requested
 
-    all_label_names = _resolve_label_names(discover_attack_labels(df))
+    all_label_names = _resolve_label_names(
+        discover_attack_labels(df, benign_label=benign_label),
+        paths.intermediate,
+    )
 
     output_root.mkdir(parents=True, exist_ok=True)
-    label_names = _resolve_label_names(attacks)
+    label_names = _resolve_label_names(attacks, paths.intermediate)
     subphases = _loao_subphases(args)
     n_attacks = len(attacks)
     n_sub = len(subphases)
@@ -171,7 +198,7 @@ def main() -> None:
         f"(7->8->9->10->11) -> {output_root}",
         flush=True,
     )
-    print(f"Log por ataque: <output-root>/attack_<N>/loao_run.log", flush=True)
+    print(f"Log por ataque: results/logs/loao/attack_<N>.log (cópia local em attack_<N>/loao_run.log)", flush=True)
     for attack in attacks:
         name = label_names.get(attack, f"Label={attack}")
         print(f"  - [{attack:2d}] {name}", flush=True)
@@ -236,7 +263,9 @@ def main() -> None:
                 "--random-state",
                 str(args.random_state),
             ]
-            if args.smote_target is not None:
+            if args.no_smote:
+                p9.append("--no-smote")
+            elif args.smote_target is not None:
                 p9 += ["--smote-target", str(args.smote_target)]
 
             p10: list[str] = [
@@ -250,7 +279,9 @@ def main() -> None:
                 "--hpo-metric",
                 args.hpo_metric,
             ]
-            if args.smote_target is not None:
+            if args.no_smote:
+                p10.append("--no-smote")
+            elif args.smote_target is not None:
                 p10 += ["--smote-target", str(args.smote_target)]
             if args.metrics:
                 p10 += ["--metrics", args.metrics]
@@ -264,7 +295,9 @@ def main() -> None:
                 "--biased-mode",
                 args.biased_mode,
             ]
-            if args.smote_target is not None:
+            if args.no_smote:
+                p11.append("--no-smote")
+            elif args.smote_target is not None:
                 p11 += ["--smote-target", str(args.smote_target)]
             if args.force_biased:
                 p11.append("--force-biased")
@@ -335,6 +368,10 @@ def main() -> None:
                     f"falhou (ver {attack_log_path})",
                     flush=True,
                 )
+
+        results_log = mirror_log(attack_log_path, "loao", f"attack_{attack}.log")
+        if results_log:
+            print(f"  log centralizado: {results_log}", flush=True)
 
     summary = build_loao_summary(
         output_root,

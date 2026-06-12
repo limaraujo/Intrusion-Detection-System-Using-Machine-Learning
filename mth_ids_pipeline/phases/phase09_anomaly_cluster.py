@@ -49,6 +49,11 @@ def main() -> None:
         default=None,
         help="Notebook: default = nº de BENIGN no treino (18225 no demo PortScan)",
     )
+    parser.add_argument(
+        "--no-smote",
+        action="store_true",
+        help="CAN / artigo: não aplicar SMOTE no treino anomaly",
+    )
     args = parser.parse_args()
 
     paths = init_paths(args)
@@ -63,6 +68,7 @@ def main() -> None:
         work,
         smote_target=args.smote_target,
         random_state=args.random_state,
+        no_smote=args.no_smote,
     )
 
     cols = [c for c in df.columns if c != label_col]

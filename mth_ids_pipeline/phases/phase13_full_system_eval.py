@@ -20,10 +20,12 @@ import numpy as np
 try:
     from mth_ids_pipeline.cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
     from mth_ids_pipeline.core.inference import run_full_system_inference
+    from mth_ids_pipeline.config import default_benign_label
     from mth_ids_pipeline.io.reporting import write_report
 except ImportError:
     from mth_ids_pipeline.cli import add_work_dir, init_paths, phase_parser, resolve_work_dir
     from mth_ids_pipeline.core.inference import run_full_system_inference
+    from mth_ids_pipeline.config import default_benign_label
     from mth_ids_pipeline.io.reporting import write_report
 
 
@@ -74,7 +76,7 @@ def main() -> None:
     add_work_dir(parser)
     parser.add_argument("--test-size", type=float, default=None)
     parser.add_argument("--random-state", type=int, default=0)
-    parser.add_argument("--benign-label", type=int, default=0)
+    parser.add_argument("--benign-label", type=int, default=None)
     parser.add_argument(
         "--anomaly-attack-label",
         type=int,
@@ -93,6 +95,11 @@ def main() -> None:
     paths = init_paths(args)
     work = resolve_work_dir(args, paths)
     intermediate = paths.intermediate
+    benign_label = (
+        args.benign_label
+        if args.benign_label is not None
+        else default_benign_label(intermediate_dir=intermediate)
+    )
     test_size = (
         float(args.test_size)
         if args.test_size is not None
@@ -107,7 +114,7 @@ def main() -> None:
         anomaly_work_dir=work,
         test_size=test_size,
         random_state=args.random_state,
-        benign_label=args.benign_label,
+        benign_label=benign_label,
         anomaly_attack_pred_label=args.anomaly_attack_label,
     )
 
@@ -129,7 +136,7 @@ def main() -> None:
         "anomaly_work_dir": str(work),
         "test_size": test_size,
         "random_state": args.random_state,
-        "benign_label": args.benign_label,
+        "benign_label": benign_label,
         "anomaly_attack_pred_label": args.anomaly_attack_label,
         "accuracy": result["accuracy"],
         "f1_weighted": result["f1_weighted"],

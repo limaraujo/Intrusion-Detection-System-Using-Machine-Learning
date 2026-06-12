@@ -27,11 +27,33 @@ except ImportError:
     from mth_ids_pipeline.io.reporting import write_report
 
 
+_CL_KMEANS_METRIC_EVIDENCE = {
+    "article": (
+        "Artigo Yang et al. (2022) Sec. IV-D: BO-GP otimiza n_clusters do CL-k-means; "
+        "métrica de objetivo do HPO não é nomeada explicitamente. "
+        "Tabela IX reporta F1/DR/FAR — preset paper usa F1 como alinhamento às métricas de avaliação."
+    ),
+    "notebook": (
+        "MTH_IDS_IoTJ.ipynb: gp_minimize com objective retornando 1 - accuracy_score(y_test, y_pred) "
+        "no split LOAO."
+    ),
+}
+
+
 def _hpo_score(y_test, y_pred, metric: str) -> float:
     if metric == "f1":
         return float(binary_dr_far_f1(y_test, y_pred)["f1"])
     from sklearn.metrics import accuracy_score
     return float(accuracy_score(y_test, y_pred))
+
+
+def _hpo_metric_provenance(metric: str, source: str) -> dict[str, str]:
+    return {
+        "hpo_metric": metric,
+        "source": source,
+        "article_evidence": _CL_KMEANS_METRIC_EVIDENCE["article"],
+        "notebook_evidence": _CL_KMEANS_METRIC_EVIDENCE["notebook"],
+    }
 
 
 def main() -> None:
@@ -46,12 +68,23 @@ def main() -> None:
         default=None,
         help="Notebook: default = nº de BENIGN no treino",
     )
+    parser.add_argument(
+        "--no-smote",
+        action="store_true",
+        help="CAN / artigo: não aplicar SMOTE no treino anomaly",
+    )
     parser.add_argument("--skip-hpo", action="store_true")
     parser.add_argument(
         "--hpo-metric",
         choices=("accuracy", "f1"),
         default="f1",
         help="Objetivo BO-GP (paper: f1; notebook: accuracy)",
+    )
+    parser.add_argument(
+        "--hpo-metric-source",
+        choices=("article", "notebook"),
+        default="article",
+        help="Fonte da métrica HPO (article | notebook)",
     )
     parser.add_argument(
         "--metrics",
@@ -67,7 +100,10 @@ def main() -> None:
     paths = init_paths(args)
     work = resolve_work_dir(args, paths)
     X_train, X_test, y_train, y_test, did_smote = load_anomaly_splits(
-        work, smote_target=args.smote_target, random_state=args.random_state
+        work,
+        smote_target=args.smote_target,
+        random_state=args.random_state,
+        no_smote=args.no_smote,
     )
 
     y_base, baseline_score = cl_kmeans(
@@ -130,6 +166,7 @@ def main() -> None:
         f"teste={X_test.shape} labels={test_label_counts}"
     )
 
+    metric_provenance = _hpo_metric_provenance(args.hpo_metric, args.hpo_metric_source)
     report = {
         "work_dir": str(work),
         "train_rows": int(len(y_train)),
@@ -160,6 +197,8 @@ def main() -> None:
         "optimizer": "BO-GP (skopt gp_minimize)",
         "objective": f"{args.hpo_metric} on LOAO test split",
         "hpo_metric": args.hpo_metric,
+        "hpo_metric_source": args.hpo_metric_source,
+        "hpo_metric_provenance": metric_provenance,
         "random_state": args.random_state,
         "smote_target": args.smote_target,
         "did_smote": did_smote,

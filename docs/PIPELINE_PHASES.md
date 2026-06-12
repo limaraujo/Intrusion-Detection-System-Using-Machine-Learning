@@ -4,7 +4,7 @@ Documentação das **12 fases** modulares que reproduzem o método **MTH-IDS** (
 
 **Referência:** L. Yang, A. Moubayed, A. Shami, *MTH-IDS: A Multi-Tiered Hybrid Intrusion Detection System for Internet of Vehicles*, IEEE IoT Journal, 2022.
 
-> **Leitura recomendada:** [MERGED_VS_FINE_E_TABELAS.md](MERGED_VS_FINE_E_TABELAS.md) — merged vs fine, Tabelas VII/IX/X · [README.md](README.md) (índice) · [GUIA_ARQUITETURA_MTH_IDS.md](GUIA_ARQUITETURA_MTH_IDS.md) — ramos supervisionado vs anomaly · [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md) — pastas `merged` / `fine` e bootstrap · [Rodar cada fase manualmente](#rodar-cada-fase-manualmente) — comandos CLI completos.
+> **Leitura recomendada:** [ARQUITETURA.md](ARQUITETURA.md) · [EXECUCAO.md](EXECUCAO.md) · [README.md](README.md) · [Rodar cada fase manualmente](#rodar-cada-fase-manualmente)
 
 ---
 
@@ -49,7 +49,7 @@ flowchart TB
 | **LOAO** | 12 | Repetir anomaly para **cada** ataque (Tabela IX) |
 | **Global + eval** | 7–11 (merged), 13 | Um detector global + cascata completa (Tabela X) |
 
-**LOAO (fine)** e **global (merged)** são ramos anomaly **diferentes** — ver [MERGED_VS_FINE_E_TABELAS.md](MERGED_VS_FINE_E_TABELAS.md).
+**LOAO (fine)** e **global (merged)** são ramos anomaly **diferentes** — ver [EXECUCAO.md](EXECUCAO.md).
 
 ---
 
@@ -62,7 +62,7 @@ Por padrão (**protocolo paper**), existem **duas raizes** de artefatos — uma 
 | `data/pipeline_mth_ids_merged/` | merged | `run_supervised` |
 | `data/pipeline_mth_ids_fine/` | fine | `run_anomaly` |
 
-Detalhes: [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md).
+Detalhes: [EXECUCAO.md — Bootstrap](EXECUCAO.md#bootstrap-automático).
 
 ```
 data/pipeline_mth_ids_merged/          # Tabela VII + Tabela X
@@ -135,7 +135,7 @@ python -m mth_ids_pipeline.utils.merge_cicids --profile fine
 python -m mth_ids_pipeline.run_anomaly --protocol paper --loao
 ```
 
-O `run_anomaly` prepara automaticamente: fases **1–2** no fine (`02_…`) e **Tabela VII** no merged (`06_…` copiado para fine). Ver [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md).
+O `run_anomaly` prepara automaticamente: fases **1–2** no fine (`02_…`) e **Tabela VII** no merged (`06_…` copiado para fine). Ver [EXECUCAO.md](EXECUCAO.md#bootstrap-automático).
 
 Artefatos antigos em `data/pipeline_mth_ids_full/` continuam válidos; equivalem ao perfil merged se o CSV já tinha famílias agregadas. Use `--intermediate-dir data/pipeline_mth_ids_full` com `--label-profile merged` se quiser reutilizá-los.
 
@@ -436,7 +436,7 @@ Execução manual **não** acrescenta saída ao `loao_run.log` (só a fase 12 gr
 | Métricas por ataque LOAO | `anomaly/loao/attack_<N>/reports/phase11_anomaly_biased.json` |
 | Resumo Tabela IX | `anomaly/loao/loao_summary.json` |
 | Tabela VII | `06_supervised_metrics.json` |
-| Relatório no terminal | `python -m mth_ids_pipeline.report_paper_tables --table all` |
+| Relatório no terminal + `results/` | `python -m mth_ids_pipeline.report_paper_tables --table all` |
 
 ---
 
@@ -487,10 +487,11 @@ Execução manual **não** acrescenta saída ao `loao_run.log` (só a fase 12 gr
 |--------|----------------------------|----------|
 | **merged** | `6,1,4` (WebAttack, Bot, Infiltration) | Igual ao `df_minor` do notebook |
 | **fine** | `1,8,9,12,13,14` | Fine cujo destino merged ∈ `{Bot, Infiltration, WebAttack}` + Heartbleed (ultra-raro) |
+| **can_merged / can_fine** | — (`--sample-all-classes`) | k-means 0,8% em **todas** as classes; ver [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) |
 
 No **fine**, a regra **não** é “preservar rótulos que o merge não agrega”. **PortScan** não é agregado, mas é amostrado (k-means 0,8%) porque no merged também não entra no `df_minor`. Os subtipos **Web Attack** são agregados em WebAttack no merge, mas ficam **inteiros** no fine porque a família WebAttack está no `df_minor`.
 
-Detalhes e tabela completa: [PASTAS_E_BOOTSTRAP.md — Fase 2 no fine](PASTAS_E_BOOTSTRAP.md#fase-2-no-fine-escala-notebook-alinhada-ao-merge).
+Detalhes e tabela completa: [EXECUCAO.md](EXECUCAO.md#bootstrap-automático).
 
 ---
 
@@ -546,6 +547,8 @@ Não há módulo `phase03_*`. O split ocorre em `phase04_feature_engineering.py`
 **Entrada:** parquets da fase 4.
 
 **Saída:** `05_train_after_smote.parquet`, `05_test_unchanged.parquet`.
+
+**CAN (`--protocol can`):** fase **omitida**; o orquestrador copia `04_*` → `05_*` após a fase 4. Ver [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md).
 
 ---
 
@@ -672,7 +675,7 @@ Não há módulo `phase03_*`. O split ocorre em `phase04_feature_engineering.py`
 4. Modo **`--biased-mode auto`** (default no experiment_runner): testa none / b1-only / b2-only / both no hold-out interno e aplica só o que **melhora F1 no teste interno** (geralmente **b1-only**).
 5. Métricas binárias: **DR**, **FAR**, **F1**.
 
-**Entrada:** diretório `anomaly/`; `06_supervised_metrics.json` no `--intermediate-dir` (cópia da **Tabela VII merged** — ver [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md#por-que-o-bootstrap-é-assim-decisão-de-design)).
+**Entrada:** diretório `anomaly/`; `06_supervised_metrics.json` no `--intermediate-dir` (cópia da **Tabela VII merged** — ver [EXECUCAO.md](EXECUCAO.md#bootstrap-automático)).
 
 **Saída:** `phase_reports/phase11_anomaly_biased.json`.
 
@@ -740,7 +743,7 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
   --merged-dir data/pipeline_mth_ids_merged
 ```
 
-**Saída:** `phase_reports/phase13_full_system_eval.json`, `figures/fig_multiclass_cm.png`, `figures/fig_binary_cm.png`.
+**Saída:** `phase_reports/phase13_full_system_eval.json`, `figures/fig_multiclass_cm.png`, `figures/fig_binary_cm.png`. Tabelas formatadas vs artigo: `report_paper_tables` → `results/`.
 
 ---
 
@@ -772,10 +775,10 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
 | `biased_classifiers.py` | B₁/B₂, modo auto, p* |
 | `anomaly_io.py` | Splits LOAO, SMOTE anomaly, descoberta de labels |
 | `loao_reporting.py` | `loao_summary.json`, agregação Tabela IX |
-| `run_log.py` | `supervised_run.log` (fases 1–6 via runner) e `attack_<N>/loao_run.log` (fase 12) |
+| `run_log.py` | Logs de execução (`RunLog`) → `results/logs/`; LOAO também espelha em `results/logs/loao/` |
 | `evaluation.py` | DR, FAR, F1, comparação com artigo |
 | `experiment_runner.py` | Orquestração reprodutível, bootstrap |
-| `report_paper_tables.py` | Tabela VII / IX / X no terminal |
+| `report_paper_tables.py` | Tabela VII / IX / X → terminal + `results/` |
 | `run_global_anomaly.py` | Orquestra fases 7–11 modo global (merged) |
 | `run_eval.py` | Atalho fase 13 |
 | `core/inference.py` | Cascata tiers 1→4 (fase 13) |
@@ -797,7 +800,7 @@ python -m mth_ids_pipeline.report_paper_tables --table x `
 | Tabela IX vazia no terminal | Mesmo que acima | Reconstruir `loao_summary` antes de `report_paper_tables` |
 | `MemoryError` na fase 8 | KernelPCA grande | Fechar apps; menos RAM → máquina com mais memória |
 
-Mais contexto: [PASTAS_E_BOOTSTRAP.md — Erros comuns](PASTAS_E_BOOTSTRAP.md#erros-comuns), [docs/README.md](README.md).
+Mais contexto: [EXECUCAO.md — Solução de problemas](EXECUCAO.md#solução-de-problemas), [README.md](README.md).
 
 ---
 
@@ -805,8 +808,8 @@ Mais contexto: [PASTAS_E_BOOTSTRAP.md — Erros comuns](PASTAS_E_BOOTSTRAP.md#er
 
 - [README.md](README.md) — índice da documentação
 - [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) — protocolo paper vs notebook
-- [GUIA_ARQUITETURA_MTH_IDS.md](GUIA_ARQUITETURA_MTH_IDS.md) — estrutura do pacote
-- [PASTAS_E_BOOTSTRAP.md](PASTAS_E_BOOTSTRAP.md) — merged/fine e bootstrap
-- [MERGED_VS_FINE_E_TABELAS.md](MERGED_VS_FINE_E_TABELAS.md) — LOAO vs global, comandos por tabela
+- [ARQUITETURA.md](ARQUITETURA.md) — tiers, experimentos, layout do pacote
+- [EXECUCAO.md](EXECUCAO.md) — comandos, pastas, bootstrap
+- [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) — parâmetros paper / notebook / CAN
 - [archive/METHODOLOGICAL_AUDIT.md](archive/METHODOLOGICAL_AUDIT.md) — divergências artigo × notebook × código
 - [archive/REPRODUCTION_REPORT.md](archive/REPRODUCTION_REPORT.md) — resultados e validação numérica

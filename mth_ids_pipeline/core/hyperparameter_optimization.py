@@ -8,6 +8,8 @@ from typing import Any, Callable
 import numpy as np
 from sklearn.metrics import accuracy_score
 
+from mth_ids_pipeline.io.reproducibility import numpy_random_state
+
 
 @dataclass
 class CLKmeansHpoResult:
@@ -28,6 +30,14 @@ class PStarHpoResult:
 
 @dataclass
 class IgAlphaHpoResult:
+    best_alpha: float
+    best_score: float
+    trials: list[dict[str, Any]]
+    objective_metric: str = "cv_accuracy"
+
+
+@dataclass
+class FcbfAlphaHpoResult:
     best_alpha: float
     best_score: float
     trials: list[dict[str, Any]]
@@ -96,7 +106,13 @@ def optimize_xgb_hyperparams(
         "max_depth": hp.quniform("max_depth", 4, 100, 1),
         "learning_rate": hp.normal("learning_rate", 0.01, 0.9),
     }
-    best = fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=max_evals)
+    best = fmin(
+        fn=objective,
+        space=space,
+        algo=tpe.suggest,
+        max_evals=max_evals,
+        rstate=numpy_random_state(random_state),
+    )
     return {
         "n_estimators": int(best["n_estimators"]),
         "max_depth": int(best["max_depth"]),
@@ -163,7 +179,13 @@ def optimize_sklearn_tree_hyperparams(
     if include_n_estimators:
         space["n_estimators"] = hp.quniform("n_estimators", 10, 200, 1)
 
-    best = fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=max_evals)
+    best = fmin(
+        fn=objective,
+        space=space,
+        algo=tpe.suggest,
+        max_evals=max_evals,
+        rstate=numpy_random_state(random_state),
+    )
     out: dict[str, Any] = {
         "max_depth": int(best["max_depth"]),
         "max_features": int(best["max_features"]),
@@ -287,7 +309,9 @@ def _ig_fcbf_cv_score(
     feature_names: list[str],
     *,
     cumulative: float,
-    fcbf_k: int,
+    fcbf_k: int = 20,
+    fcbf_alpha: float | None = None,
+    fcbf_mode: str = "k",
     cv_folds: int,
     random_state: int,
 ) -> float:
@@ -305,7 +329,13 @@ def _ig_fcbf_cv_score(
     idx = [feature_names.index(n) for n in feats]
     X_ig = X_train[:, idx]
     try:
-        fcbf = fit_fcbf(X_ig, y_train, k=fcbf_k)
+        fcbf = fit_fcbf(
+            X_ig,
+            y_train,
+            k=fcbf_k,
+            alpha=fcbf_alpha,
+            mode=fcbf_mode,
+        )
         X_fcbf = transform_fcbf(fcbf, X_ig)
     except Exception:
         return 0.0
@@ -313,8 +343,12 @@ def _ig_fcbf_cv_score(
         return 0.0
     clf = RandomForestClassifier(n_estimators=50, random_state=random_state, n_jobs=-1)
     cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
-    scores = cross_val_score(clf, X_fcbf, y_train, cv=cv, scoring="accuracy", n_jobs=-1)
-    return float(np.mean(scores))
+    scores = cross_val_score(
+        clf, X_fcbf, y_train, cv=cv, scoring="accuracy", n_jobs=-1, error_score=0.0
+    )
+    from mth_ids_pipeline.core.validation import sanitize_hpo_score
+
+    return sanitize_hpo_score(float(np.mean(scores)))
 
 
 def optimize_ig_alpha(
@@ -333,6 +367,8 @@ def optimize_ig_alpha(
     from skopt import gp_minimize
     from skopt.space import Real
 
+    from mth_ids_pipeline.core.validation import sanitize_hpo_score, score_to_bo_loss
+
     trials: list[dict[str, Any]] = []
 
     def objective(params: list[Any]) -> float:
@@ -346,8 +382,10 @@ def optimize_ig_alpha(
             cv_folds=cv_folds,
             random_state=random_state,
         )
-        trials.append({"alpha": alpha, "score": score})
-        return 1.0 - score
+        score = sanitize_hpo_score(score)
+        loss = score_to_bo_loss(score)
+        trials.append({"alpha": alpha, "score": score, "loss": loss})
+        return loss
 
     result = gp_minimize(
         objective,
@@ -356,8 +394,56 @@ def optimize_ig_alpha(
         random_state=random_state,
     )
     best_alpha = float(result.x[0])
-    best_score = 1.0 - float(result.fun)
+    best_score = sanitize_hpo_score(1.0 - float(result.fun))
     return IgAlphaHpoResult(best_alpha=best_alpha, best_score=best_score, trials=trials)
+
+
+def optimize_fcbf_alpha(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    feature_names: list[str],
+    *,
+    ig_cumulative: float = 0.9,
+    n_calls: int = 15,
+    cv_folds: int = 10,
+    random_state: int = 0,
+    low: float = 0.001,
+    high: float = 0.5,
+) -> FcbfAlphaHpoResult:
+    """BO-GP (skopt) para limiar α do FCBF (classe FCBF, th=α)."""
+    from skopt import gp_minimize
+    from skopt.space import Real
+
+    from mth_ids_pipeline.core.validation import sanitize_hpo_score, score_to_bo_loss
+
+    trials: list[dict[str, Any]] = []
+
+    def objective(params: list[Any]) -> float:
+        alpha = float(params[0])
+        score = _ig_fcbf_cv_score(
+            X_train,
+            y_train,
+            feature_names,
+            cumulative=ig_cumulative,
+            fcbf_alpha=alpha,
+            fcbf_mode="alpha",
+            cv_folds=cv_folds,
+            random_state=random_state,
+        )
+        score = sanitize_hpo_score(score)
+        loss = score_to_bo_loss(score)
+        trials.append({"alpha": alpha, "score": score, "loss": loss})
+        return loss
+
+    result = gp_minimize(
+        objective,
+        [Real(low, high, name="fcbf_alpha")],
+        n_calls=n_calls,
+        random_state=random_state,
+    )
+    best_alpha = float(result.x[0])
+    best_score = sanitize_hpo_score(1.0 - float(result.fun))
+    return FcbfAlphaHpoResult(best_alpha=best_alpha, best_score=best_score, trials=trials)
 
 
 def optimize_kpca_params(
@@ -396,15 +482,21 @@ def optimize_kpca_params(
             return 1.0
         clf = RandomForestClassifier(n_estimators=50, random_state=random_state, n_jobs=-1)
         cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=random_state)
-        scores = cross_val_score(clf, X_k, y_train, cv=cv, scoring="accuracy", n_jobs=-1)
-        score = float(np.mean(scores))
+        scores = cross_val_score(
+            clf, X_k, y_train, cv=cv, scoring="accuracy", n_jobs=-1, error_score=0.0
+        )
+        from mth_ids_pipeline.core.validation import sanitize_hpo_score, score_to_bo_loss
+
+        score = sanitize_hpo_score(float(np.mean(scores)))
         trials.append({"n_components": n_comp, "kernel": kernel, "score": score})
-        return 1.0 - score
+        return score_to_bo_loss(score)
 
     result = gp_minimize(objective, space, n_calls=n_calls, random_state=random_state)
     best_n = int(result.x[0])
     best_kernel = str(result.x[1])
-    best_score = 1.0 - float(result.fun)
+    from mth_ids_pipeline.core.validation import sanitize_hpo_score
+
+    best_score = sanitize_hpo_score(1.0 - float(result.fun))
     return KpcaHpoResult(
         best_n_components=best_n,
         best_kernel=best_kernel,
@@ -419,6 +511,7 @@ def optimize_cl_kmeans_tpe(
     max_evals: int = 20,
     low: int = 2,
     high: int = 50,
+    random_state: int = 0,
 ) -> tuple[int, float]:
     """BO-TPE alternativo para n_clusters (notebook também testa)."""
     from hyperopt import STATUS_OK, fmin, hp, tpe
@@ -436,5 +529,11 @@ def optimize_cl_kmeans_tpe(
         return {"loss": -acc, "status": STATUS_OK}
 
     space = {"n_clusters": hp.quniform("n_clusters", low, high, 1)}
-    fmin(fn=objective, space=space, algo=tpe.suggest, max_evals=max_evals)
+    fmin(
+        fn=objective,
+        space=space,
+        algo=tpe.suggest,
+        max_evals=max_evals,
+        rstate=numpy_random_state(random_state),
+    )
     return best_n, best_acc

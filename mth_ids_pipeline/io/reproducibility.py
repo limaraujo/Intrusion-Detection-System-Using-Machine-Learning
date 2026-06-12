@@ -35,6 +35,11 @@ def set_global_seeds(seed: int = DEFAULT_RANDOM_STATE) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
+def numpy_random_state(seed: int = DEFAULT_RANDOM_STATE) -> np.random.Generator:
+    """RNG NumPy para Hyperopt ``fmin(..., rstate=...)`` (requer ``Generator`` desde hyperopt 0.2.6+)."""
+    return np.random.default_rng(seed)
+
+
 def collect_environment_versions() -> dict[str, str]:
     versions: dict[str, str] = {
         "python": sys.version.replace("\n", " "),
@@ -76,15 +81,19 @@ def log_run_config(
         "environment": collect_environment_versions(),
         "config": _json_safe(config),
         "non_deterministic_components": [
-            "Hyperopt fmin (sem random_state explícito no notebook)",
             "KernelPCA (sklearn, sem random_state)",
-            "SMOTE (imbalanced-learn, sem random_state no notebook)",
-            "MiniBatchKMeans no ramo anomaly (sem seed no notebook)",
-            "Amostragem benigna PortScan (random_state=None no notebook)",
+            "MiniBatchKMeans / paralelismo (n_jobs=-1) pode variar ordem numérica",
         ],
     }
     if extra:
         payload.update(_json_safe(extra))
     out = report_dir / f"{run_name}_config.json"
-    out.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
+    text = json.dumps(payload, indent=2, ensure_ascii=True)
+    out.write_text(text, encoding="utf-8")
+    try:
+        from mth_ids_pipeline.io.results_io import write_results_config
+
+        write_results_config(text, out.name)
+    except ImportError:
+        pass
     return out
