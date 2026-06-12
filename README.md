@@ -1,283 +1,340 @@
-﻿# Intrusion-Detection-System-Using-Machine-Learning
+﻿# Documentação do projeto
 
-This repository contains the code for the project "IDS-ML: Intrusion Detection System Development Using Machine Learning". The code and proposed Intrusion Detection System (IDSs) are general models that can be used in any IDS and anomaly detection applications. In this project, three papers have been published:  
-* L. Yang, A. Moubayed, I. Hamieh and A. Shami, "[Tree-Based Intelligent Intrusion Detection System in Internet of Vehicles](https://arxiv.org/pdf/1910.08635.pdf)," in 2019 IEEE Global Communications Conference (GLOBECOM), 2019, pp. 1-6, doi: 10.1109/GLOBECOM38437.2019.9013892.  
-* L. Yang, A. Moubayed, and A. Shami, “[MTH-IDS: A Multi-Tiered Hybrid Intrusion Detection System for Internet of Vehicles](https://arxiv.org/pdf/2105.13289.pdf),” IEEE Internet of Things Journal, vol. 9, no. 1, pp. 616-632, Jan.1, 2022, doi: 10.1109/JIOT.2021.3084796.
-* L. Yang, A. Shami, G. Stevens, and S. DeRusett, “[LCCDE: A Decision-Based Ensemble Framework for Intrusion Detection in The Internet of Vehicles](https://arxiv.org/pdf/2208.03399.pdf)," in 2022 IEEE Global Communications Conference (GLOBECOM), 2022, pp. 1-6, doi: 10.1109/GLOBECOM48099.2022.10001280.
+Índice da documentação do repositório [Intrusion-Detection-System-Using-Machine-Learning](../README.md), com foco no pacote modular **`mth_ids_pipeline`** — reprodução do método **MTH-IDS** (Yang et al., IEEE IoT Journal 2022).
 
-
-The code introduction of this repository is publicly available at:  
-* L. Yang, and A. Shami, “[IDS-ML: An open source code for Intrusion Detection System development using Machine Learning](https://www.sciencedirect.com/science/article/pii/S2665963822001300)," Software Impacts, vol. 14, pp. 1-4, 2022, doi: 10.1016/j.simpa.2022.100446.
-
-This repository proposed three **intrusion detection systems** by implementing many **machine learning** algorithms, including tree-based algorithms (**decision tree, random forest, XGBoost, LightGBM, CatBoost etc.**), unsupervised learning algorithms (**k-means**), ensemble learning algorithms (**stacking, proposed LCCDE**), and hyperparameter optimization techniques (**Bayesian optimization**)**.
-
-- Another **intrusion detection system development code** using **convolutional neural networks (CNNs)** and **transfer learning** techniques can be found in: [Intrusion-Detection-System-Using-CNN-and-Transfer-Learning](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-CNN-and-Transfer-Learning)
-
-- A comprehensive **hyperparameter optimization** tutorial code can be found in: [Hyperparameter-Optimization-of-Machine-Learning-Algorithms](https://github.com/LiYangHart/Hyperparameter-Optimization-of-Machine-Learning-Algorithms)
-
-
-## Paper Abstract
-### Paper 1:  Tree-Based Intelligent Intrusion Detection System in Internet of Vehicles
-&emsp; The use of autonomous vehicles (AVs) is a promising technology in Intelligent Transportation Systems (ITSs) to improve safety and driving efficiency. Vehicle-to-everything (V2X) technology enables communication among vehicles and other infrastructures. However, AVs and Internet of Vehicles (IoV) are vulnerable to different types of cyber-attacks such as denial of service, spoofing, and sniffing attacks. An intelligent IDS is proposed in this paper for network attack detection that can be applied to not only Controller Area Network (CAN) bus of AVs but also on general IoVs. The proposed IDS utilizes tree-based ML algorithms including decision tree (DT), random forest (RF), extra trees (ET), and Extreme Gradient Boosting (XGBoost). The results from the implementation of the proposed intrusion detection system on standard data sets indicate that the system has the ability to identify various cyber-attacks in the AV networks. Furthermore, the proposed ensemble learning and feature selection approaches enable the proposed system to achieve high detection rate and low computational cost simultaneously.
-
-**<p align="center">Figure 1: The overview of the tree-based IDS model.</p>**
-<p align="center">
-<img src="https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/Figures/Tree-based_IDS_Overview.jpg" width="280" />
-</p>
-
-### Paper 2:  MTH-IDS: A Multi-Tiered Hybrid Intrusion Detection System for Internet of Vehicles
-&emsp; Modern vehicles, including connected vehicles and autonomous vehicles, nowadays involve many electronic control units connected through intra-vehicle networks to implement various functionalities and perform actions. Modern vehicles are also connected to external networks through vehicle-to-everything technologies, enabling their communications with other vehicles, infrastructures, and smart devices. However, the improving functionality and connectivity of modern vehicles also increase their vulnerabilities to cyber-attacks targeting both intra-vehicle and external networks due to the large attack surfaces. To secure vehicular networks, many researchers have focused on developing intrusion detection systems (IDSs) that capitalize on machine learning methods to detect malicious cyber-attacks. In this paper, the vulnerabilities of intra-vehicle and external networks are discussed, and a multi-tiered hybrid IDS that incorporates a signature-based IDS and an anomaly-based IDS is proposed to detect both known and unknown attacks on vehicular networks. Experimental results illustrate that the proposed system can accurately detect various types of known attacks on the CAN-OTIDS-dataset representing the intra-vehicle network data and the CICIDS2017 dataset illustrating the external vehicular network data.  
-&emsp; The proposed MTH-IDS framework consists of two traditional ML stages (data pre-processing and feature engineering) and four tiers of learning models: 
-1. Four tree-based supervised learners — decision tree (DT), random forest (RF), extra trees (ET), and extreme gradient boosting (XGBoost) — used as multi-class classifiers for known attack detection; 
-2. A stacking ensemble model and a Bayesian optimization with tree Parzen estimator (BO-TPE) method for supervised learner optimization; 
-3. A cluster labeling (CL) k-means used as an unsupervised learner for zero-day attack detection; 
-4. Two biased classifiers and a Bayesian optimization with Gaussian process (BO-GP) method for unsupervised learner optimization. 
-
-**<p align="center">Figure 2: The overview of the MTH-IDS model.</p>**
-<p align="center">
-<img src="https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/Figures/MTH-IDS_Overview.png" width="700" />
-</p>
-
-
-### Paper 3:  LCCDE: A Decision-Based Ensemble Framework for Intrusion Detection in The Internet of Vehicles
-&emsp; Modern vehicles, including autonomous vehicles and connected vehicles, have adopted an increasing variety of functionalities through connections and communications with other vehicles, smart devices, and infrastructures. However, the growing connectivity of the Internet of Vehicles (IoV) also increases the vulnerabilities to network attacks. To protect IoV systems against cyber threats, Intrusion Detection Systems (IDSs) that can identify malicious cyber-attacks have been developed using Machine Learning (ML) approaches. To accurately detect various types of attacks in IoV networks, we propose a novel ensemble IDS framework named Leader Class and Confidence Decision Ensemble (LCCDE). It is constructed by determining the best-performing ML model among three advanced ML algorithms (XGBoost, LightGBM, and CatBoost) for every class or type of attack. The class leader models with their prediction confidence values are then utilized to make accurate decisions regarding the detection of various types of cyber-attacks. Experiments on two public IoV security datasets (Car-Hacking and CICIDS2017 datasets) demonstrate the effectiveness of the proposed LCCDE for intrusion detection on both intra-vehicle and external networks. 
-
-**<p align="center">Figure 3: The overview of the LCCCDE IDS model.</p>**
-<p align="center">
-<img src="https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/Figures/LCCDE_Overview.jpg" width="800" />
-</p>
-
-
-## Repository structure
-
-| Path | Purpose |
-|------|---------|
-| [`mth_ids_pipeline/`](mth_ids_pipeline) | Modular MTH-IDS pipeline (`core/`, `io/`, `phases/`, `orchestration/`, `utils/`) |
-| [`tests/`](tests) | Automated tests (`pytest`) |
-| [`docs/`](docs) | Architecture, execution, and protocol documentation (Portuguese) |
-| [`paper_and_notebooks/`](paper_and_notebooks) | Reference notebook and paper PDF |
-| [`scripts/`](scripts) | Standalone experiments (not part of the pipeline package) |
-| [`Figures/`](Figures) | Paper overview figures |
-| [`data/`](data) | Raw datasets and pipeline intermediates (gitignored; see `data/README.md`) |
-| [`results/`](results) | Execution logs and comparison reports (gitignored except validation snapshot) |
-
-### Install
-
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-Python 3.10+ recommended (tested with 3.13). No environment variables or credentials are required for the pipeline.
-
-### Tests
-
-```bash
-python -m pytest tests/ -q
-```
+A documentação está em **português**. O [README principal](../README.md) (inglês) traz contexto dos papers, citações e visão geral do repositório original IDS-ML.
 
 ---
 
-## Implementation 
-### Dataset 
-CICIDS2017 dataset, a popular network traffic dataset for intrusion detection problems
-* Publicly available at: https://www.unb.ca/cic/datasets/ids-2017.html  
-* For the purpose of displaying the experimental results in Jupyter Notebook, the sampled subsets of CICIDS2017 is used in the sample code. The subsets are in the "data" folder.
+## Por onde começar
 
-CAN-OTIDS dataset (OTIDS benchmark for intra-vehicle intrusion detection; source: [CAN-intrusion-dataset](https://ocslab.hksecurity.net/Datasets/CAN-intrusion-dataset))  
-* Can be processed using the same code
+| Se você quer… | Leia |
+|---------------|------|
+| Entender tiers, experimentos e pastas do código | [Arquitetura MTH-IDS](#arquitetura-mth-ids) (abaixo) ou [ARQUITETURA.md](ARQUITETURA.md) |
+| Rodar o pipeline de ponta a ponta | [EXECUCAO.md](EXECUCAO.md) |
+| Consultar uma fase específica (1–13) ou CLI manual | [PIPELINE_PHASES.md](PIPELINE_PHASES.md) |
+| Comparar preset `paper` vs `notebook` | [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) |
+| Escrever relatório sobre limitações artigo × código | [NOTA_REPRODUCAO.md](NOTA_REPRODUCAO.md) |
+| Ver evidências da validação CICIDS2017 | [REPRODUCAO_CICIDS2017_VALIDACAO.md](REPRODUCAO_CICIDS2017_VALIDACAO.md) |
 
-### Code  
-* [Tree-based_IDS_GlobeCom19.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/Tree-based_IDS_GlobeCom19.ipynb): GlobeCom 2019 tree-based IDS (upstream repo; not vendored here)  
-* [MTH_IDS_IoTJ.ipynb](paper_and_notebooks/MTH_IDS_IoTJ.ipynb): MTH-IDS IoTJ notebook (reference for `--protocol notebook`)  
-* [LCCDE_IDS_GlobeCom22.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/LCCDE_IDS_GlobeCom22.ipynb): LCCDE GlobeCom 2022 (upstream repo; not vendored here)  
+---
 
-#### MTH-IDS modular pipeline (Parquet + reports)
+## Instalação e testes
 
-The package [mth_ids_pipeline](mth_ids_pipeline) reproduces the MTH-IDS paper (default `--protocol paper`), the published IoTJ notebook (`--protocol notebook`), or the **CAN-OTIDS** benchmark (`--protocol can`). Layout: `core/` (ML), `io/` (artifacts), `phases/` (executable steps), `orchestration/` (runner).
+Na raiz do repositório:
 
-**Documentation (Portuguese):**
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python -m pytest tests/ -q
+```
 
-| Doc | Content |
-|-----|---------|
-| [docs/README.md](docs/README.md) | Index and quick start |
-| [docs/ARQUITETURA.md](docs/ARQUITETURA.md) | 4 tiers, 3 experiments, package layout |
-| [docs/EXECUCAO.md](docs/EXECUCAO.md) | Commands, folders, bootstrap, troubleshooting |
-| [docs/PIPELINE_PHASES.md](docs/PIPELINE_PHASES.md) | Phases 1–13 + [manual CLI](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente) |
-| [docs/PROTOCOLO_CICIDS.md](docs/PROTOCOLO_CICIDS.md) | CICIDS2017 (Tables VII/IX/X) |
-| [docs/PROTOCOLO_CAN.md](docs/PROTOCOLO_CAN.md) | CAN pipeline index (Tables VI/VIII/X) |
-| [docs/PROTOCOLO_CAN_INTRUSION.md](docs/PROTOCOLO_CAN_INTRUSION.md) | Car-Hacking original (`merge_can --source original`) |
-| [docs/PROTOCOLO_CAN_OTIDS.md](docs/PROTOCOLO_CAN_OTIDS.md) | OTIDS repack (`merge_can --source otids`) |
-| [docs/PAPER_PROTOCOL.md](docs/PAPER_PROTOCOL.md) | Paper vs notebook preset comparison |
+- **Python:** 3.10+ (testado com 3.13)
+- **Variáveis de ambiente:** nenhuma obrigatória; não há credenciais no pipeline
+- **Dados:** colocar CSVs em `data/` conforme [data/README.md](../data/README.md) (pasta gitignored)
 
-Prepare datasets:
+---
 
-**CICIDS2017:**
-```bash
+## Estrutura do repositório
+
+| Pasta | Função |
+|-------|--------|
+| [`mth_ids_pipeline/`](../mth_ids_pipeline) | Código do pipeline (`core/`, `io/`, `phases/`, `orchestration/`, `utils/`) |
+| [`docs/`](.) | Esta documentação |
+| [`docs/figures/`](figures/) | Diagramas em texto (tiers e experimentos) |
+| [`docs/archive/`](archive/README.md) | Relatórios históricos de auditoria |
+| [`tests/`](../tests) | Testes automatizados (`pytest`) |
+| [`paper_and_notebooks/`](../paper_and_notebooks) | Notebook IoTJ de referência + PDF do artigo |
+| [`scripts/`](../scripts) | Scripts auxiliares fora do pacote |
+| [`data/`](../data/README.md) | Datasets brutos e artefatos Parquet do pipeline |
+| [`results/`](../results/README.md) | Logs e relatórios de execução (gerados localmente) |
+
+---
+
+## Arquitetura MTH-IDS
+
+Referência: Yang et al., *MTH-IDS*, IEEE IoT Journal 2022.
+
+Documentos relacionados: [EXECUCAO.md](EXECUCAO.md) · [PIPELINE_PHASES.md](PIPELINE_PHASES.md) · [PROTOCOLO_CICIDS.md](PROTOCOLO_CICIDS.md) · [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) · [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md)
+
+### 4 tiers do método
+
+| Tier | Componente | Fases |
+|------|------------|-------|
+| **1** | Z-score / normalização | 1 (+ scaler na 4/8) |
+| **2** | IG + FCBF + DT/RF/ET/XGB + stacking | 4–6 |
+| **3** | IG + FCBF + KPCA + CL-k-means | 8–10 |
+| **4** | Biased B₁/B₂ + threshold p* | 11 |
+
+```mermaid
+flowchart TB
+    IN["Fluxo de rede\n(features brutas)"]
+
+    subgraph T1["Tier 1 — Pré-processamento"]
+        Z["Z-score / normalização"]
+    end
+
+    subgraph T2["Tier 2 — Signature-based (supervisionado)"]
+        IG1["IG + FCBF"]
+        BL["DT · RF · ET · XGB"]
+        ST["Stacking meta-learner"]
+    end
+
+    subgraph T3["Tier 3 — Anomaly (não supervisionado)"]
+        IG2["IG + FCBF + KPCA"]
+        CL["CL-k-means"]
+    end
+
+    subgraph T4["Tier 4 — Biased classifiers"]
+        B1["B₁ nos FN"]
+        B2["B₂ nos FP"]
+        P["threshold p*"]
+    end
+
+    IN --> Z
+    Z --> IG1 --> BL --> ST
+    Z --> IG2 --> CL --> B1
+    CL --> B2
+    B1 --> P
+    B2 --> P
+```
+
+### 3 experimentos
+
+| Experimento | Tiers | Tabela CICIDS | Tabela CAN | Script |
+|-------------|-------|---------------|------------|--------|
+| **Supervisionado** | 1–2 | VII | VI | `run_supervised` |
+| **LOAO / zero-day** | 3–4 (+ família tier 2 p/ biased) | IX | VIII | `run_anomaly --loao` |
+| **Sistema completo** | 1–2–3–4 (cascata) | X | X | `run_global_anomaly` + `run_eval` |
+
+| | Supervisionado | LOAO | Sistema completo |
+|---|----------------|------|------------------|
+| Classificação | Multi-classe | Binária | Multi-classe + fallback anomaly |
+| Modelos anomaly | — | **1 por zero-day** | **1 global** + stacking |
+| Teste | Hold-out 20% | Slice do ataque zero-day | Hold-out 20% (cascata) |
+
+**LOAO:** cada `attack_N/` roda fases 7–11 de forma independente — **não** é a cascata da Tabela X.
+
+**Tabela X:** stacking classifica; se BENIGN → anomaly global (`core/inference.py`). Treino anomaly em `anomaly/global/`; avaliação na fase 13.
+
+#### Experimento 1 — Supervisionado (Tabela VII / VI)
+
+```mermaid
+flowchart LR
+    A["Amostra k-means\n(fase 2)"] --> B["Split 80/20"]
+    B --> C["IG + FCBF\n(fase 4)"]
+    C --> D["SMOTE*\n(fase 5)"]
+    D --> E["4 base learners\n+ stacking\n(fase 6)"]
+    E --> F["Predição\nmulti-classe"]
+```
+
+\*SMOTE aplicado no CICIDS; omitido no CAN.
+
+#### Experimento 2 — LOAO / zero-day (Tabela IX / VIII)
+
+```mermaid
+flowchart TB
+    subgraph prep["Por ataque (attack_N/)"]
+        S7["Fase 7: split LOAO\n1 ataque = zero-day no teste"]
+        S8["Fase 8: Z-score + IG + FCBF + KPCA"]
+        S9["Fase 9: CL-k-means inicial"]
+        S10["Fase 10: BO-GP k + métrica"]
+        S11["Fase 11: B₁/B₂ + p*"]
+    end
+
+    MET["06_supervised_metrics.json\n(merged)"] -.->|"escolhe família\nRF/XGB/DT/ET"| S11
+
+    S7 --> S8 --> S9 --> S10 --> S11
+    S11 --> OUT["DR / FAR / F1\nzero-day"]
+```
+
+#### Experimento 3 — Sistema completo / cascata (Tabela X)
+
+```mermaid
+flowchart TB
+    X["Hold-out 20%\n(05_test)"] --> T2["Tier 2: Stacking\nmulti-classe"]
+
+    T2 -->|"pred ≠ BENIGN"| KNOWN["Classe do stacking\n(ataque conhecido)"]
+    T2 -->|"pred = BENIGN"| T3["Tier 3–4: anomaly\nKPCA + CL-k-means + B₁/B₂"]
+
+    T3 -->|"anomaly = ataque"| ZD["Label genérico\nde ataque (99)"]
+    T3 -->|"anomaly = normal"| BEN["BENIGN confirmado"]
+
+    KNOWN --> FINAL["Predição final"]
+    ZD --> FINAL
+    BEN --> FINAL
+```
+
+### Perfis de rótulo e pastas
+
+| Perfil | CSV CICIDS | Classes | Pasta | Usado em |
+|--------|------------|---------|-------|----------|
+| `merged` | `CICIDS2017.csv` | 7 famílias | `pipeline_mth_ids_merged/` | VII, X |
+| `fine` | `CICIDS2017_fine.csv` | ~15 subtipos | `pipeline_mth_ids_fine/` | IX (LOAO) |
+| `can_merged` | `CAN_OTIDS_Dataset.csv` (Car-Hacking ou OTIDS) | 4 | `pipeline_can_otids_merged/` | VI, X |
+| `can_fine` | mesmo CSV | 4 LOAO (intrusion) / 3 (OTIDS) | `pipeline_can_otids_fine/` | VIII |
+
+**Regra:** VII/VI e X → **merged** (`can_merged`). IX/VIII → **fine** (`can_fine`).
+
+LOAO e global são ramos **diferentes** — rodar um não substitui o outro. Detalhes e comandos: [EXECUCAO.md](EXECUCAO.md).
+
+### Layout do pacote
+
+```
+mth_ids_pipeline/
+├── config.py, protocol.py, label_profiles.py, cli.py
+├── run_supervised.py      # fases 1–6
+├── run_anomaly.py         # fases 7–12 (LOAO)
+├── run_global_anomaly.py  # fases 7–11 global
+├── run_eval.py            # fase 13
+├── report_paper_tables.py
+├── core/                  # ML (preprocessing, clustering, HPO, inference, …)
+├── io/                    # anomaly_io, loao_reporting, run_log, …
+├── phases/                # phase01 … phase13
+├── orchestration/experiment_runner.py
+└── utils/                 # merge_cicids, merge_can, bootstrap, FCBF
+```
+
+#### Ramos de execução
+
+| Ramo | Fases | Perfil | Pasta padrão |
+|------|-------|--------|--------------|
+| Supervisionado CICIDS | 1–6 | `merged` | `pipeline_mth_ids_merged/` |
+| LOAO CICIDS | 7–12 | `fine` | `pipeline_mth_ids_fine/` |
+| Global + eval CICIDS | 7–11, 13 | `merged` | `…/anomaly/global/` |
+| Supervisionado CAN | 1–6 | `can_merged` | `pipeline_can_otids_merged/` |
+| LOAO CAN | 7–12 | `can_fine` | `pipeline_can_otids_fine/` |
+
+Logs timestampados: `results/logs/`. LOAO: espelho em `results/logs/loao/attack_<N>.log`.
+
+### CAN vs CICIDS
+
+| Aspecto | CICIDS2017 | CAN |
+|---------|------------|-----|
+| Protocolo | `--protocol paper` | `--protocol can` |
+| LOAO rodadas | ~14 | 3 (DoS, Fuzzy, Impersonation) |
+| SMOTE | Sim (supervisionado + anomaly) | Não |
+| Amostragem fase 2 | k-means 0,8% + minoritárias preservadas | k-means 0,8% em **todas** as classes |
+
+Diagramas fonte (texto): [`docs/figures/`](figures/) (`01_quatro_tiers.txt` … `04_experimento3_cascata_tabela_x.txt`).
+
+---
+
+## Documentação técnica
+
+### Núcleo do pipeline
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [ARQUITETURA.md](ARQUITETURA.md) | 4 tiers, 3 experimentos (supervisionado, LOAO, sistema completo), perfis `merged`/`fine`, layout do pacote |
+| [EXECUCAO.md](EXECUCAO.md) | Comandos por tabela, pastas `data/` e `results/`, bootstrap automático, troubleshooting |
+| [PIPELINE_PHASES.md](PIPELINE_PHASES.md) | Referência das fases 1–13 + [rodar cada fase manualmente](PIPELINE_PHASES.md#rodar-cada-fase-manualmente) |
+| [PAPER_PROTOCOL.md](PAPER_PROTOCOL.md) | Diferenças entre `--protocol paper` e `--protocol notebook` |
+
+### Protocolos por dataset
+
+Cada protocolo descreve preparação dos dados, presets CLI, tabelas do artigo e uso de `report_paper_tables` (`--table vii` / `ix` / `x` / `all` — nomes legados do script).
+
+| Documento | Dataset | Tabelas | Preset típico |
+|-----------|---------|---------|---------------|
+| [PROTOCOLO_CICIDS.md](PROTOCOLO_CICIDS.md) | CICIDS2017 (tráfego externo) | VII, IX, X | `--protocol paper` |
+| [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) | CAN — índice geral | VI, VIII, X | `can` / `can_otids` |
+| [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) | Car-Hacking original | VI, VIII, X | `--protocol can` + `merge_can --source original` |
+| [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md) | Repack OTIDS | VI, VIII, X | `--protocol can_otids` + `merge_can --source otids` |
+| [PROTOCOLO_UNSW_NB15.md](PROTOCOLO_UNSW_NB15.md) | UNSW-NB15 | VII*, IX*, X* | `--protocol unsw` |
+| [ADAPTACOES_UNSW_DESDE_CICIDS17.md](ADAPTACOES_UNSW_DESDE_CICIDS17.md) | — | Diferenças práticas CICIDS → UNSW | — |
+
+\*No UNSW, os flags `vii`/`ix`/`x` do script são reutilizados; o relatório detecta o dataset pela pasta `pipeline_unsw_nb15_*`.
+
+### Reprodução e relatórios
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [NOTA_REPRODUCAO.md](NOTA_REPRODUCAO.md) | Limitações e divergências artigo × notebook × preset `paper` (texto para defesa/relatório) |
+| [REPRODUCAO_CICIDS2017_VALIDACAO.md](REPRODUCAO_CICIDS2017_VALIDACAO.md) | Validação da execução CICIDS2017 com links para artefatos em `results/cicids2017/` |
+| [archive/README.md](archive/README.md) | Histórico de auditorias e refatorações |
+
+---
+
+## Início rápido por dataset
+
+### CICIDS2017
+
+```powershell
 python -m mth_ids_pipeline.utils.merge_cicids --profile merged
 python -m mth_ids_pipeline.utils.merge_cicids --profile fine
-```
 
-**CAN** (choose one data source — see [docs/PROTOCOLO_CAN.md](docs/PROTOCOLO_CAN.md)):
-```bash
-# Car-Hacking → pipeline_can_intrusion_*
-python -m mth_ids_pipeline.utils.merge_can --source original
-# OTIDS → pipeline_can_otids_* (pastas separadas)
-python -m mth_ids_pipeline.utils.merge_can --source otids
-```
+python -m mth_ids_pipeline.run_supervised --protocol paper          # Tabela VII
+python -m mth_ids_pipeline.run_anomaly --protocol paper --loao      # Tabela IX
+python -m mth_ids_pipeline.run_global_anomaly --protocol paper      # Tabela X (treino)
+python -m mth_ids_pipeline.run_eval `
+  --intermediate-dir data/pipeline_mth_ids_merged `
+  --work-dir data/pipeline_mth_ids_merged/anomaly/global
 
-**Fine: load + sampling, then LOAO (Table IX)** — run from the repo root. Step 1 can be skipped if `data/CICIDS2017_fine.csv` already exists. Step 2 forces regeneration of phases 1–2 (~27k rows; see [docs/EXECUCAO.md](docs/EXECUCAO.md#bootstrap-automático)). Step 3 auto-bootstraps `06_supervised_metrics.json` from merged Table VII if missing.
-
-```powershell
-# 1) Fine CSV (skip if data\CICIDS2017_fine.csv already exists)
-python -m mth_ids_pipeline.utils.merge_cicids --profile fine
-
-# 2) Regenerate load + k-means sampling (phases 1–2)
-Remove-Item data\pipeline_mth_ids_fine\01_preprocessed.parquet -ErrorAction SilentlyContinue
-Remove-Item data\pipeline_mth_ids_fine\02_sampled_kmeans.parquet -ErrorAction SilentlyContinue
-python -m mth_ids_pipeline.run_all --label-profile fine --from 1 --to 2
-
-# 3) LOAO (phases 7–12; may take many hours)
-python -m mth_ids_pipeline.run_anomaly --protocol paper --loao
-
-# 4) Table IX report (after LOAO finishes)
-python -m mth_ids_pipeline.report_paper_tables --table ix `
+python -m mth_ids_pipeline.report_paper_tables --table all `
+  --merged-dir data/pipeline_mth_ids_merged `
   --loao-root data/pipeline_mth_ids_fine/anomaly/loao
 ```
 
-Stop after step 2 for load + sampling only. If step 3 fails on `06_supervised_metrics.json`, run supervised first: `python -m mth_ids_pipeline.run_supervised --protocol paper`.
+Detalhes: [PROTOCOLO_CICIDS.md](PROTOCOLO_CICIDS.md) · [EXECUCAO.md](EXECUCAO.md)
 
-Single LOAO attack (e.g. Bot, label 1) — still re-runs phases 7–8 (~1 h) per attack:
-
-```powershell
-python -m mth_ids_pipeline.run_all --label-profile fine `
-  --protocol paper --from 12 --to 12 --skip-bootstrap `
-  --attack-label 1
-```
-
-To resume phases 9–11 only (skip re-running phase 8), see [docs/PIPELINE_PHASES.md — Retomar LOAO](docs/PIPELINE_PHASES.md#retomar-um-ataque-loao-fases-911-manuais).
-
-Supervised (paper — Table VII) → `data/pipeline_mth_ids_merged/`:
-```bash
-python -m mth_ids_pipeline.run_supervised --protocol paper
-```
-
-Anomaly LOAO (paper — Table IX) → `data/pipeline_mth_ids_fine/` (auto: fine 1–2 + merged Table VII → `06_…` copy):
-```bash
-python -m mth_ids_pipeline.run_anomaly --protocol paper --loao
-```
-
-Compare metrics vs paper/notebook (writes to `results/`):
-
-```bash
-python -m mth_ids_pipeline.report_paper_tables --table all \
-  --intermediate-dir data/pipeline_mth_ids_merged \
-  --loao-root data/pipeline_mth_ids_fine/anomaly/loao
-```
-
-Output: `results/paper_comparison.json` and `results/tables_report.txt`.
-
-**CAN** (Tables VI/VIII — `--protocol can`):
+### CAN (escolha **uma** fonte — não misturar)
 
 ```powershell
+# Car-Hacking (artigo) → pipeline_can_intrusion_*
 python -m mth_ids_pipeline.utils.merge_can --source original
 python -m mth_ids_pipeline.run_supervised --protocol can
 python -m mth_ids_pipeline.run_anomaly --protocol can --loao
-# OTIDS: --protocol can_otids + pipeline_can_otids_*
+
+# OTIDS → pipeline_can_otids_* (pastas separadas)
+python -m mth_ids_pipeline.utils.merge_can --source otids
+python -m mth_ids_pipeline.run_supervised --protocol can_otids
+python -m mth_ids_pipeline.run_anomaly --protocol can_otids --loao
 ```
 
-See [docs/PROTOCOLO_CAN.md](docs/PROTOCOLO_CAN.md).
+Detalhes: [PROTOCOLO_CAN.md](PROTOCOLO_CAN.md) · [PROTOCOLO_CAN_INTRUSION.md](PROTOCOLO_CAN_INTRUSION.md) · [PROTOCOLO_CAN_OTIDS.md](PROTOCOLO_CAN_OTIDS.md)
 
-**Run each phase manually** (full commands, LOAO resume, flags): [docs/PIPELINE_PHASES.md — Rodar cada fase manualmente](docs/PIPELINE_PHASES.md#rodar-cada-fase-manualmente).
+### UNSW-NB15
 
-CLI quick reference:
-
-| Phase | Module | `--intermediate-dir` | Typical extras |
-| --- | --- | --- | --- |
-| 1 | `phases.phase01_load_preprocess` | merged or fine | `--input data/CICIDS2017.csv` |
-| 2 | `phases.phase02_sample_kmeans` | merged, fine, or `pipeline_can_otids_*` | `--frac 0.008` (CICIDS e CAN) + auto `--sample-all-classes` no CAN |
-| 4 | `phases.phase04_feature_engineering` | merged / `pipeline_can_otids_merged` | `--fcbf-scope train`, `--optimize-ig` (split 80/20 inside) |
-| 5 | `phases.phase05_smote` | merged only | skipped with `--protocol can` |
-| 6 | `phases.phase06_supervised_models` | merged | `--cv-folds 10`, `--hpo-on-validation` |
-| 7 | `phases.phase07_anomaly_datasets` | fine | `--work-dir …/loao/attack_N`, `--attack-label N` |
-| 8 | `phases.phase08_anomaly_features` | fine | `--work-dir …/attack_N`, `--optimize-ig --optimize-kpca` |
-| 9 | `phases.phase09_anomaly_cluster` | fine | `--work-dir …/attack_N` |
-| 10 | `phases.phase10_anomaly_cluster_hpo` | fine | `--work-dir …/attack_N`, `--n-calls 15` or `--skip-hpo` |
-| 11 | `phases.phase11_anomaly_biased` | fine | `--work-dir …/attack_N`, `--force-biased --optimize-p-star` |
-| 12 | `phases.phase12_anomaly_loao` | fine | `--attack-label N`, orchestrates 7→11 |
-
-### Machine Learning Algorithms  
-* Decision tree (DT)
-* Random forest (RF)
-* Extra trees (ET)
-* XGBoost  
-* LightGBM  
-* CatBoost  
-* Stacking
-* K-means
-
-### Hyperparameter Optimization Methods  
-* Bayesian Optimization with Gaussian Processes (BO-GP)
-* Bayesian Optimization with Tree-structured Parzen Estimator (BO-TPE)  
-
-If you are interested in hyperparameter tuning of machine learning algorithms, please see the code in the following link:  
-https://github.com/LiYangHart/Hyperparameter-Optimization-of-Machine-Learning-Algorithms
-
-### Requirements & Libraries  
-
-See [`requirements.txt`](requirements.txt). Main dependencies:
-
-* [scikit-learn](https://scikit-learn.org/stable/)  
-* [imbalanced-learn](https://imbalanced-learn.org/) — SMOTE
-* [XGBoost](https://xgboost.readthedocs.io/), [LightGBM](https://lightgbm.readthedocs.io/), [CatBoost](https://catboost.ai/)
-* FCBF — vendored in [`mth_ids_pipeline/utils/FCBF_module.py`](mth_ids_pipeline/utils/FCBF_module.py)
-* [scikit-optimize](https://scikit-optimize.github.io/) (BO-GP), [Hyperopt](https://github.com/hyperopt/hyperopt) (BO-TPE)
-* [joblib](https://joblib.readthedocs.io/) — model persistence
-* [fastparquet](https://fastparquet.readthedocs.io/) — Parquet I/O for pipeline phases  
-
-## Contact-Info
-Please feel free to contact us for any questions or cooperation opportunities. We will be happy to help.
-* Email: [liyanghart@gmail.com](mailto:liyanghart@gmail.com)
-* GitHub: [LiYangHart](https://github.com/LiYangHart) and [Western OC2 Lab](https://github.com/Western-OC2-Lab/)
-* LinkedIn: [Li Yang](https://www.linkedin.com/in/li-yang-phd-65a190176/)  
-* Google Scholar: [Li Yang](https://scholar.google.com.eg/citations?user=XEfM7bIAAAAJ&hl=en) and [OC2 Lab](https://scholar.google.com.eg/citations?user=oiebNboAAAAJ&hl=en)
-
-## Citation
-If you find this repository useful in your research, please cite one of the following two articles as:  
-
-L. Yang, A. Moubayed, I. Hamieh and A. Shami, "Tree-Based Intelligent Intrusion Detection System in Internet of Vehicles," 2019 IEEE Global Communications Conference (GLOBECOM), 2019, pp. 1-6, doi: 10.1109/GLOBECOM38437.2019.9013892.  
-```
-@INPROCEEDINGS{9013892,
-  author={Yang, Li and Moubayed, Abdallah and Hamieh, Ismail and Shami, Abdallah},
-  booktitle={2019 IEEE Global Communications Conference (GLOBECOM)}, 
-  title={Tree-Based Intelligent Intrusion Detection System in Internet of Vehicles}, 
-  year={2019},
-  pages={1-6},
-  doi={10.1109/GLOBECOM38437.2019.9013892}
-  }
+```powershell
+# Pré-requisito: data/UNSW-NB15_merged.csv
+python -m mth_ids_pipeline.run_supervised --protocol unsw
+python -m mth_ids_pipeline.run_anomaly --protocol unsw --loao
 ```
 
-L. Yang, A. Moubayed, and A. Shami, “MTH-IDS: A Multi-Tiered Hybrid Intrusion Detection System for Internet of Vehicles,” IEEE Internet of Things Journal, vol. 9, no. 1, pp. 616-632, Jan.1, 2022, doi: 10.1109/JIOT.2021.3084796.
-```
-@ARTICLE{9443234,
-  author={Yang, Li and Moubayed, Abdallah and Shami, Abdallah},
-  journal={IEEE Internet of Things Journal}, 
-  title={MTH-IDS: A Multitiered Hybrid Intrusion Detection System for Internet of Vehicles}, 
-  year={2022},
-  volume={9},
-  number={1},
-  pages={616-632},
-  doi={10.1109/JIOT.2021.3084796}}
-```
+Detalhes: [PROTOCOLO_UNSW_NB15.md](PROTOCOLO_UNSW_NB15.md) · [ADAPTACOES_UNSW_DESDE_CICIDS17.md](ADAPTACOES_UNSW_DESDE_CICIDS17.md)
 
-L. Yang, A. Shami, G. Stevens, and S. DeRusett, “LCCDE: A Decision-Based Ensemble Framework for Intrusion Detection in The Internet of Vehicles," in 2022 IEEE Global Communications Conference (GLOBECOM), 2022, pp. 1-6, doi: 10.1109/GLOBECOM48099.2022.10001280.
-```
-@INPROCEEDINGS{10001280,
-  author={Yang, Li and Shami, Abdallah and Stevens, Gary and de Rusett, Stephen},
-  booktitle={GLOBECOM 2022 - 2022 IEEE Global Communications Conference}, 
-  title={LCCDE: A Decision-Based Ensemble Framework for Intrusion Detection in The Internet of Vehicles}, 
-  year={2022},
-  pages={3545-3550},
-  doi={10.1109/GLOBECOM48099.2022.10001280}}
-```
+---
+
+## Pontos de entrada CLI
+
+| Comando | Papel |
+|---------|-------|
+| `run_supervised` | Experimentos supervisionados (Tabela VII / VI) |
+| `run_anomaly --loao` | Detecção zero-day por ataque (Tabela IX / VIII) |
+| `run_global_anomaly` | Treino do modelo anomaly global (Tabela X) |
+| `run_eval` | Avaliação do sistema completo (fase 13) |
+| `run_all` | Orquestra fases por intervalo `--from` / `--to` |
+| `report_paper_tables` | Compara métricas locais com valores do artigo/notebook |
+
+Utilitários de dados: `merge_cicids`, `merge_can` (ver protocolos acima).
+
+---
+
+## Onde ficam os artefatos
+
+| Tipo | Local padrão |
+|------|----------------|
+| Parquets e modelos do pipeline | `data/pipeline_<dataset>_<perfil>/` |
+| Relatórios e logs de execução | `results/` (subpastas por dataset; ver [results/README.md](../results/README.md)) |
+| Configs JSON por fase | `data/.../phase_reports/` ou cópias em `results/<dataset>/config/` |
+| Snapshot versionado (validação) | `results/cicids2017/` (recorte mínimo; ver [REPRODUCAO_CICIDS2017_VALIDACAO.md](REPRODUCAO_CICIDS2017_VALIDACAO.md)) |
+
+---
+
+## Referências
+
+- **Artigo MTH-IDS:** Yang et al., IEEE IoT Journal, 2022 — [PDF no repositório](../paper_and_notebooks/MTH_IDS_paper.pdf)
+- **Notebook de referência:** [MTH_IDS_IoTJ.ipynb](../paper_and_notebooks/MTH_IDS_IoTJ.ipynb) (preset `notebook`)
+- **Repositório upstream:** [Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning)
