@@ -48,6 +48,37 @@ This repository proposed three **intrusion detection systems** by implementing m
 </p>
 
 
+## Repository structure
+
+| Path | Purpose |
+|------|---------|
+| [`mth_ids_pipeline/`](mth_ids_pipeline) | Modular MTH-IDS pipeline (`core/`, `io/`, `phases/`, `orchestration/`, `utils/`) |
+| [`tests/`](tests) | Automated tests (`pytest`) |
+| [`docs/`](docs) | Architecture, execution, and protocol documentation (Portuguese) |
+| [`paper_and_notebooks/`](paper_and_notebooks) | Reference notebook and paper PDF |
+| [`scripts/`](scripts) | Standalone experiments (not part of the pipeline package) |
+| [`Figures/`](Figures) | Paper overview figures |
+| [`data/`](data) | Raw datasets and pipeline intermediates (gitignored; see `data/README.md`) |
+| [`results/`](results) | Execution logs and comparison reports (gitignored except validation snapshot) |
+
+### Install
+
+```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Python 3.10+ recommended (tested with 3.13). No environment variables or credentials are required for the pipeline.
+
+### Tests
+
+```bash
+python -m pytest tests/ -q
+```
+
+---
+
 ## Implementation 
 ### Dataset 
 CICIDS2017 dataset, a popular network traffic dataset for intrusion detection problems
@@ -58,9 +89,9 @@ CAN-OTIDS dataset (OTIDS benchmark for intra-vehicle intrusion detection; source
 * Can be processed using the same code
 
 ### Code  
-* [Tree-based_IDS_GlobeCom19.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/Tree-based_IDS_GlobeCom19.ipynb): code for the paper "Tree-Based Intelligent Intrusion Detection System in Internet of Vehicles"  
-* [MTH_IDS_IoTJ.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/MTH_IDS_IoTJ.ipynb): code for the paper "MTH-IDS: A Multi-Tiered Hybrid Intrusion Detection System for Internet of Vehicles"  
-* [LCCDE_IDS_GlobeCom22.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/LCCDE_IDS_GlobeCom22.ipynb): code for the paper "LCCDE: A Decision-Based Ensemble Framework for Intrusion Detection in The Internet of Vehicles"  
+* [Tree-based_IDS_GlobeCom19.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/Tree-based_IDS_GlobeCom19.ipynb): GlobeCom 2019 tree-based IDS (upstream repo; not vendored here)  
+* [MTH_IDS_IoTJ.ipynb](paper_and_notebooks/MTH_IDS_IoTJ.ipynb): MTH-IDS IoTJ notebook (reference for `--protocol notebook`)  
+* [LCCDE_IDS_GlobeCom22.ipynb](https://github.com/Western-OC2-Lab/Intrusion-Detection-System-Using-Machine-Learning/blob/main/LCCDE_IDS_GlobeCom22.ipynb): LCCDE GlobeCom 2022 (upstream repo; not vendored here)  
 
 #### MTH-IDS modular pipeline (Parquet + reports)
 
@@ -195,18 +226,15 @@ https://github.com/LiYangHart/Hyperparameter-Optimization-of-Machine-Learning-Al
 
 ### Requirements & Libraries  
 
-Install: `pip install -r requirements.txt` (Python 3.10+ recommended; tested with 3.13).
+See [`requirements.txt`](requirements.txt). Main dependencies:
 
-* Python 3.6+ 
 * [scikit-learn](https://scikit-learn.org/stable/)  
-* [imbalanced-learn](https://imbalanced-learn.org/) — SMOTE (API without `n_jobs` in recent versions)
-* [Xgboost](https://xgboost.readthedocs.io/en/latest/python/python_intro.html)
-* [lightgbm](https://lightgbm.readthedocs.io/en/v3.3.2/Python-Intro.html)
-* [catboost](https://xgboost.readthedocs.io/en/latest/python/python_intro.html)
-* [FCBF](https://github.com/SantiagoEG/FCBF_module)
-* [scikit-optimize](https://github.com/scikit-optimize/scikit-optimize)  
-* [hyperopt](https://github.com/hyperopt/hyperopt)   
-* [River](https://riverml.xyz/dev/)  
+* [imbalanced-learn](https://imbalanced-learn.org/) — SMOTE
+* [XGBoost](https://xgboost.readthedocs.io/), [LightGBM](https://lightgbm.readthedocs.io/), [CatBoost](https://catboost.ai/)
+* FCBF — vendored in [`mth_ids_pipeline/utils/FCBF_module.py`](mth_ids_pipeline/utils/FCBF_module.py)
+* [scikit-optimize](https://scikit-optimize.github.io/) (BO-GP), [Hyperopt](https://github.com/hyperopt/hyperopt) (BO-TPE)
+* [joblib](https://joblib.readthedocs.io/) — model persistence
+* [fastparquet](https://fastparquet.readthedocs.io/) — Parquet I/O for pipeline phases  
 
 ## Contact-Info
 Please feel free to contact us for any questions or cooperation opportunities. We will be happy to help.

@@ -8,7 +8,7 @@ Análise dos parâmetros observados nos logs locais versus o **artigo** (Yang et
 
 | Artefato | Caminho |
 |----------|---------|
-| Log supervisionado | [`results/cicids2017/logs/merged/supervised_run.log`](../results/cicids2017/logs/merged/supervised_run.log) |
+| Log supervisionado | [`results/cicids2017/logs/merged/supervised_paper_frac0.008_optimize-ig_phases1-6_20260607_084219.log`](../results/cicids2017/logs/merged/supervised_paper_frac0.008_optimize-ig_phases1-6_20260607_084219.log) |
 | Config da run | [`results/cicids2017/config/merged/experiment_runner_config.json`](../results/cicids2017/config/merged/experiment_runner_config.json) |
 | Fase 2 (k-means) | [`results/cicids2017/config/merged/phase02_sample_kmeans.json`](../results/cicids2017/config/merged/phase02_sample_kmeans.json) |
 | Fase 4 (IG+FCBF) | [`results/cicids2017/config/merged/phase04_feature_engineering.json`](../results/cicids2017/config/merged/phase04_feature_engineering.json) |

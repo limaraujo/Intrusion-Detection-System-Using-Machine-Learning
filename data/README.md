@@ -9,7 +9,7 @@
 | `CICIDS2017_fine.csv` | Perfil **fine** (Tabela IX / LOAO) — `merge_cicids --profile fine` |
 
 Gerar os CSVs (uma vez):
-n
+
 ```powershell
 python -m mth_ids_pipeline.utils.merge_cicids --profile merged
 python -m mth_ids_pipeline.utils.merge_cicids --profile fine

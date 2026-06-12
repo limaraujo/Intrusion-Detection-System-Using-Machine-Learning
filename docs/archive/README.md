@@ -20,3 +20,4 @@ Arquivos nesta pasta:
 | `LOAO_REPRODUCIBILITY_AUDIT.md` | Auditoria reprodutibilidade LOAO |
 | `LOAO_AUDIT_REPORT_2026-06-05.md` | Auditoria LOAO (jun/2026) |
 | `CL_KMEANS_BO_GP_REFACTOR_REPORT.md` | Refator CL-k-means + BO-GP |
+| `AUDIT_YANG2022_PROTOCOL.md` | Auditoria conformidade preset `paper` (jun/2026) |

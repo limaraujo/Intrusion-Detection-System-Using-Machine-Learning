@@ -5,6 +5,7 @@ scipy
 matplotlib
 seaborn
 scikit-learn
+joblib
 xgboost
 lightgbm
 catboost
